@@ -116,6 +116,40 @@ router.post("/create-license",
   }
 );
 
+// Get Stripe session details (for success page display)
+router.get("/session/:sessionId",
+  rateLimitMiddleware.general,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      if (!stripe) {
+        return res.status(503).json({ error: "Payment verification unavailable" });
+      }
+
+      const { sessionId } = req.params;
+
+      // Retrieve session from Stripe
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+      // Verify this session belongs to the authenticated user's tenant
+      if (session.metadata?.tenantId !== req.tenant!.id) {
+        return res.status(403).json({ error: "Unauthorized access to session" });
+      }
+
+      // Return session data in the format expected by frontend
+      res.json({
+        id: session.id,
+        payment_status: session.payment_status,
+        customer_email: session.customer_email || session.customer_details?.email,
+        amount_total: session.amount_total,
+        metadata: session.metadata,
+      });
+    } catch (error) {
+      console.error("Error fetching Stripe session:", error);
+      res.status(500).json({ error: "Failed to retrieve session details" });
+    }
+  }
+);
+
 // Verify license purchase (production webhook handler)
 router.get("/verify-license/:sessionId", 
   rateLimitMiddleware.general,
