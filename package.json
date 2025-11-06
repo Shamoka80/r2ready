@@ -116,7 +116,7 @@
     "jsonwebtoken": "^9.0.2",
     "lint-staged": "^16.2.0",
     "lodash": "^4.17.21",
-    "lucide-react": "^0.453.0",
+    "lucide-react": "^0.552.0",
     "memorystore": "^1.6.7",
     "msw": "^2.11.3",
     "multer": "^2.0.2",
