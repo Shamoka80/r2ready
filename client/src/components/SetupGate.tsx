@@ -84,9 +84,7 @@ function SetupGate({ children }: SetupGateProps) {
     email: user.email,
     setupStatus: user.setupStatus,
     hasLicense,
-    tenantType,
-    businessRole: user.businessRole,
-    consultantRole: user.consultantRole
+    tenantType
   });
 
   // GATE 1: Email Verification (HIGHEST PRIORITY)
@@ -126,8 +124,23 @@ function SetupGate({ children }: SetupGateProps) {
         },
         body: JSON.stringify({ setupStatus: 'assessment_active' })
       }).catch(console.error);
+      
+      // Allow brief time for activation to complete, then allow access
+      // The auth context will update and re-render with new status
+      return (
+        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-900/20 to-green-900/20">
+          <div className="text-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="text-muted-foreground">Activating your assessment...</p>
+          </div>
+        </div>
+      );
     }
-    return <Redirect to="/pricing" />;
+    
+    // If setup not complete and assessment not active, user needs to complete onboarding first
+    console.log('SetupGate: Setup not complete, redirecting to onboarding');
+    const onboardingRoute = isOnboardingV2Enabled ? "/onboarding-v2" : "/onboarding";
+    return <Redirect to={onboardingRoute} />;
   }
 
   // All gates passed - allow access to protected routes
