@@ -428,7 +428,12 @@ export default function OnboardingV2Wizard() {
                     <FormItem>
                       <FormLabel>Company Name *</FormLabel>
                       <FormControl>
-                        <Input placeholder="Acme Corporation" {...field} />
+                        <Input 
+                          placeholder="Acme Corporation" 
+                          autoComplete="off"
+                          {...field}
+                          value={field.value || ""}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -443,7 +448,12 @@ export default function OnboardingV2Wizard() {
                       <FormItem>
                         <FormLabel>Primary Contact *</FormLabel>
                         <FormControl>
-                          <Input placeholder="John Smith" {...field} />
+                          <Input 
+                            placeholder="John Smith" 
+                            autoComplete="off"
+                            {...field}
+                            value={field.value || ""}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -457,7 +467,12 @@ export default function OnboardingV2Wizard() {
                       <FormItem>
                         <FormLabel>Contact Email *</FormLabel>
                         <FormControl>
-                          <Input placeholder="john@acme.com" {...field} />
+                          <Input 
+                            placeholder="john@acme.com" 
+                            autoComplete="off"
+                            {...field}
+                            value={field.value || ""}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -473,7 +488,12 @@ export default function OnboardingV2Wizard() {
                       <FormItem>
                         <FormLabel>City *</FormLabel>
                         <FormControl>
-                          <Input placeholder="San Francisco" {...field} />
+                          <Input 
+                            placeholder="San Francisco" 
+                            autoComplete="off"
+                            {...field}
+                            value={field.value || ""}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -487,7 +507,12 @@ export default function OnboardingV2Wizard() {
                       <FormItem>
                         <FormLabel>State *</FormLabel>
                         <FormControl>
-                          <Input placeholder="CA" {...field} />
+                          <Input 
+                            placeholder="CA" 
+                            autoComplete="off"
+                            {...field}
+                            value={field.value || ""}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -550,7 +575,12 @@ export default function OnboardingV2Wizard() {
                     <FormItem>
                       <FormLabel>Facility Name *</FormLabel>
                       <FormControl>
-                        <Input placeholder="Headquarters" {...field} />
+                        <Input 
+                          placeholder="Headquarters" 
+                          autoComplete="off"
+                          {...field}
+                          value={field.value || ""}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -564,7 +594,12 @@ export default function OnboardingV2Wizard() {
                     <FormItem>
                       <FormLabel>Address *</FormLabel>
                       <FormControl>
-                        <Input placeholder="123 Main Street" {...field} />
+                        <Input 
+                          placeholder="123 Main Street" 
+                          autoComplete="off"
+                          {...field}
+                          value={field.value || ""}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -579,7 +614,12 @@ export default function OnboardingV2Wizard() {
                       <FormItem>
                         <FormLabel>City *</FormLabel>
                         <FormControl>
-                          <Input placeholder="San Francisco" {...field} />
+                          <Input 
+                            placeholder="San Francisco" 
+                            autoComplete="off"
+                            {...field}
+                            value={field.value || ""}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -593,7 +633,12 @@ export default function OnboardingV2Wizard() {
                       <FormItem>
                         <FormLabel>State *</FormLabel>
                         <FormControl>
-                          <Input placeholder="CA" {...field} />
+                          <Input 
+                            placeholder="CA" 
+                            autoComplete="off"
+                            {...field}
+                            value={field.value || ""}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -607,7 +652,12 @@ export default function OnboardingV2Wizard() {
                       <FormItem>
                         <FormLabel>ZIP Code *</FormLabel>
                         <FormControl>
-                          <Input placeholder="94105" {...field} />
+                          <Input 
+                            placeholder="94105" 
+                            autoComplete="off"
+                            {...field}
+                            value={field.value || ""}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -737,7 +787,12 @@ export default function OnboardingV2Wizard() {
                     <FormItem>
                       <FormLabel>Client Company Name *</FormLabel>
                       <FormControl>
-                        <Input placeholder="Client Corp Inc." {...field} />
+                        <Input 
+                          placeholder="Client Corp Inc." 
+                          autoComplete="off"
+                          {...field}
+                          value={field.value || ""}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -752,7 +807,12 @@ export default function OnboardingV2Wizard() {
                       <FormItem>
                         <FormLabel>Client Industry *</FormLabel>
                         <FormControl>
-                          <Input placeholder="Technology, Manufacturing, etc." {...field} />
+                          <Input 
+                            placeholder="Technology, Manufacturing, etc." 
+                            autoComplete="off"
+                            {...field}
+                            value={field.value || ""}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
