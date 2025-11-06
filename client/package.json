@@ -12,7 +12,7 @@
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "wouter": "^3.3.0",
-    "@tanstack/react-query": "^5.0.0",
+    "@tanstack/react-query": "^5.90.7",
     "lucide-react": "^0.400.0",
     "@radix-ui/react-accordion": "^1.2.1",
     "@radix-ui/react-radio-group": "^1.2.1",
