@@ -10,6 +10,22 @@ import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware';
 
 const router = Router();
 
+// Helper function to get the correct base URL for redirects
+const getBaseUrl = (): string => {
+  // Production or explicit CLIENT_URL
+  if (process.env.CLIENT_URL) {
+    return process.env.CLIENT_URL;
+  }
+  
+  // Replit development environment
+  if (process.env.REPLIT_DOMAINS) {
+    return `https://${process.env.REPLIT_DOMAINS}`;
+  }
+  
+  // Local development fallback
+  return 'http://localhost:5000';
+};
+
 // Get Stripe secret key (supports testing key for development)
 const stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY;
 
@@ -73,8 +89,8 @@ router.post("/create-license",
           quantity: 1,
         }],
         mode: 'payment',
-        success_url: `${process.env.CLIENT_URL || 'https://localhost:5000'}/licenses/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${process.env.CLIENT_URL || 'https://localhost:5000'}/pricing`,
+        success_url: `${getBaseUrl()}/licenses/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${getBaseUrl()}/pricing`,
         customer_email: data.billingEmail,
         metadata: {
           tenantId: req.tenant!.id,
