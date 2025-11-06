@@ -116,6 +116,22 @@ RUR2 is a professional monorepo application designed for managing R2v3 pre-certi
   - **Preview System**: Live preview of branding on reports and client dashboards
   - **Access Control**: All branding endpoints restricted to consultant tenants only (tenantType === 'CONSULTANT')
   - **Future Integration**: Branding data ready for use in report generation and client-facing exports
+- **Authentication & Payment Flow Stability (November 6, 2025)**: Critical bug fixes ensuring seamless user progression:
+  - **Email Verification Persistence Fix**: Login endpoint now returns `emailVerified` field, preventing verified users from being redirected to email verification on every login
+    - **Root Cause**: `POST /api/auth/login` response was missing `emailVerified` field, causing SetupGate to always redirect verified users
+    - **Solution**: Added `emailVerified: user.emailVerified` to login response payload (server/routes/auth.ts line 475)
+    - **Impact**: Users can now login once and proceed directly to appropriate next step based on license/setup status
+  - **Dual-Source License Success Page**: Payment success page now supports both Stripe payments and mock payments with robust fallback logic
+    - **Stripe Flow**: Traditional flow with session_id query parameter fetching Stripe session data
+    - **Mock Payment Flow**: Direct license status fetch when no session_id present
+    - **Fallback Protection**: If Stripe session fetch fails but license exists, page falls back to displaying license data
+    - **Error Handling**: Only shows error if BOTH Stripe session AND license status fail, preventing users from being stranded despite valid license
+    - **Implementation Details** (client/src/pages/LicenseSuccess.tsx):
+      - Line 77: License status query enabled when `!sessionId || !!sessionError`
+      - Line 150-182: Dual-source error handling logic
+      - Line 186: Payment success determined from either Stripe OR license status
+    - **User Experience**: Seamless success page display for all payment types (Stripe checkout, mock payments, Stripe fallback)
+  - **Complete User Journey**: Login → Pricing → Payment → Success → Onboarding/Dashboard now works without verification loops or payment errors
 
 ### E2E Test Suite (Playwright)
 - **Coverage**: ≥95% test coverage across major user flows including Authentication, Onboarding, Assessment Lifecycle, and other core features.
