@@ -432,7 +432,6 @@ export default function OnboardingV2Wizard() {
                           placeholder="Acme Corporation" 
                           autoComplete="off"
                           {...field}
-                          value={field.value || ""}
                         />
                       </FormControl>
                       <FormMessage />
@@ -452,7 +451,6 @@ export default function OnboardingV2Wizard() {
                             placeholder="John Smith" 
                             autoComplete="off"
                             {...field}
-                            value={field.value || ""}
                           />
                         </FormControl>
                         <FormMessage />
@@ -471,7 +469,6 @@ export default function OnboardingV2Wizard() {
                             placeholder="john@acme.com" 
                             autoComplete="off"
                             {...field}
-                            value={field.value || ""}
                           />
                         </FormControl>
                         <FormMessage />
@@ -492,7 +489,6 @@ export default function OnboardingV2Wizard() {
                             placeholder="San Francisco" 
                             autoComplete="off"
                             {...field}
-                            value={field.value || ""}
                           />
                         </FormControl>
                         <FormMessage />
@@ -511,7 +507,6 @@ export default function OnboardingV2Wizard() {
                             placeholder="CA" 
                             autoComplete="off"
                             {...field}
-                            value={field.value || ""}
                           />
                         </FormControl>
                         <FormMessage />
@@ -579,7 +574,6 @@ export default function OnboardingV2Wizard() {
                           placeholder="Headquarters" 
                           autoComplete="off"
                           {...field}
-                          value={field.value || ""}
                         />
                       </FormControl>
                       <FormMessage />
@@ -598,7 +592,6 @@ export default function OnboardingV2Wizard() {
                           placeholder="123 Main Street" 
                           autoComplete="off"
                           {...field}
-                          value={field.value || ""}
                         />
                       </FormControl>
                       <FormMessage />
@@ -618,7 +611,6 @@ export default function OnboardingV2Wizard() {
                             placeholder="San Francisco" 
                             autoComplete="off"
                             {...field}
-                            value={field.value || ""}
                           />
                         </FormControl>
                         <FormMessage />
@@ -637,7 +629,6 @@ export default function OnboardingV2Wizard() {
                             placeholder="CA" 
                             autoComplete="off"
                             {...field}
-                            value={field.value || ""}
                           />
                         </FormControl>
                         <FormMessage />
@@ -656,7 +647,6 @@ export default function OnboardingV2Wizard() {
                             placeholder="94105" 
                             autoComplete="off"
                             {...field}
-                            value={field.value || ""}
                           />
                         </FormControl>
                         <FormMessage />
@@ -791,7 +781,6 @@ export default function OnboardingV2Wizard() {
                           placeholder="Client Corp Inc." 
                           autoComplete="off"
                           {...field}
-                          value={field.value || ""}
                         />
                       </FormControl>
                       <FormMessage />
@@ -811,7 +800,6 @@ export default function OnboardingV2Wizard() {
                             placeholder="Technology, Manufacturing, etc." 
                             autoComplete="off"
                             {...field}
-                            value={field.value || ""}
                           />
                         </FormControl>
                         <FormMessage />
