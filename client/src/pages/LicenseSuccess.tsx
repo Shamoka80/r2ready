@@ -53,7 +53,7 @@ export default function LicenseSuccess() {
     }
   }, [location]);
 
-  // Fetch session data from Stripe
+  // Fetch session data from Stripe (optional - only for real Stripe payments)
   const { 
     data: sessionData, 
     isLoading: sessionLoading, 
@@ -64,6 +64,16 @@ export default function LicenseSuccess() {
     enabled: !!sessionId,
   });
 
+  // Fetch license status directly (for mock payments or as fallback when Stripe session fails)
+  const {
+    data: licenseStatus,
+    isLoading: licenseStatusLoading
+  } = useQuery<{ hasLicense: boolean; status: string; license?: any }>({
+    queryKey: ['license-status'],
+    queryFn: () => apiGet('/api/licenses/status'),
+    enabled: !sessionId || !!sessionError, // Fetch when: no session_id OR Stripe session failed
+  });
+
   // Fetch updated licenses to confirm creation
   const { 
     data: licenses = [], 
@@ -72,12 +82,15 @@ export default function LicenseSuccess() {
   } = useQuery<License[]>({
     queryKey: ['licenses'],
     queryFn: () => apiGet('/api/licenses'),
-    enabled: !!sessionData && sessionData.payment_status === 'paid',
+    enabled: (!!sessionData && sessionData.payment_status === 'paid') || (!!licenseStatus && licenseStatus.hasLicense),
   });
 
   // Auto-redirect countdown after successful payment
   useEffect(() => {
-    if (sessionData && sessionData.payment_status === 'paid' && !shouldRedirect) {
+    const isStripePaymentSuccess = sessionData && sessionData.payment_status === 'paid';
+    const isMockPaymentSuccess = licenseStatus && licenseStatus.hasLicense && licenseStatus.status === 'active';
+    
+    if ((isStripePaymentSuccess || isMockPaymentSuccess) && !shouldRedirect) {
       setShouldRedirect(true);
       
       const countdownInterval = setInterval(() => {
@@ -97,7 +110,7 @@ export default function LicenseSuccess() {
 
       return () => clearInterval(countdownInterval);
     }
-  }, [sessionData, shouldRedirect, setLocation]);
+  }, [sessionData, licenseStatus, shouldRedirect, setLocation]);
 
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -116,27 +129,8 @@ export default function LicenseSuccess() {
     });
   };
 
-  if (!sessionId) {
-    return (
-      <div className="min-h-screen bg-gradient-professional flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-8 text-center">
-            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-foreground mb-2">Invalid Session</h2>
-            <p className="text-muted-foreground mb-6">No payment session found. Please try your purchase again.</p>
-            <Link href="/licenses">
-              <Button className="w-full">
-                <ArrowRight className="h-4 w-4 mr-2" />
-                Go to Licenses
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (sessionLoading) {
+  // Loading state for both Stripe and mock payment flows
+  if ((sessionId && sessionLoading) || (!sessionId && licenseStatusLoading)) {
     return (
       <div className="min-h-screen bg-gradient-professional flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
@@ -150,7 +144,12 @@ export default function LicenseSuccess() {
     );
   }
 
-  if (sessionError || !sessionData) {
+  // Error handling - only show error if BOTH Stripe session AND license status failed
+  const hasStripeSessionError = sessionId && (sessionError || !sessionData);
+  const hasLicenseStatusError = !licenseStatus || !licenseStatus.hasLicense;
+  const shouldShowError = hasStripeSessionError && hasLicenseStatusError && !licenseStatusLoading;
+  
+  if (shouldShowError) {
     return (
       <div className="min-h-screen bg-gradient-professional flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
@@ -179,8 +178,15 @@ export default function LicenseSuccess() {
     );
   }
 
-  const isPaymentSuccessful = sessionData.payment_status === 'paid';
-  const isMockPayment = sessionData.metadata?.mockPayment === 'true';
+  // Determine payment success and type
+  const isStripePayment = !!sessionId && !!sessionData;
+  const isMockPayment = (!sessionId && !!licenseStatus) || (sessionError && !!licenseStatus); // Mock payment OR Stripe fallback
+  const isPaymentSuccessful = isStripePayment 
+    ? sessionData.payment_status === 'paid' 
+    : (licenseStatus?.hasLicense && licenseStatus?.status === 'active');
+  const isMockPaymentFlag = isStripePayment 
+    ? sessionData.metadata?.mockPayment === 'true'
+    : true; // Show mock badge for both mock payments and fallback cases
 
   return (
     <div className="min-h-screen relative">
@@ -231,7 +237,7 @@ export default function LicenseSuccess() {
                   <CardTitle className="text-2xl text-foreground" data-testid="heading-payment-successful">Payment Successful!</CardTitle>
                   <p className="text-muted-foreground mt-2" data-testid="text-success-message">
                     Your license has been activated and is ready to use.
-                    {isMockPayment && (
+                    {isMockPaymentFlag && (
                       <span className="block text-sm text-amber-600 mt-1" data-testid="text-mock-payment">
                         (Test Payment - Development Mode)
                       </span>
@@ -255,67 +261,103 @@ export default function LicenseSuccess() {
           </CardHeader>
 
           <CardContent className="space-y-6">
-            {/* Payment Details */}
-            <div className="space-y-4" data-testid="section-payment-details">
-              <h3 className="text-lg font-semibold text-foreground">Payment Details</h3>
-              <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Session ID:</span>
-                  <span className="font-mono text-sm" data-testid="text-session-id">{sessionData.id}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Amount Paid:</span>
-                  <span className="font-semibold" data-testid="text-amount-paid">{formatPrice(sessionData.amount_total)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Customer Email:</span>
-                  <span data-testid="text-customer-email">{sessionData.customer_email}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Status:</span>
-                  <Badge variant={isPaymentSuccessful ? "default" : "secondary"} data-testid="badge-payment-status">
-                    {sessionData.payment_status}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-
-            {/* License Information */}
-            {sessionData.metadata && (
-              <div className="space-y-4" data-testid="section-license-information">
-                <h3 className="text-lg font-semibold text-foreground">License Information</h3>
+            {/* Payment Details - Show for Stripe payments */}
+            {isStripePayment && (
+              <div className="space-y-4" data-testid="section-payment-details">
+                <h3 className="text-lg font-semibold text-foreground">Payment Details</h3>
                 <div className="bg-muted/50 rounded-lg p-4 space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">License Type:</span>
-                    <Badge variant="outline" className="capitalize" data-testid="badge-license-type">
-                      {sessionData.metadata.licenseType}
-                    </Badge>
+                    <span className="text-muted-foreground">Session ID:</span>
+                    <span className="font-mono text-sm" data-testid="text-session-id">{sessionData.id}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Account Type:</span>
-                    <span className="capitalize" data-testid="text-account-type">{sessionData.metadata.accountType}</span>
+                    <span className="text-muted-foreground">Amount Paid:</span>
+                    <span className="font-semibold" data-testid="text-amount-paid">{formatPrice(sessionData.amount_total)}</span>
                   </div>
-                  {sessionData.metadata.maxFacilities && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Facilities:</span>
-                      <span data-testid="text-max-facilities">{sessionData.metadata.maxFacilities}</span>
-                    </div>
-                  )}
-                  {sessionData.metadata.maxSeats && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Seats:</span>
-                      <span data-testid="text-max-seats">{sessionData.metadata.maxSeats}</span>
-                    </div>
-                  )}
-                  {sessionData.metadata.supportTier && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Support Tier:</span>
-                      <span className="capitalize" data-testid="text-support-tier">{sessionData.metadata.supportTier}</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Customer Email:</span>
+                    <span data-testid="text-customer-email">{sessionData.customer_email}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Status:</span>
+                    <Badge variant={isPaymentSuccessful ? "default" : "secondary"} data-testid="badge-payment-status">
+                      {sessionData.payment_status}
+                    </Badge>
+                  </div>
                 </div>
               </div>
             )}
+
+            {/* License Information */}
+            {(isStripePayment && sessionData.metadata) || (isMockPayment && licenseStatus?.license) ? (
+              <div className="space-y-4" data-testid="section-license-information">
+                <h3 className="text-lg font-semibold text-foreground">License Information</h3>
+                <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                  {isStripePayment && sessionData.metadata && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">License Type:</span>
+                        <Badge variant="outline" className="capitalize" data-testid="badge-license-type">
+                          {sessionData.metadata.licenseType}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Account Type:</span>
+                        <span className="capitalize" data-testid="text-account-type">{sessionData.metadata.accountType}</span>
+                      </div>
+                      {sessionData.metadata.maxFacilities && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Facilities:</span>
+                          <span data-testid="text-max-facilities">{sessionData.metadata.maxFacilities}</span>
+                        </div>
+                      )}
+                      {sessionData.metadata.maxSeats && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Seats:</span>
+                          <span data-testid="text-max-seats">{sessionData.metadata.maxSeats}</span>
+                        </div>
+                      )}
+                      {sessionData.metadata.supportTier && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Support Tier:</span>
+                          <span className="capitalize" data-testid="text-support-tier">{sessionData.metadata.supportTier}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {isMockPayment && licenseStatus?.license && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">License Type:</span>
+                        <Badge variant="outline" className="capitalize" data-testid="badge-license-type">
+                          {licenseStatus.license.tier}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Facilities:</span>
+                        <span data-testid="text-max-facilities">{licenseStatus.license.maxFacilities}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Seats:</span>
+                        <span data-testid="text-max-seats">{licenseStatus.license.maxSeats}</span>
+                      </div>
+                      {licenseStatus.license.supportTier && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Support Tier:</span>
+                          <span className="capitalize" data-testid="text-support-tier">{licenseStatus.license.supportTier}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Status:</span>
+                        <Badge variant="default" data-testid="badge-payment-status">
+                          {licenseStatus.status}
+                        </Badge>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            ) : null}
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3 pt-4">
