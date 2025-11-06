@@ -16,7 +16,12 @@ import {
   intakeForms,
   answers,
   evidenceFiles,
-  auditLog
+  auditLog,
+  licenses,
+  licenseAddons,
+  licenseEvents,
+  rateLimitEvents,
+  refreshTokens
 } from '../../shared/schema';
 import { eq, or, inArray } from 'drizzle-orm';
 import { fileURLToPath } from 'url';
@@ -56,6 +61,29 @@ export async function cleanupTestData() {
     // Delete in reverse dependency order
     // Note: Many deletes will cascade automatically via database constraints
     
+    console.log('  Deleting user-related data...');
+    
+    // 0. Delete user-specific dependencies BEFORE deleting tenant data
+    if (userIds.length > 0) {
+      // Delete rate limit events (references userId)
+      try {
+        await db.delete(rateLimitEvents)
+          .where(inArray(rateLimitEvents.userId, userIds));
+        console.log(`    ✓ Deleted rate limit events`);
+      } catch (err) {
+        console.log(`    ⚠️  Rate limit events deletion failed:`, (err as Error).message);
+      }
+      
+      // Delete refresh tokens (references userId)
+      try {
+        await db.delete(refreshTokens)
+          .where(inArray(refreshTokens.userId, userIds));
+        console.log(`    ✓ Deleted refresh tokens`);
+      } catch (err) {
+        console.log(`    ⚠️  Refresh tokens deletion failed:`, (err as Error).message);
+      }
+    }
+    
     console.log('  Deleting tenant-related data...');
     
     // 1. Delete audit logs (must be first as they reference users and tenants)
@@ -75,7 +103,37 @@ export async function cleanupTestData() {
       }
     }
     
-    // 2. Delete evidence files
+    // 2. Delete license-related data (must be before users/tenants)
+    if (tenantIds.length > 0) {
+      try {
+        // Delete license events first
+        await db.delete(licenseEvents)
+          .where(inArray(licenseEvents.tenantId, tenantIds));
+        console.log(`    ✓ Deleted license events`);
+      } catch (err) {
+        console.log(`    ⚠️  License events deletion failed:`, (err as Error).message);
+      }
+      
+      try {
+        // Delete license addons
+        await db.delete(licenseAddons)
+          .where(inArray(licenseAddons.tenantId, tenantIds));
+        console.log(`    ✓ Deleted license addons`);
+      } catch (err) {
+        console.log(`    ⚠️  License addons deletion failed:`, (err as Error).message);
+      }
+      
+      try {
+        // Delete licenses
+        await db.delete(licenses)
+          .where(inArray(licenses.tenantId, tenantIds));
+        console.log(`    ✓ Deleted licenses`);
+      } catch (err) {
+        console.log(`    ⚠️  Licenses deletion failed:`, (err as Error).message);
+      }
+    }
+    
+    // 3. Delete evidence files
     if (tenantIds.length > 0) {
       try {
         const deletedEvidence = await db.delete(evidenceFiles)
@@ -86,7 +144,7 @@ export async function cleanupTestData() {
       }
     }
     
-    // 3. Delete assessments (will cascade delete answers)
+    // 4. Delete assessments (will cascade delete answers)
     if (tenantIds.length > 0) {
       try {
         const deletedAssessments = await db.delete(assessments)
@@ -97,7 +155,7 @@ export async function cleanupTestData() {
       }
     }
     
-    // 4. Delete intake forms
+    // 5. Delete intake forms
     if (tenantIds.length > 0) {
       try {
         const deletedIntakes = await db.delete(intakeForms)
@@ -108,7 +166,7 @@ export async function cleanupTestData() {
       }
     }
     
-    // 5. Delete facility profiles
+    // 6. Delete facility profiles
     if (tenantIds.length > 0) {
       try {
         const deletedFacilities = await db.delete(facilityProfiles)
@@ -119,7 +177,7 @@ export async function cleanupTestData() {
       }
     }
     
-    // 6. Delete organization profiles
+    // 7. Delete organization profiles
     if (tenantIds.length > 0) {
       try {
         const deletedOrgs = await db.delete(organizationProfiles)
@@ -130,7 +188,7 @@ export async function cleanupTestData() {
       }
     }
     
-    // 7. Delete users first (will allow tenant deletion)
+    // 8. Delete users (after all dependencies cleared)
     try {
       const deletedUsers = await db.delete(users)
         .where(inArray(users.id, userIds));
@@ -139,7 +197,7 @@ export async function cleanupTestData() {
       console.log(`    ⚠️  Users deletion failed:`, (err as Error).message);
     }
     
-    // 8. Delete tenants
+    // 9. Delete tenants (last, after all dependencies cleared)
     if (tenantIds.length > 0) {
       try {
         const deletedTenants = await db.delete(tenants)
