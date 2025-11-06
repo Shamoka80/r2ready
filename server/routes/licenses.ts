@@ -82,6 +82,76 @@ router.get('/status', async (req: any, res: Response) => {
   }
 });
 
+// GET /api/licenses - List all licenses for current user's tenant
+router.get('/', async (req: any, res: Response) => {
+  try {
+    const tenantId = req.user.tenantId;
+
+    console.log('🔵 LICENSE-LIST: Fetching licenses', { tenantId, userId: req.user.id });
+
+    // Admin bypass: system admin accounts return mock license data
+    if (tenantId === 'system-admin') {
+      console.log('🟢 LICENSE-LIST: Admin bypass active');
+      return res.json({
+        licenses: [{
+          id: 'admin-license',
+          planName: 'System Administrator',
+          accountType: 'business',
+          tier: 'ADMIN',
+          status: 'ACTIVE',
+          isActive: true,
+          maxFacilities: 999,
+          maxSeats: 999,
+          features: [],
+          activatedAt: new Date().toISOString(),
+          expiresAt: null,
+          licenseType: 'admin'
+        }],
+        count: 1
+      });
+    }
+
+    // Get all licenses for tenant (active and inactive)
+    const licenseList = await db.query.licenses.findMany({
+      where: eq(licenses.tenantId, tenantId),
+      orderBy: (licenses, { desc }) => [desc(licenses.activatedAt)]
+    });
+
+    console.log('🟢 LICENSE-LIST: Found licenses', { 
+      count: licenseList.length,
+      tenantId 
+    });
+
+    // Transform licenses to frontend format
+    const transformedLicenses = licenseList.map(license => ({
+      id: license.id,
+      planName: license.planName,
+      accountType: license.accountType,
+      tier: license.tier,
+      planId: license.planId,
+      status: license.status,
+      isActive: license.isActive,
+      maxFacilities: license.maxFacilities,
+      maxSeats: license.maxSeats,
+      features: license.features || [],
+      activatedAt: license.activatedAt,
+      expiresAt: license.expiresAt,
+      amountPaid: license.amountPaid,
+      currency: license.currency,
+      supportTier: license.supportTier,
+      licenseType: 'perpetual'
+    }));
+
+    res.json({
+      licenses: transformedLicenses,
+      count: transformedLicenses.length
+    });
+  } catch (error) {
+    console.error('❌ LICENSE-LIST: Error fetching licenses', error);
+    res.status(500).json({ error: 'Failed to fetch licenses' });
+  }
+});
+
 // GET /api/licenses/features - Get available features for current license
 router.get('/features', async (req: any, res: Response) => {
   try {

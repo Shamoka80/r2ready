@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation, useRoute } from "wouter";
 import { CheckCircle, ArrowRight, CreditCard, Home, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import MobileNavigation from "@/components/layout/MobileNavigation";
 import { apiGet } from "@/api";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import rurLogo from "@assets/RuR2 Logo 1_1758184184704.png";
 
 interface SessionData {
@@ -39,6 +40,19 @@ interface License {
   createdAt: string;
 }
 
+interface ActivationResponse {
+  success: boolean;
+  alreadyActivated: boolean;
+  license: {
+    id: string;
+    tier: string;
+    status: string;
+    maxFacilities: number;
+    maxSeats: number;
+  };
+  nextRoute: string;
+}
+
 export default function LicenseSuccess() {
   const [location, setLocation] = useLocation(); // Added setLocation for the header button
   const [sessionId, setSessionId] = useState<string>("");
@@ -52,6 +66,52 @@ export default function LicenseSuccess() {
       setSessionId(sessionIdParam);
     }
   }, [location]);
+
+  // CRITICAL: License activation mutation - creates license in database after payment
+  const activateLicenseMutation = useMutation<ActivationResponse, Error, string>({
+    mutationFn: async (sessionId: string) => {
+      console.log('🔵 FRONTEND: Triggering license activation for session:', sessionId);
+      const response = await fetch(`/api/stripe/session/${sessionId}/activate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('License activation failed');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data: ActivationResponse) => {
+      console.log('✅ FRONTEND: License activation successful', data);
+      // Invalidate queries to refetch fresh data
+      queryClient.invalidateQueries({ queryKey: ['license-status'] });
+      queryClient.invalidateQueries({ queryKey: ['licenses'] });
+      queryClient.invalidateQueries({ queryKey: ['stripe-session', sessionId] });
+      
+      // Redirect to onboarding after successful activation
+      if (data.nextRoute) {
+        console.log('🔵 FRONTEND: Redirecting to:', data.nextRoute);
+        setTimeout(() => {
+          setLocation(data.nextRoute);
+        }, 2000); // Give user 2 seconds to see success message
+      }
+    },
+    onError: (error: Error) => {
+      console.error('❌ FRONTEND: License activation failed', error);
+    },
+  });
+
+  // Trigger activation when sessionId is available and not already activating
+  useEffect(() => {
+    if (sessionId && !activateLicenseMutation.isPending && !activateLicenseMutation.isSuccess) {
+      console.log('🔵 FRONTEND: Starting license activation flow for session:', sessionId);
+      activateLicenseMutation.mutate(sessionId);
+    }
+  }, [sessionId]);
 
   // Fetch session data from Stripe (optional - only for real Stripe payments)
   const { 
@@ -129,25 +189,32 @@ export default function LicenseSuccess() {
     });
   };
 
-  // Loading state for both Stripe and mock payment flows
-  if ((sessionId && sessionLoading) || (!sessionId && licenseStatusLoading)) {
+  // Loading state - show while activating license or fetching data
+  if ((sessionId && (sessionLoading || activateLicenseMutation.isPending)) || (!sessionId && licenseStatusLoading)) {
     return (
       <div className="min-h-screen bg-gradient-professional flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="p-8 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-jade mx-auto mb-4"></div>
-            <h2 className="text-xl font-semibold text-foreground mb-2">Processing Payment</h2>
-            <p className="text-muted-foreground">Please wait while we confirm your payment...</p>
+            <h2 className="text-xl font-semibold text-foreground mb-2">
+              {activateLicenseMutation.isPending ? 'Activating License' : 'Processing Payment'}
+            </h2>
+            <p className="text-muted-foreground">
+              {activateLicenseMutation.isPending 
+                ? 'Please wait while we activate your license...' 
+                : 'Please wait while we confirm your payment...'}
+            </p>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  // Error handling - only show error if BOTH Stripe session AND license status failed
+  // Error handling - show if activation failed OR if both Stripe session AND license status failed
+  const hasActivationError = activateLicenseMutation.isError;
   const hasStripeSessionError = sessionId && (sessionError || !sessionData);
   const hasLicenseStatusError = !licenseStatus || !licenseStatus.hasLicense;
-  const shouldShowError = hasStripeSessionError && hasLicenseStatusError && !licenseStatusLoading;
+  const shouldShowError = hasActivationError || (hasStripeSessionError && hasLicenseStatusError && !licenseStatusLoading);
   
   if (shouldShowError) {
     return (
@@ -155,9 +222,13 @@ export default function LicenseSuccess() {
         <Card className="w-full max-w-md">
           <CardContent className="p-8 text-center">
             <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-foreground mb-2">Payment Error</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-2">
+              {hasActivationError ? 'License Activation Error' : 'Payment Error'}
+            </h2>
             <p className="text-muted-foreground mb-6">
-              There was an error processing your payment. Please contact support if you've been charged.
+              {hasActivationError 
+                ? 'There was an error activating your license. Please contact support - your payment was successful but license activation failed.'
+                : 'There was an error processing your payment. Please contact support if you\'ve been charged.'}
             </p>
             <div className="space-y-3">
               <Link href="/licenses">

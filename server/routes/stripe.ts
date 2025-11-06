@@ -150,6 +150,213 @@ router.get("/session/:sessionId",
   }
 );
 
+// POST /api/stripe/session/:sessionId/activate - CRITICAL: License activation after payment
+// This endpoint creates the license record in the database after Stripe payment succeeds
+// Called by frontend LicenseSuccess page to activate the license synchronously
+router.post("/session/:sessionId/activate",
+  rateLimitMiddleware.general,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      if (!stripe) {
+        return res.status(503).json({ 
+          error: "Payment processing unavailable",
+          message: "Stripe not configured" 
+        });
+      }
+
+      const { sessionId } = req.params;
+      const tenantId = req.tenant!.id;
+      const userId = req.user!.id;
+
+      console.log('🔵 LICENSE-ACTIVATION: Starting activation', { sessionId, tenantId, userId });
+
+      // IDEMPOTENCY CHECK: If license already exists for this session, return it
+      const existingLicense = await db.query.licenses.findFirst({
+        where: eq(licenses.stripeSessionId, sessionId)
+      });
+
+      if (existingLicense) {
+        console.log('✅ LICENSE-ACTIVATION: License already exists (idempotent)', { 
+          licenseId: existingLicense.id,
+          sessionId 
+        });
+        
+        // Verify this existing license belongs to the requesting tenant (security)
+        if (existingLicense.tenantId !== tenantId) {
+          return res.status(403).json({ 
+            error: "Unauthorized access to session",
+            code: "SESSION_TENANT_MISMATCH"
+          });
+        }
+
+        return res.json({
+          success: true,
+          alreadyActivated: true,
+          license: {
+            id: existingLicense.id,
+            tier: existingLicense.tier,
+            status: existingLicense.status,
+            maxFacilities: existingLicense.maxFacilities,
+            maxSeats: existingLicense.maxSeats
+          },
+          nextRoute: '/onboarding'
+        });
+      }
+
+      // Retrieve and validate Stripe session
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+      // SECURITY CHECK 1: Verify session belongs to tenant
+      if (session.metadata?.tenantId !== tenantId) {
+        console.error('❌ LICENSE-ACTIVATION: Tenant mismatch', { 
+          sessionTenant: session.metadata?.tenantId,
+          requestTenant: tenantId 
+        });
+        return res.status(403).json({ 
+          error: "Unauthorized access to session",
+          code: "SESSION_TENANT_MISMATCH"
+        });
+      }
+
+      // SECURITY CHECK 2: Verify payment completed
+      if (session.payment_status !== 'paid') {
+        console.error('❌ LICENSE-ACTIVATION: Payment not completed', { 
+          paymentStatus: session.payment_status,
+          sessionId 
+        });
+        return res.status(400).json({ 
+          error: "Payment not completed",
+          code: "PAYMENT_INCOMPLETE",
+          paymentStatus: session.payment_status
+        });
+      }
+
+      // SECURITY CHECK 3: Verify non-zero amount (prevent $0 purchases)
+      if (!session.amount_total || session.amount_total <= 0) {
+        console.error('❌ LICENSE-ACTIVATION: Invalid amount', { 
+          amount: session.amount_total,
+          sessionId 
+        });
+        return res.status(400).json({ 
+          error: "Invalid payment amount",
+          code: "INVALID_AMOUNT"
+        });
+      }
+
+      // Validate metadata
+      const metadata = session.metadata;
+      if (!metadata || !metadata.tier) {
+        console.error('❌ LICENSE-ACTIVATION: Invalid metadata', { sessionId });
+        return res.status(400).json({ 
+          error: "Invalid session metadata",
+          code: "INVALID_METADATA"
+        });
+      }
+
+      const tier = metadata.tier;
+      
+      // Get baseline allocations for the tier
+      const tierBaselines = getTierBaselines(tier as ValidTier);
+      
+      // Calculate total capacity (baseline + add-on packs)
+      const facilityPacks = parseInt(metadata.facilityPacks || '0');
+      const seatPacks = parseInt(metadata.seatPacks || '0');
+      const maxFacilities = tierBaselines.facilities + facilityPacks;
+      const maxSeats = tierBaselines.seats + seatPacks;
+
+      console.log('🔵 LICENSE-ACTIVATION: Creating license', { 
+        tier,
+        maxFacilities,
+        maxSeats,
+        amount: session.amount_total 
+      });
+
+      // Create license record with isActive=true and activatedAt timestamp
+      const [license] = await db.insert(licenses).values({
+        tenantId,
+        licenseType: 'base',
+        planName: `${tier} License`,
+        accountType: tier.startsWith('BUSINESS') ? 'business' : 'consultant',
+        tier,
+        planId: tier.toLowerCase().replace('_', '-'),
+        status: 'ACTIVE',
+        isActive: true, // CRITICAL: Must set to true for license status checks
+        activatedAt: new Date(), // Set activation timestamp
+        purchasedBy: userId,
+        stripeSessionId: sessionId,
+        amountPaid: session.amount_total,
+        currency: 'USD',
+        maxFacilities,
+        maxSeats,
+        supportTier: (metadata.supportTier || 'basic').toLowerCase(),
+      }).returning();
+
+      // Log license event for audit trail
+      await db.insert(licenseEvents).values({
+        tenantId: license.tenantId,
+        licenseId: license.id,
+        eventType: 'PURCHASED',
+        eventDescription: `License activated via Stripe session ${sessionId}`,
+        eventData: { sessionId, amount: session.amount_total },
+        amount: session.amount_total,
+        currency: 'USD',
+      });
+
+      console.log('✅ LICENSE-ACTIVATION: License created successfully', { 
+        licenseId: license.id,
+        tier: license.tier,
+        tenantId 
+      });
+
+      res.json({
+        success: true,
+        alreadyActivated: false,
+        license: {
+          id: license.id,
+          tier: license.tier,
+          status: license.status,
+          maxFacilities: license.maxFacilities,
+          maxSeats: license.maxSeats
+        },
+        nextRoute: '/onboarding'
+      });
+
+    } catch (error) {
+      console.error('❌ LICENSE-ACTIVATION: Error activating license', error);
+      
+      // Check for duplicate key errors (race condition)
+      if (error instanceof Error && error.message.includes('duplicate key')) {
+        console.log('⚠️ LICENSE-ACTIVATION: Duplicate detected, fetching existing');
+        
+        const existingLicense = await db.query.licenses.findFirst({
+          where: eq(licenses.stripeSessionId, req.params.sessionId)
+        });
+
+        if (existingLicense) {
+          return res.json({
+            success: true,
+            alreadyActivated: true,
+            license: {
+              id: existingLicense.id,
+              tier: existingLicense.tier,
+              status: existingLicense.status,
+              maxFacilities: existingLicense.maxFacilities,
+              maxSeats: existingLicense.maxSeats
+            },
+            nextRoute: '/onboarding'
+          });
+        }
+      }
+      
+      res.status(500).json({ 
+        error: "Failed to activate license",
+        code: "ACTIVATION_ERROR",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  }
+);
+
 // Verify license purchase (production webhook handler)
 router.get("/verify-license/:sessionId", 
   rateLimitMiddleware.general,
@@ -180,7 +387,7 @@ router.get("/verify-license/:sessionId",
         const maxFacilities = tierBaselines.facilities + facilityPacks;
         const maxSeats = tierBaselines.seats + seatPacks;
         
-        // Create license record
+        // Create license record with isActive=true and activatedAt
         const [license] = await db.insert(licenses).values({
           tenantId: req.tenant!.id,
           licenseType: 'base',
@@ -189,6 +396,8 @@ router.get("/verify-license/:sessionId",
           tier,
           planId: tier.toLowerCase().replace('_', '-'),
           status: 'ACTIVE',
+          isActive: true, // CRITICAL: Must set to true for license status checks
+          activatedAt: new Date(), // Set activation timestamp
           purchasedBy: req.user!.id,
           stripeSessionId: sessionId,
           amountPaid: session.amount_total || 0,
@@ -251,7 +460,7 @@ router.post("/mock-payment",
       const maxFacilities = tierBaselines.facilities + data.facilityPacks;
       const maxSeats = tierBaselines.seats + data.seatPacks;
 
-      // Create license record directly (bypassing Stripe)
+      // Create license record directly (bypassing Stripe) with isActive=true and activatedAt
       const [license] = await db.insert(licenses).values({
         tenantId: req.tenant!.id,
         licenseType: 'base',
@@ -260,6 +469,8 @@ router.post("/mock-payment",
         tier: data.tier,
         planId: data.tier.toLowerCase().replace('_', '-'),
         status: 'ACTIVE',
+        isActive: true, // CRITICAL: Must set to true for license status checks
+        activatedAt: new Date(), // Set activation timestamp
         purchasedBy: req.user!.id,
         stripeSessionId: `mock_${Date.now()}`,
         amountPaid: pricing.total,
