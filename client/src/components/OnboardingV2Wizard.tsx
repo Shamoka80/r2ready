@@ -429,6 +429,7 @@ export default function OnboardingV2Wizard() {
                       <FormLabel>Company Name *</FormLabel>
                       <FormControl>
                         <Input 
+                          data-testid="input-company-name"
                           placeholder="Acme Corporation" 
                           autoComplete="off"
                           {...field}
@@ -448,6 +449,7 @@ export default function OnboardingV2Wizard() {
                         <FormLabel>Primary Contact *</FormLabel>
                         <FormControl>
                           <Input 
+                            data-testid="input-contact-name"
                             placeholder="John Smith" 
                             autoComplete="off"
                             {...field}
@@ -571,6 +573,7 @@ export default function OnboardingV2Wizard() {
                       <FormLabel>Facility Name *</FormLabel>
                       <FormControl>
                         <Input 
+                          data-testid="input-facility-name"
                           placeholder="Headquarters" 
                           autoComplete="off"
                           {...field}
@@ -589,6 +592,7 @@ export default function OnboardingV2Wizard() {
                       <FormLabel>Address *</FormLabel>
                       <FormControl>
                         <Input 
+                          data-testid="input-facility-address"
                           placeholder="123 Main Street" 
                           autoComplete="off"
                           {...field}
@@ -608,6 +612,7 @@ export default function OnboardingV2Wizard() {
                         <FormLabel>City *</FormLabel>
                         <FormControl>
                           <Input 
+                            data-testid="input-facility-city"
                             placeholder="San Francisco" 
                             autoComplete="off"
                             {...field}
@@ -626,6 +631,7 @@ export default function OnboardingV2Wizard() {
                         <FormLabel>State *</FormLabel>
                         <FormControl>
                           <Input 
+                            data-testid="input-facility-state"
                             placeholder="CA" 
                             autoComplete="off"
                             {...field}
@@ -644,6 +650,7 @@ export default function OnboardingV2Wizard() {
                         <FormLabel>ZIP Code *</FormLabel>
                         <FormControl>
                           <Input 
+                            data-testid="input-facility-zipcode"
                             placeholder="94105" 
                             autoComplete="off"
                             {...field}
