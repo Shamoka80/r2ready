@@ -1,0 +1,71 @@
+{
+  "ok": true,
+  "roles": [
+    {
+      "id": "r_admin",
+      "name": "Admin"
+    }
+  ],
+  "permissions": [
+    {
+      "id": "p_tokens_rotate",
+      "action": "rotate",
+      "resource": "provider_token"
+    }
+  ],
+  "role_permissions": [
+    {
+      "role_id": "r_admin",
+      "perm_id": "p_tokens_rotate"
+    }
+  ],
+  "user_roles": [
+    {
+      "user_id": "u1",
+      "role_id": "r_admin"
+    }
+  ],
+  "provider_tokens": [
+    {
+      "id": "t1",
+      "provider_id": "p1",
+      "key_hash": "6ab9f1eb8f7d",
+      "created_at": "2025-09-21T09:18:51Z",
+      "expires_at": null,
+      "revoked_at": "2025-09-21T09:18:51Z",
+      "rotated_from": null
+    },
+    {
+      "id": "t2",
+      "provider_id": "p1",
+      "key_hash": "015f7e6bc5ae",
+      "created_at": "2025-09-21T09:18:51Z",
+      "expires_at": null,
+      "revoked_at": null,
+      "rotated_from": "t1"
+    }
+  ],
+  "audit_log": [
+    {
+      "id": "8b5cc4df7eec",
+      "ts": "2025-09-21T09:18:51Z",
+      "who": "u1",
+      "action": "token.rotate",
+      "target": "t2",
+      "meta": {
+        "from": "t1",
+        "provider": "p1"
+      }
+    },
+    {
+      "id": "ac0f09c0f8bf",
+      "ts": "2025-09-21T09:18:51Z",
+      "who": "u1",
+      "action": "token.revoke",
+      "target": "t1",
+      "meta": {
+        "reason": "rotation"
+      }
+    }
+  ]
+}

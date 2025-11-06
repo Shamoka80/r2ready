@@ -1,0 +1,3 @@
+OK: found /home/runner/workspace/Fixes/questions.csv
+OK: found /home/runner/workspace/Fixes/pdf_temp_export.pdf
+OK: backups + folders ready (/home/runner/workspace/Fixes/reports)

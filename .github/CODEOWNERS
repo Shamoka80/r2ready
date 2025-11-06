@@ -1,0 +1,256 @@
+# CODEOWNERS - Automated Code Review Assignment
+# 
+# This file defines code ownership for automated PR review assignment.
+# When a PR is opened, GitHub automatically requests reviews from the owners
+# of the modified files.
+#
+# Documentation: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# Syntax:
+#   - Pattern matching follows .gitignore conventions
+#   - Later matches take precedence over earlier ones
+#   - Use @username for individual users or @org/team-name for teams
+#
+# ⚠️  ACTION REQUIRED: Replace placeholder teams/users with actual GitHub usernames or team names
+#     Example: @org/devops-team → @your-org/devops or @devops-lead-username
+#
+# Last Updated: October 1, 2025
+
+# ==============================================================================
+# DEFAULT OWNER (Fallback)
+# ==============================================================================
+# Tech Lead reviews anything not explicitly owned below
+# This ensures no PR goes unreviewed
+
+* @org/tech-lead
+
+
+# ==============================================================================
+# INFRASTRUCTURE & CI/CD
+# ==============================================================================
+# DevOps Lead owns infrastructure, CI/CD, and build configuration
+# Ensures deployment and automation changes are reviewed by experts
+
+# GitHub workflows and actions
+/.github/workflows/ @org/devops-team
+
+# All shell scripts (build, deployment, automation)
+*.sh @org/devops-team
+
+# Scripts directory (deployment, migration, automation scripts)
+/scripts/ @org/devops-team
+
+# Database configuration
+/drizzle.config.ts @org/devops-team
+
+# Package management and dependencies
+/package.json @org/devops-team
+/package-lock.json @org/devops-team
+
+# Configuration files (Vite, TypeScript, ESLint, etc.)
+*.config.ts @org/devops-team
+*.config.js @org/devops-team
+*.config.mjs @org/devops-team
+*.config.cjs @org/devops-team
+*.config.json @org/devops-team
+
+# Environment and deployment configs
+/.env.example @org/devops-team
+/tsconfig.json @org/devops-team
+/tailwind.config.ts @org/devops-team
+/postcss.config.js @org/devops-team
+/.eslintrc.* @org/devops-team
+/.prettierrc.* @org/devops-team
+
+
+# ==============================================================================
+# DOCUMENTATION
+# ==============================================================================
+# Tech Lead owns documentation to ensure consistency and accuracy
+# All markdown files and documentation directories
+
+# Documentation directory
+/docs/ @org/tech-lead
+
+# All markdown files (README, guides, changelogs)
+*.md @org/tech-lead
+
+# Specific important docs
+/README.md @org/tech-lead
+/CHANGELOG.md @org/tech-lead
+/CONTRIBUTING.md @org/tech-lead
+
+
+# ==============================================================================
+# DATABASE & BACKEND
+# ==============================================================================
+# Backend Team owns server-side code, database schemas, and APIs
+
+# Server directory (all backend code)
+/server/ @org/backend-team
+
+# Shared schema (database models and types)
+/shared/schema.ts @org/backend-team
+
+# Database migrations
+/migrations/ @org/backend-team
+
+# Database seeding scripts
+/scripts/seed-*.ts @org/backend-team
+
+# Storage interfaces and implementations
+/server/storage.ts @org/backend-team
+
+# API routes
+/server/routes/ @org/backend-team
+/server/routes.ts @org/backend-team
+
+# Backend middleware
+/server/middleware/ @org/backend-team
+
+# Backend services
+/server/services/ @org/backend-team
+
+# Backend utilities
+/server/lib/ @org/backend-team
+/server/utils/ @org/backend-team
+/server/tools/ @org/backend-team
+
+
+# ==============================================================================
+# FRONTEND
+# ==============================================================================
+# Frontend Team owns client-side code and UI components
+
+# Client directory (all frontend code)
+/client/ @org/frontend-team
+
+# TypeScript/TSX files in client (components, pages, hooks)
+/client/**/*.ts @org/frontend-team
+/client/**/*.tsx @org/frontend-team
+
+# Client-specific configs
+/client/tsconfig.json @org/frontend-team
+
+# Public assets
+/client/public/ @org/frontend-team
+
+# UI components
+/client/src/components/ @org/frontend-team
+
+# Pages and routing
+/client/src/pages/ @org/frontend-team
+
+# Hooks and utilities
+/client/src/hooks/ @org/frontend-team
+/client/src/lib/ @org/frontend-team
+/client/src/utils/ @org/frontend-team
+
+# Context providers
+/client/src/contexts/ @org/frontend-team
+
+# Styling
+/client/src/index.css @org/frontend-team
+/client/src/**/*.css @org/frontend-team
+
+
+# ==============================================================================
+# SECURITY
+# ==============================================================================
+# Security Team owns security-critical code and workflows
+# These rules override previous assignments for security-sensitive files
+
+# Security workflow
+/.github/workflows/security-audit.yml @org/security-team
+
+# Authentication and authorization
+/server/middleware/auth.ts @org/security-team
+/server/middleware/auth/ @org/security-team
+/server/routes/auth.ts @org/security-team
+/server/routes/auth/ @org/security-team
+/server/services/auth.ts @org/security-team
+/server/services/auth/ @org/security-team
+
+# Security-related scripts
+/scripts/*security* @org/security-team
+/scripts/*audit* @org/security-team
+
+# Payment processing (PCI compliance)
+/server/routes/stripe.ts @org/security-team
+/server/services/stripe.ts @org/security-team
+/server/services/payment*.ts @org/security-team
+
+# User management and sensitive data
+/server/routes/users.ts @org/security-team
+/server/services/user*.ts @org/security-team
+
+# Session management
+/server/middleware/session*.ts @org/security-team
+
+
+# ==============================================================================
+# CROSS-FUNCTIONAL OWNERSHIP
+# ==============================================================================
+# Some files require review from multiple teams
+
+# Shared types (both frontend and backend teams)
+/shared/ @org/backend-team @org/frontend-team
+
+# End-to-end tests (frontend + backend integration)
+/tests/e2e/ @org/frontend-team @org/backend-team
+
+# Integration tests
+/tests/integration/ @org/backend-team
+
+# CI configuration (DevOps + Tech Lead for critical changes)
+/.github/workflows/ci.yml @org/devops-team @org/tech-lead
+/.github/workflows/ci-gates.yml @org/devops-team @org/tech-lead
+/.github/workflows/publish.yml @org/devops-team @org/tech-lead
+
+
+# ==============================================================================
+# SPECIAL CASES
+# ==============================================================================
+
+# Dependabot configuration (DevOps + Security for dependency management)
+/.github/dependabot.yml @org/devops-team @org/security-team
+
+# Pull request template (Tech Lead maintains PR standards)
+/.github/pull_request_template.md @org/tech-lead
+
+# CODEOWNERS file itself (Tech Lead + DevOps)
+/.github/CODEOWNERS @org/tech-lead @org/devops-team
+
+# Branching and release documentation (Tech Lead)
+/docs/BRANCHING_STRATEGY.md @org/tech-lead
+/docs/CODE_REVIEW_GUIDELINES.md @org/tech-lead
+/docs/LAUNCH_RUNBOOK.md @org/tech-lead
+
+
+# ==============================================================================
+# NOTES FOR CONFIGURATION
+# ==============================================================================
+#
+# To activate this file:
+# 1. Replace all @org/team-name placeholders with actual GitHub teams or usernames
+#    Examples:
+#      @org/devops-team       → @your-organization/devops-team
+#      @org/backend-team      → @your-organization/backend-developers
+#      @org/frontend-team     → @your-organization/frontend-developers
+#      @org/security-team     → @your-organization/security-team
+#      @org/tech-lead         → @tech-lead-github-username
+#
+# 2. Ensure teams exist in your GitHub organization with proper permissions
+#
+# 3. Configure branch protection rules to require CODEOWNERS review:
+#    Settings → Branches → Branch protection rules → 
+#    ✓ Require review from Code Owners
+#
+# 4. Test by creating a PR that modifies files from different ownership areas
+#
+# 5. Update this file as the project structure evolves
+#
+# For more information, see:
+# - GitHub CODEOWNERS documentation
+# - /docs/CODE_REVIEW_GUIDELINES.md
+# - /docs/BRANCHING_STRATEGY.md

@@ -1,0 +1,61 @@
+Use this as your Replit “Plan” prompt. It states the problem and what must be done. It avoids telling you how to do it.
+________________________________________
+Plan: Restore Question-to-REC Filtering by Seeding QuestionMapping Safely
+Problem
+•	The QuestionMapping table is empty.
+•	This table links assessment questions to REC codes.
+•	Intake → REC detection works, but question filtering cannot run without mappings.
+Objectives
+1.	Enable idempotent seeding of QuestionMapping on a database that already has data.
+2.	Remove the “fresh DB only” constraint for population scripts.
+3.	Validate that filtering returns questions only for the REC codes resolved by intake.
+Required Changes (WHAT to implement)
+1.	Idempotent seed behavior
+o	Ensure the populate scripts support a merge mode that inserts missing QuestionMapping rows without relying on an empty database.
+o	Resolve target rows by stable natural keys (e.g., Question.slug, Rec.code) rather than numeric IDs.
+2.	Uniqueness guarantees
+o	Enforce uniqueness for:
+	Question on its natural key.
+	Rec on its code.
+	QuestionMapping on the pair (question_id, rec_id).
+o	Prevent duplicate mappings at the data layer.
+3.	Two seeding modes, selectable via environment flags
+o	SEED_MODE=merge: add only missing Questions, RECs, and QuestionMappings; non-destructive.
+o	SEED_MODE=fresh: truncate-and-load allowed only in development with an explicit confirmation flag. Disallowed in production.
+4.	Deterministic reference resolution
+o	Always look up question_id by Question.slug and rec_id by Rec.code before inserting into QuestionMapping.
+o	Do not assume fixed integer IDs across environments.
+5.	Bootstrap dataset for mappings
+o	Maintain a versioned mapping dataset (CSV or JSON) containing pairs of question_slug and rec_code.
+o	Include a minimal, representative slice that covers common REC outcomes from intake to immediately re-enable testing.
+6.	Preflight validation before any write
+o	Verify that all question_slug values exist in Question.
+o	Verify that all rec_code values exist in Rec.
+o	Produce a dry-run summary showing intended inserts and any missing references.
+7.	Post-conditions before success
+o	Confirm QuestionMapping count increases from 0 to an expected minimum.
+o	Sample-join QuestionMapping to Question and Rec to confirm valid pairs exist.
+o	Ensure re-running the merge seed yields a no-op summary when nothing changed.
+8.	Operational safety
+o	Wrap seeding in a transaction.
+o	Emit clear logs for created/ignored/duplicate rows.
+o	Block destructive operations outside approved environments.
+9.	Runtime and CI guards
+o	On application start, warn if QuestionMapping is empty while Question and Rec are populated.
+o	In CI, seed a disposable database with merge mode and run a check that filtering returns at least one question for a known intake → REC set.
+Acceptance Criteria
+•	Given an intake that resolves to a known set of REC codes, the assessment returns only questions mapped to those codes.
+•	QuestionMapping contains no duplicates by (question_id, rec_id).
+•	Re-running the merge seed produces a zero-change summary when data is current.
+•	No requirement to reset the database to “fresh” for mappings to load.
+Deliverables
+•	Updated population scripts with merge and fresh modes.
+•	Versioned mapping dataset for question_slug ↔ rec_code.
+•	Environment flag definitions and documented safeguards.
+•	CI check that seeding + filtering works end-to-end in a disposable environment.
+Constraints
+•	No production data loss.
+•	No changes to business logic for REC detection.
+•	No manual DB resets required for normal operation.
+________________________________________
+

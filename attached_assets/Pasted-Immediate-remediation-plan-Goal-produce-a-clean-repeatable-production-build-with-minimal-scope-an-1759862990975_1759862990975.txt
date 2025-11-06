@@ -1,0 +1,28 @@
+Immediate remediation plan
+Goal: produce a clean, repeatable production build with minimal scope and verified critical paths.
+1.	Unblock the build
+•	Delete or fix TestMobileNav.tsx. Resolve duplicate functions in cachingService.ts. Correct cloudStorageService.ts types. Acceptance: npm run type-check and vite build succeed with zero TS errors and zero emit warnings beyond chunk size. 
+PROJECT DIAGNOSTIC REPORT
+2.	Stabilize dev runtime
+•	Fix EventEmitter leaks by moving listener registration to a singleton bootstrap and ensuring cleanup on HMR. Align Vite HMR port and proxy readiness to stop unhandled rejections. Acceptance: no MaxListeners warnings and clean browser console on hot reload. 
+PROJECT DIAGNOSTIC REPORT
+3.	Secure payments
+•	Set real STRIPE_WEBHOOK_SECRET. Add signature verification tests and run Stripe CLI to replay events through /webhook/stripe. Acceptance: test purchase triggers webhook handler and updates license records. 
+PROJECT DIAGNOSTIC REPORT
+4.	Choose one storage provider for MVP
+•	Implement S3 or Azure first. Wire env vars, provider interface, and happy-path evidence upload and retrieval. Gate others behind flags. Acceptance: upload, list, and download evidence works under authenticated user with audit logs recorded. 
+PROJECT DIAGNOSTIC REPORT
+5.	Introduce CI/CD
+•	Add GitHub Actions: install → lint → type-check → unit → Playwright (Chromium) → build → artifact. Block merges on failures. Acceptance: green checks on main with generated build artifacts. 
+PROJECT DIAGNOSTIC REPORT
+6.	Trim scope and dead code
+•	Remove legacy onboarding V1 or feature-flag it off. Delete debug pages and archival folders from the build. Acceptance: repo contains only shipping code and current assets, and route map matches the intended UX. 
+PROJECT DIAGNOSTIC REPORT
+7.	Performance pass
+•	Add route-level dynamic imports for admin, analytics, training, and RBAC. Vendor split large libraries. Acceptance: no bundle chunks >250–300 kB for public routes, and Lighthouse performance improves on a cold load. 
+PROJECT DIAGNOSTIC REPORT
+8.	Security hygiene
+•	Run npm audit and address highs. Verify rate limiting on auth and webhook routes. Move secrets to a proper secret store for production. Acceptance: audit report shows no highs, and env handling is documented. 
+PROJECT DIAGNOSTIC REPORT
+9.	Testing signal
+•	Require jest --coverage on server with thresholds. Refresh Playwright specs to reflect consolidated onboarding and storage MVP. Publish HTML reports as CI artifacts. Acceptance: stable green runs and baseline coverage thresholds met.

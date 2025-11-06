@@ -1,0 +1,733 @@
+name: Release Automation
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+          - prerelease
+      prerelease_type:
+        description: 'Prerelease type (only if version_type is prerelease)'
+        required: false
+        type: choice
+        options:
+          - none
+          - alpha
+          - beta
+          - rc
+        default: none
+      skip_changelog:
+        description: 'Skip automatic CHANGELOG generation'
+        required: false
+        type: boolean
+        default: false
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  checks: read
+
+jobs:
+  # ============================================================================
+  # Job 1: Pre-release Validation
+  # ============================================================================
+  pre-release-validation:
+    name: Pre-release Validation
+    runs-on: ubuntu-latest
+    outputs:
+      branch_name: ${{ steps.check-branch.outputs.branch_name }}
+      is_main: ${{ steps.check-branch.outputs.is_main }}
+      is_release_branch: ${{ steps.check-branch.outputs.is_release_branch }}
+      validation_passed: ${{ steps.final-validation.outputs.passed }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check branch
+        id: check-branch
+        run: |
+          BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          echo "branch_name=$BRANCH" >> "$GITHUB_OUTPUT"
+          
+          if [[ "$BRANCH" == "main" ]]; then
+            echo "is_main=true" >> "$GITHUB_OUTPUT"
+            echo "is_release_branch=false" >> "$GITHUB_OUTPUT"
+            echo "✅ Running on main branch"
+          elif [[ "$BRANCH" =~ ^release/ ]]; then
+            echo "is_main=false" >> "$GITHUB_OUTPUT"
+            echo "is_release_branch=true" >> "$GITHUB_OUTPUT"
+            echo "✅ Running on release branch: $BRANCH"
+          else
+            echo "❌ ERROR: Release automation must run on main or release/* branches"
+            echo "Current branch: $BRANCH"
+            echo ""
+            echo "📋 ROLLBACK INSTRUCTIONS:"
+            echo "1. Cancel this workflow run"
+            echo "2. Switch to main or create a release branch:"
+            echo "   git checkout main"
+            echo "   OR"
+            echo "   git checkout -b release/vX.Y.Z"
+            exit 1
+          fi
+
+      - name: Verify CHANGELOG.md exists
+        run: |
+          if [[ ! -f CHANGELOG.md ]]; then
+            echo "❌ ERROR: CHANGELOG.md not found"
+            echo ""
+            echo "📋 ROLLBACK INSTRUCTIONS:"
+            echo "1. Create CHANGELOG.md with initial content:"
+            echo "   echo '# Changelog' > CHANGELOG.md"
+            echo "   echo '' >> CHANGELOG.md"
+            echo "   echo 'All notable changes to this project will be documented in this file.' >> CHANGELOG.md"
+            echo "2. Commit the file:"
+            echo "   git add CHANGELOG.md"
+            echo "   git commit -m 'docs: add CHANGELOG.md'"
+            echo "   git push"
+            exit 1
+          fi
+          echo "✅ CHANGELOG.md exists"
+
+      - name: Query GitHub Checks API for quality gates
+        id: check-quality-gates
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const sha = context.sha;
+            
+            console.log(`Checking quality gates for SHA: ${sha}`);
+            
+            const requiredChecks = [
+              'lint',
+              'typecheck',
+              'build-verification',
+              'unit-tests',
+              'integration-tests',
+              'e2e-smoke',
+              'dependency-audit'
+            ];
+            
+            console.log(`Required checks: ${requiredChecks.join(', ')}`);
+            
+            // Get all check runs for this commit
+            const { data: checkRuns } = await github.rest.checks.listForRef({
+              owner,
+              repo,
+              ref: sha,
+              per_page: 100
+            });
+            
+            console.log(`\nFound ${checkRuns.check_runs.length} total check runs`);
+            
+            // Map check runs to our required checks
+            const checkResults = {};
+            const failedChecks = [];
+            const missingChecks = [];
+            
+            for (const checkName of requiredChecks) {
+              const matchingRuns = checkRuns.check_runs.filter(run => {
+                const runName = run.name.toLowerCase();
+                const searchName = checkName.toLowerCase().replace(/-/g, ' ');
+                return runName.includes(searchName) || runName.replace(/-/g, ' ').includes(searchName);
+              });
+              
+              if (matchingRuns.length > 0) {
+                const latestRun = matchingRuns.sort((a, b) => 
+                  new Date(b.started_at) - new Date(a.started_at)
+                )[0];
+                
+                checkResults[checkName] = {
+                  status: latestRun.status,
+                  conclusion: latestRun.conclusion,
+                  html_url: latestRun.html_url,
+                  name: latestRun.name
+                };
+                
+                console.log(`${checkName}: ${latestRun.conclusion} (${latestRun.status})`);
+                
+                if (latestRun.conclusion === 'failure') {
+                  failedChecks.push({
+                    name: checkName,
+                    url: latestRun.html_url
+                  });
+                } else if (latestRun.conclusion !== 'success') {
+                  missingChecks.push(checkName);
+                }
+              } else {
+                missingChecks.push(checkName);
+                console.log(`${checkName}: NOT FOUND`);
+              }
+            }
+            
+            // Report results
+            if (failedChecks.length > 0 || missingChecks.length > 0) {
+              let errorMessage = '❌ ERROR: Quality gates have not passed\n\n';
+              
+              if (failedChecks.length > 0) {
+                errorMessage += '**Failed Checks:**\n';
+                failedChecks.forEach(check => {
+                  errorMessage += `- ${check.name}: ${check.url}\n`;
+                });
+                errorMessage += '\n';
+              }
+              
+              if (missingChecks.length > 0) {
+                errorMessage += '**Missing Checks:**\n';
+                missingChecks.forEach(check => {
+                  errorMessage += `- ${check}\n`;
+                });
+                errorMessage += '\n';
+              }
+              
+              errorMessage += '📋 ROLLBACK INSTRUCTIONS:\n';
+              errorMessage += '1. Fix failing checks or wait for pending checks to complete\n';
+              errorMessage += '2. Ensure all CI checks have run on this commit\n';
+              errorMessage += '3. Re-run this workflow after all checks pass\n';
+              errorMessage += '4. Or trigger CI manually:\n';
+              errorMessage += '   gh workflow run ci.yml\n';
+              
+              core.setFailed(errorMessage);
+              core.setOutput('passed', 'false');
+            } else {
+              console.log('\n✅ All quality gates passed');
+              core.setOutput('passed', 'true');
+            }
+
+      - name: Analyze commits for semantic versioning
+        id: analyze-commits
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            
+            // Get commits since last tag
+            let commits = [];
+            try {
+              const lastTag = execSync('git describe --tags --abbrev=0 2>/dev/null || echo ""').toString().trim();
+              const range = lastTag ? `${lastTag}..HEAD` : 'HEAD';
+              const commitList = execSync(`git log ${range} --pretty=format:"%s|%b"`).toString().trim().split('\n');
+              commits = commitList.filter(c => c.length > 0);
+            } catch (e) {
+              console.log('No previous tag found, analyzing all commits');
+              commits = execSync('git log --pretty=format:"%s|%b"').toString().trim().split('\n');
+            }
+            
+            console.log(`\nAnalyzing ${commits.length} commits for semantic versioning...\n`);
+            
+            let hasBreakingChange = false;
+            let hasFeature = false;
+            let hasFix = false;
+            const breakingCommits = [];
+            
+            for (const commit of commits) {
+              const [subject, body] = commit.split('|');
+              console.log(`  ${subject}`);
+              
+              // Check for breaking changes
+              if (subject.includes('!:') || body.includes('BREAKING CHANGE') || body.includes('BREAKING-CHANGE')) {
+                hasBreakingChange = true;
+                breakingCommits.push(subject);
+              }
+              
+              // Check for features
+              if (subject.match(/^feat(\(.+\))?:/)) {
+                hasFeature = true;
+              }
+              
+              // Check for fixes
+              if (subject.match(/^fix(\(.+\))?:/)) {
+                hasFix = true;
+              }
+            }
+            
+            let suggestedBump = 'patch';
+            if (hasBreakingChange) {
+              suggestedBump = 'major';
+            } else if (hasFeature) {
+              suggestedBump = 'minor';
+            }
+            
+            console.log(`\n📊 Semantic Versioning Analysis:`);
+            console.log(`   Breaking Changes: ${hasBreakingChange ? 'YES' : 'NO'}`);
+            console.log(`   Features: ${hasFeature ? 'YES' : 'NO'}`);
+            console.log(`   Fixes: ${hasFix ? 'YES' : 'NO'}`);
+            console.log(`   Suggested Bump: ${suggestedBump}`);
+            
+            core.setOutput('suggested_bump', suggestedBump);
+            core.setOutput('has_breaking', hasBreakingChange.toString());
+            
+            // Validate against requested bump
+            const requestedBump = '${{ inputs.version_type }}';
+            if (requestedBump && requestedBump !== 'prerelease') {
+              if (suggestedBump === 'major' && requestedBump !== 'major') {
+                const warning = `⚠️ WARNING: Breaking changes detected but ${requestedBump} bump requested.\n\n` +
+                  `Breaking commits:\n${breakingCommits.map(c => `- ${c}`).join('\n')}\n\n` +
+                  `Consider using major bump instead.`;
+                core.warning(warning);
+              }
+              
+              if (suggestedBump === 'minor' && requestedBump === 'patch') {
+                core.warning(`⚠️ WARNING: New features detected but patch bump requested. Consider using minor bump.`);
+              }
+            }
+
+      - name: Final validation check
+        id: final-validation
+        run: |
+          QUALITY_GATES_PASSED="${{ steps.check-quality-gates.outputs.passed }}"
+          
+          if [[ "$QUALITY_GATES_PASSED" != "true" ]]; then
+            echo "❌ Validation failed: Quality gates did not pass"
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          
+          echo "✅ All pre-release validations passed"
+          echo "passed=true" >> "$GITHUB_OUTPUT"
+
+  # ============================================================================
+  # Job 2: Version Bumping
+  # ============================================================================
+  version-bump:
+    name: Bump Version
+    runs-on: ubuntu-latest
+    needs: pre-release-validation
+    if: needs.pre-release-validation.outputs.validation_passed == 'true'
+    outputs:
+      new_version: ${{ steps.bump.outputs.new_version }}
+      old_version: ${{ steps.get-old-version.outputs.version }}
+      changelog_excerpt: ${{ steps.changelog.outputs.excerpt }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Get current version
+        id: get-old-version
+        run: |
+          OLD_VERSION=$(jq -r '.version' package.json)
+          echo "version=$OLD_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Current version: $OLD_VERSION"
+
+      - name: Run version bump script
+        id: bump
+        run: |
+          chmod +x scripts/bump-version.sh
+          
+          VERSION_TYPE="${{ inputs.version_type }}"
+          PRERELEASE_TYPE="${{ inputs.prerelease_type }}"
+          SKIP_CHANGELOG="${{ inputs.skip_changelog }}"
+          
+          # Build command arguments
+          ARGS=()
+          
+          if [[ "$SKIP_CHANGELOG" == "true" ]]; then
+            ARGS+=("--skip-changelog")
+          fi
+          
+          if [[ "$VERSION_TYPE" == "prerelease" && -n "$PRERELEASE_TYPE" && "$PRERELEASE_TYPE" != "none" ]]; then
+            ARGS+=("$VERSION_TYPE" "$PRERELEASE_TYPE")
+          else
+            ARGS+=("$VERSION_TYPE")
+          fi
+          
+          echo "Running: ./scripts/bump-version.sh ${ARGS[*]}"
+          ./scripts/bump-version.sh "${ARGS[@]}"
+          
+          NEW_VERSION=$(jq -r '.version' package.json)
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "✅ Version bumped to $NEW_VERSION"
+
+      - name: Extract CHANGELOG excerpt
+        id: changelog
+        run: |
+          if [ -f CHANGELOG.md ]; then
+            # Extract the latest version section
+            EXCERPT=$(awk '/^## \[/{if(NR!=1)exit;p=1} p' CHANGELOG.md | head -100)
+            
+            # Escape for GitHub Actions output
+            EXCERPT="${EXCERPT//'%'/'%25'}"
+            EXCERPT="${EXCERPT//$'\n'/'%0A'}"
+            EXCERPT="${EXCERPT//$'\r'/'%0D'}"
+            
+            echo "excerpt=$EXCERPT" >> "$GITHUB_OUTPUT"
+            echo "✅ Extracted CHANGELOG excerpt"
+          else
+            echo "excerpt=No CHANGELOG.md found" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit version bump and CHANGELOG
+        id: commit
+        run: |
+          git add package.json server/package.json client/package.json CHANGELOG.md || true
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            echo "committed=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }}"
+            echo "committed=true" >> "$GITHUB_OUTPUT"
+            echo "✅ Committed version bump"
+          fi
+
+      - name: Push changes
+        if: steps.commit.outputs.committed == 'true'
+        run: |
+          BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          git push origin "$BRANCH" || {
+            echo "❌ ERROR: Failed to push changes"
+            echo ""
+            echo "📋 ROLLBACK INSTRUCTIONS:"
+            echo "1. Reset local changes:"
+            echo "   git reset --hard HEAD~1"
+            echo "2. Fix any conflicts or permissions issues"
+            echo "3. Re-run this workflow"
+            exit 1
+          }
+          echo "✅ Pushed changes to $BRANCH"
+
+  # ============================================================================
+  # Job 3: Create Release Tag
+  # ============================================================================
+  create-release-tag:
+    name: Create Release Tag
+    runs-on: ubuntu-latest
+    needs: 
+      - pre-release-validation
+      - version-bump
+    if: |
+      needs.pre-release-validation.outputs.validation_passed == 'true' &&
+      needs.version-bump.result == 'success'
+    outputs:
+      tag_name: ${{ steps.create-tag.outputs.tag_name }}
+      is_prerelease: ${{ steps.check-prerelease.outputs.is_prerelease }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Pull latest changes
+        run: |
+          BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          git pull origin "$BRANCH"
+
+      - name: Extract version from package.json
+        id: get-version
+        run: |
+          VERSION=$(jq -r '.version' package.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version from package.json: $VERSION"
+
+      - name: Check if prerelease
+        id: check-prerelease
+        run: |
+          VERSION="${{ steps.get-version.outputs.version }}"
+          if [[ "$VERSION" =~ -(alpha|beta|rc) ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+            echo "✅ This is a prerelease version"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+            echo "✅ This is a production release"
+          fi
+
+      - name: Prepare tag annotation
+        run: |
+          CHANGELOG_EXCERPT="${{ needs.version-bump.outputs.changelog_excerpt }}"
+          CHANGELOG_EXCERPT=$(echo "$CHANGELOG_EXCERPT" | sed 's/%0A/\n/g; s/%0D/\r/g; s/%25/%/g')
+          
+          cat > /tmp/tag_message.txt << EOF
+Release v${{ steps.get-version.outputs.version }}
+
+$CHANGELOG_EXCERPT
+EOF
+          
+          echo "✅ Prepared tag annotation"
+
+      - name: Create annotated git tag
+        id: create-tag
+        run: |
+          TAG_NAME="v${{ steps.get-version.outputs.version }}"
+          
+          # Check if tag already exists
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "⚠️ Tag $TAG_NAME already exists"
+            echo ""
+            echo "📋 ROLLBACK INSTRUCTIONS:"
+            echo "1. Delete the existing tag if you want to recreate it:"
+            echo "   git tag -d $TAG_NAME"
+            echo "   git push origin --delete $TAG_NAME"
+            echo "2. Re-run this workflow"
+            echo ""
+            echo "Or cancel this workflow if the tag is correct."
+            exit 1
+          fi
+          
+          # Create annotated tag
+          git tag -a "$TAG_NAME" -F /tmp/tag_message.txt
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "✅ Created annotated tag: $TAG_NAME"
+
+      - name: Push tag to repository
+        run: |
+          TAG_NAME="${{ steps.create-tag.outputs.tag_name }}"
+          git push origin "$TAG_NAME" || {
+            echo "❌ ERROR: Failed to push tag"
+            echo ""
+            echo "📋 ROLLBACK INSTRUCTIONS:"
+            echo "1. Delete local tag:"
+            echo "   git tag -d $TAG_NAME"
+            echo "2. Fix any permissions or network issues"
+            echo "3. Re-run this workflow"
+            exit 1
+          }
+          echo "✅ Pushed tag: $TAG_NAME"
+          echo ""
+          echo "🚀 Tag pushed successfully. This will trigger the publish.yml workflow."
+
+  # ============================================================================
+  # Job 4: Generate Release Notes
+  # ============================================================================
+  generate-release-notes:
+    name: Generate Release Notes
+    runs-on: ubuntu-latest
+    needs:
+      - pre-release-validation
+      - version-bump
+      - create-release-tag
+    if: |
+      needs.pre-release-validation.outputs.validation_passed == 'true' &&
+      needs.create-release-tag.result == 'success'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Format release notes
+        id: format-notes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const changelogExcerpt = `${{ needs.version-bump.outputs.changelog_excerpt }}`
+              .replace(/%0A/g, '\n')
+              .replace(/%0D/g, '\r')
+              .replace(/%25/g, '%');
+            
+            const hasBreaking = '${{ needs.pre-release-validation.outputs.has_breaking }}' === 'true';
+            const newVersion = '${{ needs.version-bump.outputs.new_version }}';
+            const oldVersion = '${{ needs.version-bump.outputs.old_version }}';
+            const tagName = '${{ needs.create-release-tag.outputs.tag_name }}';
+            const isPrerelease = '${{ needs.create-release-tag.outputs.is_prerelease }}' === 'true';
+            
+            let releaseNotes = `# Release ${tagName}\n\n`;
+            
+            if (isPrerelease) {
+              releaseNotes += `⚠️ **This is a pre-release version**\n\n`;
+            }
+            
+            releaseNotes += `## Version\n\n`;
+            releaseNotes += `- **Previous:** v${oldVersion}\n`;
+            releaseNotes += `- **Current:** v${newVersion}\n\n`;
+            
+            if (hasBreaking) {
+              releaseNotes += `## ⚠️ Breaking Changes\n\n`;
+              releaseNotes += `This release contains breaking changes. Please review the changelog carefully.\n\n`;
+              releaseNotes += `### Upgrade Instructions\n\n`;
+              releaseNotes += `1. Review breaking changes in the changelog below\n`;
+              releaseNotes += `2. Update your code to handle API changes\n`;
+              releaseNotes += `3. Test thoroughly before deploying to production\n`;
+              releaseNotes += `4. Update environment variables if needed\n\n`;
+            }
+            
+            releaseNotes += `## Changelog\n\n`;
+            releaseNotes += changelogExcerpt;
+            releaseNotes += `\n\n---\n\n`;
+            releaseNotes += `**Full Changelog:** https://github.com/${context.repo.owner}/${context.repo.repo}/compare/v${oldVersion}...${tagName}\n`;
+            
+            console.log('Release Notes:');
+            console.log(releaseNotes);
+            
+            core.setOutput('notes', releaseNotes);
+
+      - name: Post release notes as comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const releaseNotes = `${{ steps.format-notes.outputs.notes }}`;
+            const tagName = '${{ needs.create-release-tag.outputs.tag_name }}';
+            
+            // Try to find recent merged PRs or commits
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              base: 'main',
+              sort: 'updated',
+              direction: 'desc',
+              per_page: 5
+            });
+            
+            const releasePR = prs.find(pr => 
+              pr.merged_at && 
+              (pr.title.toLowerCase().includes('release') || pr.title.includes(tagName))
+            );
+            
+            if (releasePR) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: releasePR.number,
+                body: `## 🎉 Release Published\n\n${releaseNotes}`
+              });
+              console.log(`✅ Posted release notes to PR #${releasePR.number}`);
+            } else {
+              // Post as issue comment on the commit
+              try {
+                await github.rest.repos.createCommitComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  commit_sha: context.sha,
+                  body: `## 🎉 Release Published\n\n${releaseNotes}`
+                });
+                console.log('✅ Posted release notes as commit comment');
+              } catch (e) {
+                console.log('Could not post commit comment:', e.message);
+              }
+            }
+
+  # ============================================================================
+  # Job 5: Rollback Support
+  # ============================================================================
+  rollback-instructions:
+    name: Rollback Instructions
+    runs-on: ubuntu-latest
+    if: failure()
+    needs:
+      - pre-release-validation
+      - version-bump
+      - create-release-tag
+      - generate-release-notes
+    steps:
+      - name: Generate rollback guide
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const validationFailed = '${{ needs.pre-release-validation.result }}' === 'failure';
+            const versionBumpFailed = '${{ needs.version-bump.result }}' === 'failure';
+            const tagCreationFailed = '${{ needs.create-release-tag.result }}' === 'failure';
+            
+            let rollbackGuide = '# 🔄 Release Automation Rollback Guide\n\n';
+            rollbackGuide += `**Workflow Run:** ${context.runId}\n`;
+            rollbackGuide += `**Triggered by:** ${context.actor}\n`;
+            rollbackGuide += `**Branch:** ${context.ref}\n\n`;
+            
+            rollbackGuide += '## What Failed\n\n';
+            
+            if (validationFailed) {
+              rollbackGuide += '❌ **Pre-release Validation Failed**\n\n';
+              rollbackGuide += '### Recovery Steps:\n';
+              rollbackGuide += '1. Check the validation logs above for specific failures\n';
+              rollbackGuide += '2. Ensure all quality gates have passed on main branch\n';
+              rollbackGuide += '3. Verify CHANGELOG.md exists\n';
+              rollbackGuide += '4. Confirm you are on main or a release/* branch\n';
+              rollbackGuide += '5. Fix issues and re-run workflow\n\n';
+            }
+            
+            if (versionBumpFailed) {
+              rollbackGuide += '❌ **Version Bump Failed**\n\n';
+              rollbackGuide += '### Recovery Steps:\n';
+              rollbackGuide += '1. Check if version bump script exists: `scripts/bump-version.sh`\n';
+              rollbackGuide += '2. Verify package.json files exist and are valid JSON\n';
+              rollbackGuide += '3. Reset any partial changes:\n';
+              rollbackGuide += '   ```bash\n';
+              rollbackGuide += '   git reset --hard HEAD\n';
+              rollbackGuide += '   git pull origin main\n';
+              rollbackGuide += '   ```\n';
+              rollbackGuide += '4. Fix issues and re-run workflow\n\n';
+            }
+            
+            if (tagCreationFailed) {
+              rollbackGuide += '❌ **Tag Creation Failed**\n\n';
+              rollbackGuide += '### Recovery Steps:\n';
+              rollbackGuide += '1. Check if tag already exists:\n';
+              rollbackGuide += '   ```bash\n';
+              rollbackGuide += '   git tag -l "v*"\n';
+              rollbackGuide += '   ```\n';
+              rollbackGuide += '2. If duplicate tag, delete it:\n';
+              rollbackGuide += '   ```bash\n';
+              rollbackGuide += '   git tag -d vX.Y.Z\n';
+              rollbackGuide += '   git push origin --delete vX.Y.Z\n';
+              rollbackGuide += '   ```\n';
+              rollbackGuide += '3. If version commit was pushed, you may need to:\n';
+              rollbackGuide += '   ```bash\n';
+              rollbackGuide += '   git revert HEAD\n';
+              rollbackGuide += '   git push\n';
+              rollbackGuide += '   ```\n';
+              rollbackGuide += '4. Re-run workflow after cleanup\n\n';
+            }
+            
+            rollbackGuide += '## General Rollback Commands\n\n';
+            rollbackGuide += '### Undo version bump commit:\n';
+            rollbackGuide += '```bash\n';
+            rollbackGuide += 'git reset --hard HEAD~1\n';
+            rollbackGuide += 'git push --force origin <branch-name>\n';
+            rollbackGuide += '```\n\n';
+            
+            rollbackGuide += '### Remove tag (if created):\n';
+            rollbackGuide += '```bash\n';
+            rollbackGuide += 'git tag -d vX.Y.Z\n';
+            rollbackGuide += 'git push origin --delete vX.Y.Z\n';
+            rollbackGuide += '```\n\n';
+            
+            rollbackGuide += '### Full reset to clean state:\n';
+            rollbackGuide += '```bash\n';
+            rollbackGuide += 'git fetch origin\n';
+            rollbackGuide += 'git reset --hard origin/main\n';
+            rollbackGuide += 'git clean -fd\n';
+            rollbackGuide += '```\n\n';
+            
+            rollbackGuide += '## Prevention\n\n';
+            rollbackGuide += '- Always ensure quality gates pass before triggering release\n';
+            rollbackGuide += '- Review CHANGELOG.md before releasing\n';
+            rollbackGuide += '- Use prerelease versions for testing: `version_type=prerelease` with `prerelease_type=alpha|beta|rc`\n';
+            rollbackGuide += '- Test the release process in a feature branch first\n\n';
+            
+            rollbackGuide += '## Need Help?\n\n';
+            rollbackGuide += '- Check workflow logs: https://github.com/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + context.runId + '\n';
+            rollbackGuide += '- Review TAGGING_CONVENTION.md for version guidelines\n';
+            rollbackGuide += '- Contact the DevOps team for assistance\n';
+            
+            console.log(rollbackGuide);
+            
+            core.summary.addRaw(rollbackGuide);
+            await core.summary.write();

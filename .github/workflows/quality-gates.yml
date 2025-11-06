@@ -1,0 +1,267 @@
+name: Quality Gates Summary
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: read
+  statuses: read
+
+jobs:
+  quality-gates-summary:
+    name: Quality Gates Summary
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for other workflows
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const sha = context.payload.pull_request.head.sha;
+            const prNumber = context.payload.pull_request.number;
+            const targetBranch = context.payload.pull_request.base.ref;
+            
+            console.log(`Waiting for workflows on SHA: ${sha}`);
+            console.log(`PR #${prNumber} targeting ${targetBranch}`);
+            
+            // Define required checks based on target branch
+            const commonChecks = [
+              'lint',
+              'typecheck', 
+              'build-verification',
+              'unit-tests',
+              'integration-tests',
+              'e2e-smoke',
+              'dependency-audit',
+              'pr-description-validation',
+              'pr-title-validation',
+              'commit-validation'
+            ];
+            
+            const mainBranchChecks = [
+              'version-consistency-check',
+              'changelog-updated'
+            ];
+            
+            const requiredChecks = targetBranch === 'main' 
+              ? [...commonChecks, ...mainBranchChecks]
+              : commonChecks;
+            
+            console.log(`Required checks: ${requiredChecks.join(', ')}`);
+            
+            // Wait for checks to complete (max 30 minutes)
+            const maxWaitTime = 30 * 60 * 1000; // 30 minutes
+            const pollInterval = 10 * 1000; // 10 seconds
+            const startTime = Date.now();
+            
+            let allChecksComplete = false;
+            let checkResults = {};
+            
+            while (!allChecksComplete && (Date.now() - startTime) < maxWaitTime) {
+              // Get all check runs for this commit
+              const { data: checkRuns } = await github.rest.checks.listForRef({
+                owner,
+                repo,
+                ref: sha,
+                per_page: 100
+              });
+              
+              console.log(`\nFound ${checkRuns.check_runs.length} check runs`);
+              
+              // Map check runs to our required checks
+              checkResults = {};
+              for (const checkName of requiredChecks) {
+                const matchingRuns = checkRuns.check_runs.filter(run => {
+                  // Match job name or check name
+                  const runName = run.name.toLowerCase();
+                  const searchName = checkName.toLowerCase().replace(/-/g, ' ');
+                  return runName.includes(searchName) || runName.replace(/-/g, ' ').includes(searchName);
+                });
+                
+                if (matchingRuns.length > 0) {
+                  // Use the most recent run
+                  const latestRun = matchingRuns.sort((a, b) => 
+                    new Date(b.started_at) - new Date(a.started_at)
+                  )[0];
+                  
+                  checkResults[checkName] = {
+                    status: latestRun.status,
+                    conclusion: latestRun.conclusion,
+                    html_url: latestRun.html_url,
+                    name: latestRun.name
+                  };
+                } else {
+                  checkResults[checkName] = {
+                    status: 'pending',
+                    conclusion: null,
+                    html_url: null,
+                    name: checkName
+                  };
+                }
+              }
+              
+              // Check if all required checks are complete
+              allChecksComplete = requiredChecks.every(checkName => {
+                const result = checkResults[checkName];
+                return result && result.status === 'completed';
+              });
+              
+              if (!allChecksComplete) {
+                const pending = requiredChecks.filter(checkName => {
+                  const result = checkResults[checkName];
+                  return !result || result.status !== 'completed';
+                });
+                console.log(`Waiting for checks to complete: ${pending.join(', ')}`);
+                await new Promise(resolve => setTimeout(resolve, pollInterval));
+              }
+            }
+            
+            if (!allChecksComplete) {
+              console.log('⚠️  Timeout waiting for all checks to complete');
+            }
+            
+            // Calculate statistics
+            const totalChecks = requiredChecks.length;
+            const passedChecks = requiredChecks.filter(checkName => {
+              const result = checkResults[checkName];
+              return result && result.conclusion === 'success';
+            }).length;
+            const failedChecks = requiredChecks.filter(checkName => {
+              const result = checkResults[checkName];
+              return result && result.conclusion === 'failure';
+            }).length;
+            const skippedChecks = requiredChecks.filter(checkName => {
+              const result = checkResults[checkName];
+              return result && result.conclusion === 'skipped';
+            }).length;
+            const pendingChecks = requiredChecks.filter(checkName => {
+              const result = checkResults[checkName];
+              return !result || result.status !== 'completed' || !result.conclusion;
+            }).length;
+            
+            const qualityScore = totalChecks > 0 ? Math.round((passedChecks / totalChecks) * 100) : 0;
+            const allPassed = passedChecks === totalChecks;
+            
+            // Build comment body
+            let commentBody = '<!-- quality-gates-summary -->\n';
+            commentBody += '# 🎯 Quality Gates Summary\n\n';
+            
+            // Overall status
+            if (allPassed) {
+              commentBody += '## ✅ All Quality Gates Passed\n\n';
+              commentBody += '**Status**: Ready to merge\n\n';
+            } else if (pendingChecks > 0) {
+              commentBody += '## ⏳ Quality Gates In Progress\n\n';
+              commentBody += '**Status**: Checks are still running...\n\n';
+            } else {
+              commentBody += '## ❌ Quality Gates Failed\n\n';
+              commentBody += '**Status**: Not ready to merge - please fix the failing checks\n\n';
+            }
+            
+            // Quality score
+            let scoreEmoji = '🔴';
+            if (qualityScore >= 90) scoreEmoji = '🟢';
+            else if (qualityScore >= 70) scoreEmoji = '🟡';
+            
+            commentBody += `**Code Quality Score**: ${scoreEmoji} ${qualityScore}% (${passedChecks}/${totalChecks} checks passed)\n\n`;
+            
+            // Statistics summary
+            commentBody += '### Summary\n\n';
+            commentBody += `- ✅ Passed: **${passedChecks}**\n`;
+            commentBody += `- ❌ Failed: **${failedChecks}**\n`;
+            commentBody += `- ⏭️  Skipped: **${skippedChecks}**\n`;
+            commentBody += `- ⏳ Pending: **${pendingChecks}**\n\n`;
+            
+            // Detailed results table
+            commentBody += '### Detailed Results\n\n';
+            commentBody += '| Quality Gate | Status | Details |\n';
+            commentBody += '|--------------|--------|----------|\n';
+            
+            for (const checkName of requiredChecks) {
+              const result = checkResults[checkName];
+              let statusIcon = '⏳';
+              let statusText = 'Pending';
+              let detailsLink = '-';
+              
+              if (result && result.status === 'completed') {
+                if (result.conclusion === 'success') {
+                  statusIcon = '✅';
+                  statusText = 'Passed';
+                } else if (result.conclusion === 'failure') {
+                  statusIcon = '❌';
+                  statusText = 'Failed';
+                  if (result.html_url) {
+                    detailsLink = `[View logs](${result.html_url})`;
+                  }
+                } else if (result.conclusion === 'skipped') {
+                  statusIcon = '⏭️';
+                  statusText = 'Skipped';
+                } else {
+                  statusIcon = '❓';
+                  statusText = result.conclusion || 'Unknown';
+                }
+              }
+              
+              const displayName = checkName.split('-').map(word => 
+                word.charAt(0).toUpperCase() + word.slice(1)
+              ).join(' ');
+              
+              commentBody += `| ${displayName} | ${statusIcon} ${statusText} | ${detailsLink} |\n`;
+            }
+            
+            // Additional context for main branch
+            if (targetBranch === 'main') {
+              commentBody += '\n---\n';
+              commentBody += '**Note**: This PR targets `main` branch - additional checks are required:\n';
+              commentBody += '- Version consistency across package.json files\n';
+              commentBody += '- CHANGELOG.md updated with changes\n';
+            }
+            
+            // Footer
+            commentBody += '\n---\n';
+            commentBody += '*Quality gates ensure code quality standards before merge. ';
+            commentBody += `Last updated: ${new Date().toISOString()}*\n`;
+            
+            // Find and update existing comment or create new one
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number: prNumber
+            });
+            
+            const existingComment = comments.find(comment => 
+              comment.body.includes('<!-- quality-gates-summary -->')
+            );
+            
+            if (existingComment) {
+              console.log(`Updating existing comment ${existingComment.id}`);
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingComment.id,
+                body: commentBody
+              });
+            } else {
+              console.log('Creating new comment');
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: prNumber,
+                body: commentBody
+              });
+            }
+            
+            // Set output and fail if checks failed
+            if (failedChecks > 0) {
+              core.setFailed(`${failedChecks} quality gate(s) failed`);
+            } else if (pendingChecks > 0) {
+              core.warning(`${pendingChecks} quality gate(s) still pending`);
+            } else {
+              console.log('✅ All quality gates passed!');
+            }

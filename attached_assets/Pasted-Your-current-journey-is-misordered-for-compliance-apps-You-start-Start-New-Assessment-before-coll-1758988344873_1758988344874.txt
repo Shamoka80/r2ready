@@ -1,0 +1,71 @@
+Your current journey is misordered for compliance apps. You start “Start New Assessment” before collecting full org and facility data. You also gate payment before identity verification and intake. This creates gaps and rework. 
+What must happen before a user reaches the dashboard
+Collect and verify the minimum viable identity and organization context first. Enforce a blocking, linear wizard.
+Required sequence
+1.	Account creation and verification
+Email → password → email OTP verification → optional SSO → optional 2FA.
+Do not take payment yet.
+2.	Organization profile (blocking)
+Legal entity name, DBA, entity type, tax ID, HQ address, billing contact, time zone, logo, data-processing region, primary compliance contact, security contact.
+3.	Facility baseline (blocking)
+For each facility: address, time zone, operating status, processing activities, estimated annual volumes by category, data-bearing handling capability, focus materials presence, downstream vendor status placeholders.
+4.	Scope and applicability (blocking)
+Equipment categories handled, data presence, focus materials, internal vs contracted processes, export markets, prior certifications.
+Output: dynamic mapping of CR1-CR10 and Appendices A-G, which preconfigures the assessment.
+5.	Plan selection and payment (now allowed)
+Choose license/plan, accept ToS/Privacy, pay. After success, land on a setup-complete dashboard.
+What must happen before an assessment can start
+Do not let users create an assessment until the above is complete.
+Additional required fields
+•	Facility detail: hours, headcount, floor area, process cells, storage types, data sanitization methods, repair/refurb capability, shredding capacity, hazardous waste storage.
+•	Downstream vendors (stubs ok): vendor name or “TBD,” material streams, certification status, last audit date.
+•	Policy inventory stubs: ISMS owner, safety officer, incident reporting email, document repository location.
+These seed the questionnaire and evidence placeholders so users never answer orphaned questions.
+Problems in the uploaded journey and how to fix them
+•	Assessment before company data: Step “Start New Assessment” precedes “Company Information Collection.” Reverse these. The assessment should be auto-scaffolded by org/facility/scope inputs. 
+•	Payment too early: You collect payment immediately after registration. Move payment after identity verification and the blocking intake wizard so you only bill accounts that can actually use the tool. 
+•	Subscription mechanics: Your file includes subscriptions, overages, credits, and renewals. If your model is perpetual license with paid add-ons and support, replace “Subscription Management” with “License & Add-Ons,” “Seat Activation,” and “Support SLA term.” 
+•	Consultant vs business flows: Keep a single intake but branch after org creation: business creates facilities; consultant creates client organizations first, then client facilities, then scopes per client. Your file mixes these later; push this branching up into onboarding. 
+Corrected R2v3 journey v2.0 (industry-standard ordering)
+1.	Marketing → pricing, case studies, CTA.
+2.	Register → verify email → optional SSO/2FA.
+3.	Blocking Onboarding Wizard
+3.1 Organization profile → 3.2 Facilities baseline → 3.3 Scope & applicability → 3.4 Roles and invites.
+4.	Plan & Payment → license issuance, seats, add-ons.
+5.	Dashboard (now meaningful) → shows readiness of intake and next actions.
+6.	Assessment creation (pre-seeded) → type, facility, assigned team, deadlines auto-derived from scope.
+7.	Questionnaire → sections enabled by CR/App mapping; evidence placeholders pre-named; autosave.
+8.	Scoring & gaps → action plan generation.
+9.	Reporting & exports → PDF/Excel/Word with versioning.
+10.	License & seats (or subscription if you keep it), Billing, Settings.
+11.	Collaboration → review and approvals.
+12.	Security & audit logs → immutable event trail.
+Data model alignment (only the essentials)
+•	User ↔ Membership ↔ Organization
+•	Organization ↔ Facility
+•	ScopeProfile (per facility): equipment categories, processes, focus materials, data presence, appendices map
+•	Assessment (FK: Facility, ScopeProfile, TemplateVersion, Status)
+•	Section → Question → Answer (Yes/Partial/No/N/A, score, comments)
+•	EvidenceFile (FK: Question or Section, version, checksum)
+•	DownstreamVendor (FK: Facility, material stream, certs)
+•	Report (FK: Assessment, template, version)
+•	AuditLog (actor, action, target, timestamp, IP)
+Gatekeeping and UX rules to enforce
+•	Hard gates: No dashboard until org/facility/scope complete. Show a progress meter and disable left-nav except “Setup.”
+•	Derived assessment: Creating an assessment is a one-click action that uses ScopeProfile to pre-enable CR/App sections.
+•	Evidence scaffolding: Precreate evidence slots (names and descriptions) from scope so uploads are guided and consistent.
+•	Idempotent intake: Changing scope invalidates or re-seeds future assessments and flags deltas for review.
+•	Consultant tenancy: Tenancy boundary at client organization. Consultants do not commingle client data; each client has its own org, facilities, assessments, and reports.
+Minimal field lists
+Org profile: Legal name, DBA, entity type, EIN/Tax ID, HQ address, primary contact, billing contact, time zone, logo.
+Facility: Address, time zone, processes, annual volumes by category, data handling capability, focus materials Y/N.
+Scope: Equipment categories, data present Y/N, export Y/N, downstream vendors Y/N, prior certs.
+Assessment init: Facility, template version, target date, assigned roles, evidence repository link.
+Implementation checklist
+•	Build a three-step blocking wizard and lock the dashboard until complete.
+•	Move assessment creation behind the wizard and seed from ScopeProfile.
+•	If using perpetual licensing, replace “Subscription” UI with “License, Seats, Add-ons, Support Term.”
+•	Add a state machine: setup_pending → setup_complete → assessment_active → reporting_ready → closed.
+•	Add validations and autosave for every wizard step.
+•	Add invite flow after org creation, not before.
+

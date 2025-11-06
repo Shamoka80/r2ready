@@ -1,0 +1,28 @@
+CRITICAL REQUIREMENT
+All outputs must adhere to the highest professional certification industry standards. These are not informal documents; they are business-critical reports that directly inform and validate significant investment decisions, audit outcomes, and certification strategies for our clients.
+________________________________________
+DOCUMENTATION SYSTEM ARCHITECTURE
+This system is designed to transform raw assessment data into a suite of professional documents tailored for specific audiences. The architecture is built around the following four distinct document types and their corresponding templates.
+Document Types and Purposes:
+1.	PDF Technical Report (Template: pdf_temp_export.pdf)
+o	This is a comprehensive, audit-ready technical document intended for certification bodies and internal implementation teams. It provides an in-depth record of the assessment findings, ensuring full transparency and compliance.
+2.	Excel Management Dashboard (Template: excel_temp_export.pdf)
+o	An interactive workbook for internal project managers and operational teams. Its purpose is to facilitate the tracking of project progress, monitor key performance indicators (KPIs), and manage ongoing compliance efforts.
+3.	Word Executive Summary (Template: word_temp_export.pdf)
+o	A concise, high-level business report created for executives and key stakeholders. It translates complex technical information into clear, plain-language insights to support strategic decision-making and provide a clear overview of the assessment results.
+4.	Email Consultation Request (Template: email_temp_export.pdf)
+o	A professional business communication used for business development and client outreach. It formally presents the assessment findings to the client, initiating the consultation process to discuss next steps toward R2v3 certification.
+________________________________________
+DATA INTEGRATION SPECIFICATIONS
+The system operates by integrating and transforming raw data from a centralized source into the required output formats.
+Input Source:
+The web application system receives and processes comprehensive R2v3 assessment data, including:
+•	Company Information: Details such as company name, contact information, physical address, and industry classification.
+•	Assessment Metrics: Detailed scoring, including the overall percentage, specific category breakdowns, and a comprehensive gap analysis.
+•	Gap Analysis: Identification of critical, major, and minor non-conformities with detailed descriptions.
+•	R2v3 Requirement Mappings: Precise citations of the specific R2v3 standard requirements.
+•	Implementation Planning: Timelines and cost estimates for addressing identified gaps and achieving compliance.
+•	Scope Definitions: Clarification of the R2v3 scope, including the specific REC categories, appendices, and operational activities.
+Output Generation:
+The system must transform this raw assessment data into the four distinct professional documents mentioned above, leveraging the provided templates to ensure consistency and a professional presentation.
+

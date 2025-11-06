@@ -1,0 +1,17 @@
+{"path":"Fixes/reports/coverage_report.csv","exists":true,"match":true}
+{"path":"Fixes/reports/coverage_report.xlsx","exists":true,"match":true}
+{"path":"Fixes/pdf_temp_export.pdf","exists":false,"match":false}
+{"path":"Fixes/email_temp_export.pdf","exists":false,"match":false}
+{"path":"Fixes/reports/rur2_auditor_draft.eml","exists":true,"match":true}
+{"path":"Fixes/reports/rur2_internal_draft.eml","exists":true,"match":true}
+{"path":"Fixes/reports/exec_summary.docx","exists":true,"match":true}
+{"path":"Fixes/reports/credits_ledger.json","exists":true,"match":true}
+{"path":"Fixes/reports/security_e2e.json","exists":true,"match":true}
+{"path":"Fixes/reports/qa_run.txt","exists":true,"match":true}
+{"path":"Fixes/api/openapi_byoc.yaml","exists":true,"match":true}
+{"path":"Fixes/api/openapi_credits.yaml","exists":true,"match":true}
+{"path":"Fixes/contracts/byoc_contracts.ts","exists":true,"match":true}
+{"path":"Fixes/contracts/stripe_credits.ts","exists":true,"match":true}
+{"path":"Fixes/migrations/001_byoc.sql","exists":true,"match":true}
+{"path":"Fixes/migrations/002_credits.sql","exists":true,"match":true}
+COLD_VERIFY_OK False

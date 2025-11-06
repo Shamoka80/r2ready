@@ -1,0 +1,5 @@
+{
+  "FIXES_DIR": "./Fixes",
+  "question_bank": "./Fixes/questions.csv",
+  "pdf_template": "./Fixes/pdf_temp_export.pdf"
+}

@@ -1,0 +1,368 @@
+name: Version Validation
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  release:
+    types: [published, prereleased]
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  version-consistency-check:
+    name: Check Version Consistency
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify package.json versions match
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            const rootPackage = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            const serverPackage = JSON.parse(fs.readFileSync('server/package.json', 'utf8'));
+            const clientPackage = JSON.parse(fs.readFileSync('client/package.json', 'utf8'));
+            
+            const rootVersion = rootPackage.version;
+            const serverVersion = serverPackage.version;
+            const clientVersion = clientPackage.version;
+            
+            console.log(`Root version: ${rootVersion}`);
+            console.log(`Server version: ${serverVersion}`);
+            console.log(`Client version: ${clientVersion}`);
+            
+            if (rootVersion !== serverVersion || rootVersion !== clientVersion) {
+              const message = `❌ **Version Mismatch Detected**\n\n` +
+                `Version numbers are not consistent across package.json files:\n\n` +
+                `- Root: \`${rootVersion}\`\n` +
+                `- Server: \`${serverVersion}\`\n` +
+                `- Client: \`${clientVersion}\`\n\n` +
+                `**Action Required:** Update all package.json files to have the same version number.\n\n` +
+                `\`\`\`bash\n` +
+                `# Update all packages to the same version\n` +
+                `npm version ${rootVersion} --no-git-tag-version\n` +
+                `cd server && npm version ${rootVersion} --no-git-tag-version\n` +
+                `cd ../client && npm version ${rootVersion} --no-git-tag-version\n` +
+                `\`\`\``;
+              
+              core.setFailed(message);
+            } else {
+              console.log('✅ All package.json versions are consistent');
+            }
+
+  tag-version-check:
+    name: Validate Tag vs Package Version
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Compare tag version with package.json
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            const tagName = context.ref.replace('refs/tags/', '');
+            const tagVersion = tagName.replace(/^v/, '');
+            
+            const rootPackage = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            const packageVersion = rootPackage.version;
+            
+            console.log(`Git tag version: ${tagVersion} (from ${tagName})`);
+            console.log(`package.json version: ${packageVersion}`);
+            
+            if (tagVersion !== packageVersion) {
+              const message = `❌ **Tag and Package Version Mismatch**\n\n` +
+                `The git tag version does not match the package.json version:\n\n` +
+                `- Git tag: \`${tagName}\` (version: \`${tagVersion}\`)\n` +
+                `- package.json: \`${packageVersion}\`\n\n` +
+                `**Action Required:**\n` +
+                `1. Update package.json to version \`${tagVersion}\`, OR\n` +
+                `2. Delete the tag and create a new one matching \`v${packageVersion}\`\n\n` +
+                `\`\`\`bash\n` +
+                `# Option 1: Update package.json\n` +
+                `npm version ${tagVersion} --no-git-tag-version\n` +
+                `cd server && npm version ${tagVersion} --no-git-tag-version\n` +
+                `cd ../client && npm version ${tagVersion} --no-git-tag-version\n` +
+                `git add package.json server/package.json client/package.json\n` +
+                `git commit -m "chore: bump version to ${tagVersion}"\n\n` +
+                `# Option 2: Recreate tag\n` +
+                `git tag -d ${tagName}\n` +
+                `git push origin --delete ${tagName}\n` +
+                `git tag -a v${packageVersion} -m "Release version ${packageVersion}"\n` +
+                `git push origin v${packageVersion}\n` +
+                `\`\`\``;
+              
+              core.setFailed(message);
+            } else {
+              console.log('✅ Tag version matches package.json version');
+            }
+
+  semantic-version-format-check:
+    name: Validate Semantic Version Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate version follows semantic versioning
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            const rootPackage = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            const version = rootPackage.version;
+            
+            const semverRegex = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(alpha|beta|rc)\.(0|[1-9]\d*))?(?:\+[\w.-]+)?$/;
+            
+            console.log(`Validating version: ${version}`);
+            
+            if (!semverRegex.test(version)) {
+              const message = `❌ **Invalid Semantic Version Format**\n\n` +
+                `The version \`${version}\` does not follow semantic versioning format.\n\n` +
+                `**Valid Formats:**\n` +
+                `- Production: \`MAJOR.MINOR.PATCH\` (e.g., \`1.0.0\`, \`2.3.4\`)\n` +
+                `- Alpha: \`MAJOR.MINOR.PATCH-alpha.N\` (e.g., \`2.0.0-alpha.1\`)\n` +
+                `- Beta: \`MAJOR.MINOR.PATCH-beta.N\` (e.g., \`2.0.0-beta.1\`)\n` +
+                `- RC: \`MAJOR.MINOR.PATCH-rc.N\` (e.g., \`2.0.0-rc.1\`)\n\n` +
+                `**Rules:**\n` +
+                `- MAJOR, MINOR, PATCH must be non-negative integers\n` +
+                `- No leading zeros (use \`1.0.0\`, not \`1.00.0\`)\n` +
+                `- Prerelease identifiers: alpha, beta, or rc only\n` +
+                `- Prerelease number must be a non-negative integer\n\n` +
+                `**Examples:**\n` +
+                `✅ Valid: \`1.0.0\`, \`2.3.4\`, \`1.0.0-alpha.1\`, \`3.2.1-beta.2\`, \`1.5.0-rc.1\`\n` +
+                `❌ Invalid: \`v1.0.0\`, \`1.0\`, \`1.0.0-preview.1\`, \`01.0.0\`\n\n` +
+                `**Action Required:** Update version in package.json to follow semantic versioning format.`;
+              
+              core.setFailed(message);
+            } else {
+              console.log('✅ Version follows semantic versioning format');
+              
+              const parts = version.match(semverRegex);
+              const major = parts[1];
+              const minor = parts[2];
+              const patch = parts[3];
+              const prerelease = parts[4] ? `${parts[4]}.${parts[5]}` : 'none';
+              
+              console.log(`  MAJOR: ${major}`);
+              console.log(`  MINOR: ${minor}`);
+              console.log(`  PATCH: ${patch}`);
+              console.log(`  Prerelease: ${prerelease}`);
+            }
+
+  version-increment-validation:
+    name: Validate Version Increment
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout main branch
+        run: git fetch origin main:main
+
+      - name: Compare versions and validate increment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const { execSync } = require('child_process');
+            
+            const prPackage = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            const prVersion = prPackage.version;
+            
+            execSync('git checkout main -- package.json');
+            const mainPackage = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            const mainVersion = mainPackage.version;
+            
+            execSync('git checkout HEAD -- package.json');
+            
+            console.log(`Main branch version: ${mainVersion}`);
+            console.log(`PR branch version: ${prVersion}`);
+            
+            if (prVersion === mainVersion) {
+              const message = `⚠️ **Version Not Updated**\n\n` +
+                `The version in package.json (${prVersion}) is the same as the main branch.\n\n` +
+                `**Action Required:** Increment the version according to the type of changes:\n` +
+                `- Breaking changes → Increment MAJOR (e.g., ${mainVersion} → ${parseInt(mainVersion.split('.')[0]) + 1}.0.0)\n` +
+                `- New features → Increment MINOR (e.g., ${mainVersion} → ${mainVersion.split('.')[0]}.${parseInt(mainVersion.split('.')[1]) + 1}.0)\n` +
+                `- Bug fixes → Increment PATCH (e.g., ${mainVersion} → ${mainVersion.split('.').slice(0, 2).join('.')}.${parseInt(mainVersion.split('.')[2]) + 1})\n\n` +
+                `\`\`\`bash\n` +
+                `# For PATCH increment\n` +
+                `npm version patch --no-git-tag-version\n` +
+                `cd server && npm version patch --no-git-tag-version\n` +
+                `cd ../client && npm version patch --no-git-tag-version\n` +
+                `\`\`\``;
+              
+              core.setFailed(message);
+              return;
+            }
+            
+            const parseVersion = (v) => {
+              const match = v.match(/^(\d+)\.(\d+)\.(\d+)(?:-.*)?$/);
+              if (!match) return null;
+              return { major: parseInt(match[1]), minor: parseInt(match[2]), patch: parseInt(match[3]) };
+            };
+            
+            const main = parseVersion(mainVersion);
+            const pr = parseVersion(prVersion);
+            
+            if (!main || !pr) {
+              console.log('⚠️ Could not parse version numbers for comparison');
+              return;
+            }
+            
+            const isValidIncrement = (
+              pr.major > main.major ||
+              (pr.major === main.major && pr.minor > main.minor) ||
+              (pr.major === main.major && pr.minor === main.minor && pr.patch > main.patch)
+            );
+            
+            if (!isValidIncrement) {
+              const message = `❌ **Invalid Version Increment**\n\n` +
+                `The PR version (${prVersion}) is not greater than the main branch version (${mainVersion}).\n\n` +
+                `**Semantic Versioning Rules:**\n` +
+                `- Version must always increase\n` +
+                `- Cannot decrement or stay the same\n\n` +
+                `**Action Required:** Update version to be greater than ${mainVersion}`;
+              
+              core.setFailed(message);
+              return;
+            }
+            
+            const commits = execSync(`git log main..HEAD --pretty=format:"%s"`).toString().split('\n');
+            
+            const hasBreaking = commits.some(c => c.includes('BREAKING CHANGE') || c.includes('!:'));
+            const hasFeature = commits.some(c => c.startsWith('feat:') || c.startsWith('feat('));
+            const hasFix = commits.some(c => c.startsWith('fix:') || c.startsWith('fix('));
+            
+            const isMajorIncrement = pr.major > main.major;
+            const isMinorIncrement = pr.major === main.major && pr.minor > main.minor;
+            const isPatchIncrement = pr.major === main.major && pr.minor === main.minor && pr.patch > main.patch;
+            
+            let warning = null;
+            
+            if (hasBreaking && !isMajorIncrement) {
+              warning = `⚠️ **Version Increment Recommendation**\n\n` +
+                `This PR contains breaking changes (BREAKING CHANGE or ! in commits), ` +
+                `but only increments to ${prVersion}.\n\n` +
+                `**Recommendation:** Consider incrementing MAJOR version for breaking changes.\n` +
+                `Suggested version: ${main.major + 1}.0.0`;
+            } else if (hasFeature && !isMajorIncrement && !isMinorIncrement) {
+              warning = `⚠️ **Version Increment Recommendation**\n\n` +
+                `This PR contains new features (feat: commits), but only increments PATCH.\n\n` +
+                `**Recommendation:** Consider incrementing MINOR version for new features.\n` +
+                `Suggested version: ${main.major}.${main.minor + 1}.0`;
+            } else if (hasFix && !hasFeature && !hasBreaking && (isMajorIncrement || isMinorIncrement)) {
+              warning = `⚠️ **Version Increment Recommendation**\n\n` +
+                `This PR only contains bug fixes (fix: commits), but increments ` +
+                `${isMajorIncrement ? 'MAJOR' : 'MINOR'} version.\n\n` +
+                `**Recommendation:** Consider incrementing PATCH version for bug fixes only.\n` +
+                `Suggested version: ${main.major}.${main.minor}.${main.patch + 1}`;
+            }
+            
+            if (warning) {
+              console.log(warning);
+              core.warning(warning);
+            } else {
+              console.log('✅ Version increment matches change type');
+            }
+
+  changelog-validation:
+    name: Validate CHANGELOG Update
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check CHANGELOG.md updated
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const { execSync } = require('child_process');
+            
+            if (!fs.existsSync('CHANGELOG.md')) {
+              const message = `⚠️ **CHANGELOG.md Missing**\n\n` +
+                `No CHANGELOG.md file found in the repository.\n\n` +
+                `**Action Required:** Create a CHANGELOG.md file to track version changes.\n\n` +
+                `**Example CHANGELOG.md:**\n` +
+                `\`\`\`markdown\n` +
+                `# Changelog\n\n` +
+                `All notable changes to this project will be documented in this file.\n\n` +
+                `## [1.0.0] - 2025-10-01\n\n` +
+                `### Added\n` +
+                `- Initial release\n` +
+                `\`\`\``;
+              
+              core.setFailed(message);
+              return;
+            }
+            
+            const changedFiles = execSync('git diff --name-only origin/main...HEAD').toString().split('\n');
+            const changelogModified = changedFiles.includes('CHANGELOG.md');
+            
+            const prPackage = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            const prVersion = prPackage.version;
+            
+            execSync('git fetch origin main:main');
+            execSync('git checkout main -- package.json');
+            const mainPackage = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            const mainVersion = mainPackage.version;
+            execSync('git checkout HEAD -- package.json');
+            
+            const versionChanged = prVersion !== mainVersion;
+            
+            if (versionChanged && !changelogModified) {
+              const message = `❌ **CHANGELOG.md Not Updated**\n\n` +
+                `The version changed from ${mainVersion} to ${prVersion}, but CHANGELOG.md was not updated.\n\n` +
+                `**Action Required:** Update CHANGELOG.md with the new version and changes.\n\n` +
+                `**Example:**\n` +
+                `\`\`\`markdown\n` +
+                `## [${prVersion}] - ${new Date().toISOString().split('T')[0]}\n\n` +
+                `### Added\n` +
+                `- New feature description\n\n` +
+                `### Changed\n` +
+                `- Updated functionality description\n\n` +
+                `### Fixed\n` +
+                `- Bug fix description\n` +
+                `\`\`\``;
+              
+              core.setFailed(message);
+              return;
+            }
+            
+            if (versionChanged && changelogModified) {
+              const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
+              const versionPattern = new RegExp(`##\\s*\\[?${prVersion.replace(/\./g, '\\.')}\\]?`, 'i');
+              
+              if (!versionPattern.test(changelog)) {
+                const message = `⚠️ **Version Not Found in CHANGELOG**\n\n` +
+                  `CHANGELOG.md was modified, but version ${prVersion} was not found.\n\n` +
+                  `**Action Required:** Ensure CHANGELOG.md includes an entry for version ${prVersion}.\n\n` +
+                  `**Expected format:**\n` +
+                  `\`## [${prVersion}] - ${new Date().toISOString().split('T')[0]}\``;
+                
+                core.warning(message);
+              } else {
+                console.log(`✅ CHANGELOG.md updated with version ${prVersion}`);
+              }
+            }
+            
+            if (!versionChanged) {
+              console.log('ℹ️ Version not changed, skipping CHANGELOG validation');
+            }

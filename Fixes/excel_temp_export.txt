@@ -1,0 +1,34 @@
+
+EXCEL TEMPLATE STRUCTURE FOR R2v3 ASSESSMENT EXPORT
+
+Sheet 1: Dashboard
+- Metric | Value | Target | Status
+- Overall Score | {overallScore} | 85% | {readinessLevel}
+- Completion Rate | {completionPercentage} | 100% | Status
+- Critical Issues | {criticalIssues} | 0 | Status
+- Major Issues | {majorIssues} | ≤2 | Status
+- Minor Issues | {minorIssues} | ≤5 | Status
+
+Sheet 2: Organization
+- Field | Value
+- Legal Name | {organizationName}
+- Primary Contact | {primaryContact}
+- Contact Email | {contactEmail}
+- Primary Facility | {facilityName}
+- Total Employees | {totalEmployees}
+- Assessment Period | {assessmentPeriod}
+- Generated Date | {generatedDate}
+
+Sheet 3: Processing Activities
+- Activity | Status
+- {processingActivities} | Active
+
+Sheet 4: Appendices
+- Appendix | Description | Status
+- {applicableAppendices} | R2v3 Requirements | Applicable
+
+Sheet 5: Metrics
+- Category | Score | Max Score | Percentage
+- Overall | {overallScore} | 100 | {overallScore}
+- Compliance | {compliancePercentage} | 100 | {compliancePercentage}
+- Completion | {completionPercentage} | 100 | {completionPercentage}

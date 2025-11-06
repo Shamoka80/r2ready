@@ -1,0 +1,102 @@
+# === R2Ready one-shot export to GitHub (snapshot, no history) ===
+# REQUIREMENTS (set in Replit Secrets before running):
+#   GITHUB_TOKEN  -> GitHub PAT with "repo" scope (fine-grained OK: contents=read/write, metadata=read)
+#   GIT_AUTHOR_NAME, GIT_AUTHOR_EMAIL (also used for committer)
+
+set -euo pipefail
+
+: "${GITHUB_TOKEN:?Missing GITHUB_TOKEN}"
+: "${GIT_AUTHOR_NAME:?Missing GIT_AUTHOR_NAME}"
+: "${GIT_AUTHOR_EMAIL:?Missing GIT_AUTHOR_EMAIL}"
+
+OWNER="Shamoka80"
+REPO="R2Ready"
+DESCRIPTION="RUR2 Ready? | R2v3 Pre-Certification Self-Assessment snapshot from Replit"
+HOMEPAGE="https://pd.wrekdtech.com"
+PRIVATE=true
+
+api() { curl -sS -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: application/vnd.github+json" "$@"; }
+
+echo "1) Create repo if absent..."
+EXISTS_CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token ${GITHUB_TOKEN}" https://api.github.com/repos/${OWNER}/${REPO})
+if [ "$EXISTS_CODE" = "200" ]; then
+  echo "   Repo already exists: ${OWNER}/${REPO}"
+else
+  CREATE_PAYLOAD=$(jq -n --arg name "$REPO" --arg desc "$DESCRIPTION" --arg home "$HOMEPAGE" --argjson private $PRIVATE \
+    '{name:$name, description:$desc, homepage:$home, private:$private, has_issues:true, has_projects:true, has_wiki:false, auto_init:false}')
+  api -X POST https://api.github.com/user/repos -d "$CREATE_PAYLOAD" >/dev/null
+  echo "   Created repo: ${OWNER}/${REPO}"
+fi
+
+echo "2) Build clean snapshot (exclude .git, caches, env files)..."
+SNAP=$(mktemp -d)
+rsync -a \
+  --exclude ".git" \
+  --exclude "node_modules" \
+  --exclude ".next" \
+  --exclude "dist" \
+  --exclude "build" \
+  --exclude "*.log" \
+  --exclude ".env*" \
+  --exclude "*.pem" \
+  --exclude "*.key" \
+  ./ "$SNAP"/
+
+cd "$SNAP"
+
+# Ensure .gitignore protects secrets and heavy artifacts going forward
+{
+  echo "# Core ignores"
+  echo "node_modules/"
+  echo "dist/"
+  echo "build/"
+  echo ".next/"
+  echo "*.log"
+  echo ""
+  echo "# Secrets"
+  echo ".env*"
+  echo "*.pem"
+  echo "*.key"
+  echo ""
+  echo "# OS/IDE"
+  echo ".DS_Store"
+  echo ".idea/"
+  echo ".vscode/"
+} >> .gitignore
+
+# Minimal README if missing
+if [ ! -f README.md ]; then
+  cat > README.md <<'EOF'
+# RUR2 Ready?
+
+R2v3 Pre-Certification Self-Assessment.
+This repo is a clean snapshot exported from Replit.
+
+- App URL: https://pd.wrekdtech.com
+- Owner: Wrek'd Tech
+EOF
+fi
+
+git init
+git config user.name  "$GIT_AUTHOR_NAME"
+git config user.email "$GIT_AUTHOR_EMAIL"
+git add -A
+git commit -m "feat: initial snapshot export from Replit"
+git branch -M main
+
+echo "3) Push to GitHub (HTTPS with token for first push)..."
+# Use token only for this push to avoid interactive auth
+git remote add origin "https://github.com/${OWNER}/${REPO}.git"
+git push -u "https://${GITHUB_TOKEN}@github.com/${OWNER}/${REPO}.git" main
+
+echo "4) Optional: add a provenance tag and lightweight release artifact..."
+TAG="snapshot-$(date +%Y%m%d-%H%M%S)"
+git tag -a "$TAG" -m "Snapshot from Replit ${TAG}"
+git push "https://${GITHUB_TOKEN}@github.com/${OWNER}/${REPO}.git" --tags
+tar -czf "../${REPO}_${TAG}.tar.gz" .
+
+echo "5) Verify repository contents server-side..."
+git ls-remote "https://${GITHUB_TOKEN}@github.com/${OWNER}/${REPO}.git" | head || true
+
+echo "Done. Repo: https://github.com/${OWNER}/${REPO}"
+echo "Local artifact: ${REPO}_${TAG}.tar.gz"

@@ -1,0 +1,6 @@
+ALTER TABLE "Question" ADD COLUMN "tags" text[];--> statement-breakpoint
+ALTER TABLE "QuestionMapping" ADD CONSTRAINT "QuestionMapping_intakeQuestionId_IntakeQuestion_id_fk" FOREIGN KEY ("intakeQuestionId") REFERENCES "public"."IntakeQuestion"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "QuestionMapping" ADD CONSTRAINT "QuestionMapping_assessmentQuestionId_Question_id_fk" FOREIGN KEY ("assessmentQuestionId") REFERENCES "public"."Question"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "SmartLogicCondition" ADD CONSTRAINT "SmartLogicCondition_questionMappingId_QuestionMapping_id_fk" FOREIGN KEY ("questionMappingId") REFERENCES "public"."QuestionMapping"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "SmartLogicCondition" ADD CONSTRAINT "SmartLogicCondition_triggerQuestionId_IntakeQuestion_id_fk" FOREIGN KEY ("triggerQuestionId") REFERENCES "public"."IntakeQuestion"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "SmartLogicCondition" ADD CONSTRAINT "SmartLogicCondition_dependentQuestionId_IntakeQuestion_id_fk" FOREIGN KEY ("dependentQuestionId") REFERENCES "public"."IntakeQuestion"("id") ON DELETE no action ON UPDATE no action;

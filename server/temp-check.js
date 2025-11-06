@@ -1,0 +1,1 @@
+console.log('Importing...'); import('./db.js').then(async ({ db }) => { const { questions } = await import('../shared/schema.js'); const q = await db.select().from(questions); console.log('Questions in DB:', q.length); process.exit(0); });

@@ -1,0 +1,146 @@
+
+openapi: 3.0.3
+info:
+  title: RUR2 Credits API
+  version: 1.0.0
+  description: |
+    Credits and Billing Management API for R2v3 Compliance Platform.
+    
+    **API Contract Version**: 1.0.0
+    **Last Updated**: 2025-01-15
+    **Breaking Changes Policy**: 6-month deprecation notice required
+    **Backward Compatibility**: Maintained within major version
+    
+    ### Changelog
+    - v1.0.0 (2025-01-15): Initial stable release with credit management, billing, and usage tracking
+  contact:
+    name: RUR2 Billing Support
+    email: billing@rur2.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: /api
+    description: Production API Server
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    CreditBalance:
+      type: object
+      properties:
+        tenantId:
+          type: string
+          format: uuid
+        credits:
+          type: number
+          minimum: 0
+        lastUpdated:
+          type: string
+          format: date-time
+      required: [tenantId, credits, lastUpdated]
+    CreditTransaction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        type:
+          type: string
+          enum: [purchase, usage, refund, adjustment]
+        description:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+      required: [id, tenantId, amount, type, timestamp]
+    UsageMetrics:
+      type: object
+      properties:
+        assessments:
+          type: integer
+          minimum: 0
+        exports:
+          type: integer
+          minimum: 0
+        storage:
+          type: number
+          minimum: 0
+        period:
+          type: string
+          enum: [daily, weekly, monthly]
+      required: [assessments, exports, storage, period]
+paths:
+  /credits/balance:
+    get:
+      tags: [Credits]
+      summary: Get current credit balance
+      responses:
+        '200':
+          description: Credit balance retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreditBalance'
+  /credits/transactions:
+    get:
+      tags: [Credits]
+      summary: List credit transactions
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Transactions retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transactions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CreditTransaction'
+                  total:
+                    type: integer
+                  hasMore:
+                    type: boolean
+  /credits/usage:
+    get:
+      tags: [Usage]
+      summary: Get usage metrics
+      parameters:
+        - in: query
+          name: period
+          schema:
+            type: string
+            enum: [daily, weekly, monthly]
+            default: monthly
+      responses:
+        '200':
+          description: Usage metrics retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageMetrics'

@@ -1,0 +1,35 @@
+Yes, include the following features:
+
+- Clean monorepo structure with React frontend and Express backend
+- Professional UI layout with top navigation bar featuring RUR2 branding
+- Left sidebar navigation with assessment workflow routes
+- Placeholder pages for Dashboard, New Assessment, Assessment Details, and Settings
+- Assessment detail page with tab structure (Overview, Questions, Evidence, Findings, Exports)
+- Custom Tailwind theme with brand colors (jade primary, dim grey text, warm accent colors)
+- TypeScript configuration for both client and server
+- Prisma schema placeholder for future database integration
+- Development setup optimized for Replit with concurrent client/server execution
+
+
+Keep this to a **skeleton-only** scaffold.
+
+Add these specifics:
+1) Create `.replit` and `replit.nix` so the Run button starts both client (Vite) and server (Express) concurrently. Pin Node 20 in `replit.nix`.
+2) Server: add a single route GET `/api/health` that returns `{"ok":true}`. No other routes, no auth, no external integrations.
+3) Tailwind theme: define CSS vars and map them in Tailwind. Do not recolor icons/images.
+   --wt-dimgrey:#696B7F; --wt-jade:#37A874; --wt-pumpkin:#FF7E34; --wt-sunglow:#FFCC37; --wt-icterine:#FFFA41
+   Use jade for primary accents; dim grey for text accents; warm yellows/orange only for status chips/callouts.
+4) File structure must include: `/client`, `/server`, `/prisma`, `/.replit`, `/replit.nix`, `/assets/brand`.
+5) Prisma: create `schema.prisma` with only datasource+generator (PostgreSQL). **Do not** add models or run migrations.
+6) TypeScript strict mode on both workspaces. Keep code minimal, readable, and typed.
+7) Root `package.json` uses npm workspaces (`client`, `server`) and a root script `"dev"` that runs both.
+
+Remove / Do NOT add yet:
+- No auth, no Stripe, no storage, no PDF/XLSX, no Prisma models, no DB migrations, no third-party SDKs besides: client (react, react-dom, react-router-dom, tailwind, postcss, autoprefixer), server (express, zod, ts-node, nodemon).
+
+Acceptance checklist (must pass before you finish):
+- Vite client boots; Express server boots; `GET /api/health` → `{"ok":true}`.
+- Routes present: `/dashboard`, `/assessments/new`, `/assessments/:id` with tabs (non-functional), `/settings`.
+- Tailwind brand variables are wired; AA contrast on default components.
+- Printed file tree shows `/client`, `/server`, `/prisma`, `/.replit`, `/replit.nix`, `/assets/brand`.
+- README includes exact run commands (`npm install`, `npm run dev`) and “Next Steps” placeholders for: Auth, Question Import, Evidence (BYOC), Exports, Licensing.

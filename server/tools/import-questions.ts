@@ -1,0 +1,220 @@
+import "dotenv/config";
+import fs from "fs";
+import { parse as parseSync } from "csv-parse/sync";
+import { db } from "../db";
+import { standardVersions, clauses, questions } from "../../shared/schema";
+import { eq } from "drizzle-orm";
+
+export type ImportCoverage = {
+  counts: Record<string, number>;
+  missingCount: number;
+  duplicateCount: number;
+  total: number;
+};
+
+// Using Drizzle ORM via db connection
+
+const HEADERS = {
+  question_id: ["question_id","id","qid","q_id","QuestionID","Question Id","Question_ID"],
+  clause_ref: ["requirement_code","clause_ref","clause","requirement","citation","Clause","R2 Clause","Clause Reference","Reference","Ref"],
+  category_code: ["requirement_code","category_code","Category Code"],
+  category: ["requirement_name","category","Category","requirement_name"],
+  category_name: ["requirement_name","category_name","Category Name"],
+  text: ["question_text","text","question","prompt","Question Text","Question"],
+  response_type: ["requirement_type","response_type","type","answer_type","input_type","Response Type","Type"],
+  required: ["required","is_required","mandatory","Required"],
+  evidence_required: ["evidence_required","requires_evidence","Evidence Required","Evidence"],
+  appendix: ["appendix","Appendix","scope","Scope"],
+  weight: ["weight","score_weight","Weight","scoring_weight"],
+  help_text: ["help_text","help","guidance","Help Text","Guidance","compliance_expectation","Compliance Expectation"],
+  tags: ["tags","Tags","tag","Tag"]
+};
+
+const pick = (row: any, keys: string[]) => {
+  const cols = Object.keys(row);
+  for (const k of keys) {
+    const hit = cols.find(c => c.trim().toLowerCase() === k.trim().toLowerCase());
+    if (hit) return row[hit];
+  }
+  return undefined;
+};
+
+const normalizeClauseRef = (src?: string|null): string|null => {
+  if (!src) return null;
+  const s = String(src).trim().toUpperCase().replace(/\s+/g, " ");
+  let m = s.match(/^CORE\s+REQUIREMENT\s+(\d{1,2})/); if (m) return `CR${Number(m[1])}`;
+  m = s.match(/^CR\W*\s*(\d{1,2})/); if (m) return `CR${Number(m[1])}`;
+  m = s.match(/^APPENDIX\s+([A-G])/); if (m) return `APP-${m[1]}`;
+  m = s.match(/^APP(?:ENDIX)?\W*([A-G])/); if (m) return `APP-${m[1]}`;
+  m = s.match(/\bCR\W*([0-9]{1,2})\b/); if (m) return `CR${Number(m[1])}`;
+  m = s.match(/\bAPP(?:ENDIX)?\W*([A-G])\b/); if (m) return `APP-${m[1]}`;
+  return null;
+};
+
+const deriveClause = (row: any): string|null => {
+  return (
+    normalizeClauseRef(pick(row, HEADERS.clause_ref)) ??
+    normalizeClauseRef(pick(row, HEADERS.category_code)) ??
+    normalizeClauseRef(pick(row, HEADERS.category)) ??
+    extractClauseFromTags(pick(row, HEADERS.tags)) ??
+    null
+  );
+};
+
+const extractClauseFromTags = (tags?: string|null): string|null => {
+  if (!tags) return null;
+  const tagParts = String(tags).split(/[|;,]/).map(t => t.trim());
+  for (const tag of tagParts) {
+    const normalized = normalizeClauseRef(tag);
+    if (normalized && normalized !== "OTHER") return normalized;
+  }
+  return null;
+};
+
+const classifyBucket = (ref?: string|null) => {
+  if (!ref) return "UNSPECIFIED";
+  const u = ref.toUpperCase();
+  if (/^CR([1-9]|10)$/.test(u)) return u;
+  const m = u.match(/^APP-([A-G])$/); if (m) return `APP-${m[1]}`;
+  return "OTHER";
+};
+
+export async function importQuestions(file: string): Promise<ImportCoverage> {
+  if (!file || !fs.existsSync(file)) {
+    throw new Error("CSV path missing or not found");
+  }
+
+  // Upsert standard version using Drizzle
+  let std = await db.select().from(standardVersions).where(eq(standardVersions.code, "R2V3_1")).limit(1);
+  if (std.length === 0) {
+    const inserted = await db.insert(standardVersions).values({
+      code: "R2V3_1",
+      name: "R2 v3.1",
+      isActive: true
+    }).returning();
+    std = inserted;
+  }
+
+  const raw = fs.readFileSync(file, "utf8");
+  const first = raw.split(/\r?\n/)[0] ?? "";
+  const delim = [",",";","\t","|"]
+    .map(d => ({ d, n: (first.match(new RegExp("\\"+d,"g"))||[]).length }))
+    .sort((a,b)=>b.n-a.n)[0].d;
+
+  const rows: any[] = parseSync(raw, { columns: true, skip_empty_lines: true, delimiter: delim });
+
+  const counts: Record<string, number> = {};
+  const seenQIDs = new Set<string>();
+  let missing = 0, dups = 0, total = 0;
+
+  for (const row of rows) {
+    total++;
+
+    const qid = String(pick(row, HEADERS.question_id) ?? "").trim();
+    const clauseRefNorm = deriveClause(row);
+    const text = String(pick(row, HEADERS.text) ?? "").trim();
+    const responseType = String(pick(row, HEADERS.response_type) ?? "yes_no").trim();
+    const required = String(pick(row, HEADERS.required) ?? "true").toLowerCase().startsWith("t");
+    const evidenceRequired = String(pick(row, HEADERS.evidence_required) ?? "false").toLowerCase().startsWith("t");
+    const appendix = String(pick(row, HEADERS.appendix) ?? "").trim().toUpperCase() || null;
+    const weight = Number(pick(row, HEADERS.weight) ?? 1);
+    const helpText = String(pick(row, HEADERS.help_text) ?? "");
+    const tagsRaw = String(pick(row, HEADERS.tags) ?? "");
+    const tags = tagsRaw ? tagsRaw.split(/[|;,]/).map(t => t.trim()).filter(Boolean) : [];
+
+    const category = String(pick(row, HEADERS.category) ?? "") || null;
+    const category_code = String(pick(row, HEADERS.category_code) ?? "") || null;
+    const category_name = String(pick(row, HEADERS.category_name) ?? "") || null;
+
+    if (!clauseRefNorm) missing++;
+
+    const clauseRefKey = clauseRefNorm || "UNSPEC";
+    // Upsert clause using Drizzle
+    let clause = await db.select().from(clauses).where(eq(clauses.ref, clauseRefKey)).limit(1);
+    if (clause.length === 0) {
+      const inserted = await db.insert(clauses).values({
+        ref: clauseRefKey,
+        title: clauseRefNorm || "Unspecified",
+        stdId: std[0].id
+      }).returning();
+      clause = inserted;
+    } else {
+      // Update existing clause
+      const updated = await db.update(clauses)
+        .set({ title: clauseRefNorm || "Unspecified", stdId: std[0].id })
+        .where(eq(clauses.ref, clauseRefKey))
+        .returning();
+      clause = updated;
+    }
+
+    if (qid) {
+      if (seenQIDs.has(qid)) dups++;
+      seenQIDs.add(qid);
+    }
+
+    // Upsert question using Drizzle
+    const questionIdKey = qid || `${clause[0].id}-${total}`;
+    const question = await db.select().from(questions).where(eq(questions.questionId, questionIdKey)).limit(1);
+    if (question.length === 0) {
+      await db.insert(questions).values({
+        questionId: questionIdKey,
+        clauseId: clause[0].id,
+        text,
+        responseType,
+        required,
+        evidenceRequired,
+        appendix,
+        weight,
+        helpText,
+        category,
+        category_code: category_code,
+        categoryName: category_name,
+        tags
+      });
+    } else {
+      await db.update(questions)
+        .set({
+          clauseId: clause[0].id,
+          text,
+          responseType,
+          required,
+          evidenceRequired,
+          appendix,
+          weight,
+          helpText,
+          category,
+          category_code: category_code,
+          categoryName: category_name,
+          tags
+        })
+        .where(eq(questions.questionId, questionIdKey));
+    }
+
+    const bucket = classifyBucket(clauseRefNorm || undefined);
+    counts[bucket] = (counts[bucket] || 0) + 1;
+  }
+
+  return { counts, missingCount: missing, duplicateCount: dups, total };
+}
+
+function printCoverage(c: ImportCoverage) {
+  const keys = ["CR1","CR2","CR3","CR4","CR5","CR6","CR7","CR8","CR9","CR10","APP-A","APP-B","APP-C","APP-D","APP-E","APP-F","APP-G","UNSPECIFIED","OTHER"];
+  console.log("=== Coverage ===");
+  for (const k of keys) console.log(`${k.padEnd(10)} : ${c.counts[k] || 0}`);
+  console.log("Preparation/Meta :", c.counts["UNSPECIFIED"] || 0);
+  console.log("Missing clause refs:", c.missingCount);
+  console.log("Duplicate explicit question_ids:", c.duplicateCount);
+  console.log("Total imported:", c.total);
+}
+
+// Run as CLI only when executed directly, not when imported by the server
+if (typeof require !== "undefined" && require.main === module) {
+  const file = process.argv[2];
+  if (!file) {
+    console.error("Usage: ts-node server/tools/import-questions.ts <path-to-csv>");
+    process.exit(2);
+  }
+  importQuestions(file)
+    .then(printCoverage)
+    .catch(e => { console.error(e); process.exit(1); });
+}

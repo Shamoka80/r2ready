@@ -1,0 +1,108 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Primary Meta Tags -->
+    <title>RuR2 - R2v3 Compliance Assessment Platform</title>
+    <meta name="title" content="RuR2 - R2v3 Compliance Assessment Platform" />
+    <meta name="description" content="Professional R2v3 compliance assessment platform for electronics recycling facilities. Streamline audit preparation, track certification readiness, and ensure SERI R2v3 standard compliance with our comprehensive assessment tools." />
+    <meta name="keywords" content="R2v3, SERI, electronics recycling, compliance assessment, audit preparation, certification, environmental management, data security, responsible recycling" />
+    <meta name="author" content="RuR2 Development Team" />
+    <meta name="robots" content="index, follow" />
+    <meta name="language" content="English" />
+    <meta name="revisit-after" content="7 days" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://rur2.replit.app/" />
+    <meta property="og:title" content="RuR2 - R2v3 Compliance Assessment Platform" />
+    <meta property="og:description" content="Professional R2v3 compliance assessment platform for electronics recycling facilities. Streamline audit preparation and ensure SERI R2v3 standard compliance." />
+    <meta property="og:image" content="https://rur2.replit.app/assets/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="RuR2" />
+    <meta property="og:locale" content="en_US" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://rur2.replit.app/" />
+    <meta property="twitter:title" content="RuR2 - R2v3 Compliance Assessment Platform" />
+    <meta property="twitter:description" content="Professional R2v3 compliance assessment platform for electronics recycling facilities. Streamline audit preparation and ensure SERI R2v3 standard compliance." />
+    <meta property="twitter:image" content="https://rur2.replit.app/assets/twitter-image.jpg" />
+    <meta property="twitter:creator" content="@RuR2Platform" />
+    
+    <!-- Additional SEO Meta Tags -->
+    <meta name="theme-color" content="#1a365d" />
+    <meta name="msapplication-TileColor" content="#1a365d" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
+    <link rel="canonical" href="https://rur2.replit.app/" />
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="RuR2" />
+    
+    <!-- Preconnect for Performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://js.stripe.com" />
+    
+    <!-- Stripe.js v3 -->
+    <script src="https://js.stripe.com/v3/" async></script>
+    
+    <!-- Suppress Vite HMR ping failures (Replit environment compatibility) -->
+    <script>
+      window.addEventListener('unhandledrejection', function(event) {
+        var reason = event.reason;
+        var isVitePingFailure = reason && 
+          reason.message === 'Failed to fetch' && 
+          reason.stack && 
+          (reason.stack.indexOf('@vite/client') !== -1 || reason.stack.indexOf('ping') !== -1);
+        
+        if (isVitePingFailure) {
+          event.preventDefault();
+        }
+      });
+    </script>
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "RuR2",
+      "description": "Professional R2v3 compliance assessment platform for electronics recycling facilities",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web Browser",
+      "url": "https://rur2.replit.app/",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "creator": {
+        "@type": "Organization",
+        "name": "RuR2 Development Team"
+      },
+      "featureList": [
+        "R2v3 Compliance Assessment",
+        "Audit Preparation Tools",
+        "Multi-facility Management",
+        "Evidence Management",
+        "Executive Reporting",
+        "Consultant Dashboard"
+      ]
+    }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

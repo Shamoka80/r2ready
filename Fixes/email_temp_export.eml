@@ -1,0 +1,48 @@
+
+Subject: R2v3 Assessment Summary - {organizationName}
+
+Dear {primaryContact},
+
+Your R2v3 pre-certification assessment has been completed. Here's a summary of your organization's certification readiness:
+
+ASSESSMENT OVERVIEW
+-------------------
+Company: {organizationName}
+Facility: {facilityName}
+Assessment Period: {assessmentPeriod}
+Overall Score: {overallScore}
+Readiness Level: {readinessLevel}
+Completion Rate: {completionPercentage}
+
+KEY METRICS
+-----------
+Questions Completed: {answeredQuestions} of {totalQuestions}
+Critical Issues: {criticalIssues}
+Major Issues: {majorIssues}
+Minor Issues: {minorIssues}
+
+FACILITY INFORMATION
+-------------------
+Primary Facility: {facilityName}
+Address: {facilityAddress}
+Total Employees: {totalEmployees}
+Processing Activities: {processingActivities}
+Applicable Appendices: {applicableAppendices}
+
+NEXT STEPS
+----------
+• Address critical compliance gaps immediately
+• Complete remaining assessment questions
+• Schedule internal audit preparation
+• Plan for external certification audit
+
+For detailed findings and recommendations, please refer to the comprehensive assessment report.
+
+Best regards,
+R2v3 Assessment Platform
+
+---
+Generated on: {generatedDate}
+Assessment ID: {assessmentTitle}
+Contact Email: {contactEmail}
+Standard Version: {standardVersion}

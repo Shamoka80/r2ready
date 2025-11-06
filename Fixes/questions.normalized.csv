@@ -1,0 +1,401 @@
+id,category,category_code,category_name,question,compliance_expectation,tags,_normalized_tags
+1,CORE REQUIREMENT 1: SCOPE,CORE REQUIREMENT 1,SCOPE,Does the facility have a current R2 certificate that accurately reflects all processes and activities?,"Valid R2 certificate showing all applicable processes, legal entities, and locations",CR1;A,CR1;A
+2,CORE REQUIREMENT 1: SCOPE,CORE REQUIREMENT 1,SCOPE,"Are all electronic equipment types, components, and materials managed by the facility documented in the scope?",Written scope statement matching certificate and operations,CR1,CR1
+3,CORE REQUIREMENT 1: SCOPE,CORE REQUIREMENT 1,SCOPE,Have all legal entities and names associated with certifiable activities been identified?,"Business licenses, DBAs, trade names documentation",CR1,CR1
+4,CORE REQUIREMENT 1: SCOPE,CORE REQUIREMENT 1,SCOPE,Are there any uncertified locations managing e-waste that should be disclosed?,Current public listing of non-certified locations if applicable,CR1,CR1
+5,CORE REQUIREMENT 1: SCOPE,CORE REQUIREMENT 1,SCOPE,Has the facility been on SERI's deceptive practices list in the past 24 months?,Verification against SERI's published list,CR1,CR1
+6,CORE REQUIREMENT 1: SCOPE,CORE REQUIREMENT 1,SCOPE,Do all certifiable activities at the physical address fall within the R2 scope?,Site map showing all operations areas,CR1,CR1
+7,CORE REQUIREMENT 1: SCOPE,CORE REQUIREMENT 1,SCOPE,Are external processes and activities under the facility's control included in certification?,Documentation of off-site controlled activities,CR1,CR1
+8,CORE REQUIREMENT 1: SCOPE,CORE REQUIREMENT 1,SCOPE,Has the facility properly identified all applicable R2 Process Requirements?,List matching actual operations to Appendices A-G,CR1,CR1
+9,CORE REQUIREMENT 1: SCOPE,CORE REQUIREMENT 1,SCOPE,Are all authorized allowances properly documented on the certificate?,Certificate showing approved allowances per COP,CR1,CR1
+10,CORE REQUIREMENT 1: SCOPE,CORE REQUIREMENT 1,SCOPE,Does the facility maintain documentation linking all sales websites to certified operations?,URLs and website documentation matching certificate names,CR1,CR1
+11,CORE REQUIREMENT 2: HIERARCHY OF RESPONSIBLE MANAGEMENT,CORE REQUIREMENT 2,HIERARCHY OF RESPONSIBLE MANAGEMENT,Does the facility have a written hierarchy policy prioritizing reuse over recycling?,Written policy document dated and approved,CR2;A,CR2;A
+12,CORE REQUIREMENT 2: HIERARCHY OF RESPONSIBLE MANAGEMENT,CORE REQUIREMENT 2,HIERARCHY OF RESPONSIBLE MANAGEMENT,How does the facility evaluate equipment for reuse potential?,Documented evaluation criteria and procedures,CR2,CR2
+13,CORE REQUIREMENT 2: HIERARCHY OF RESPONSIBLE MANAGEMENT,CORE REQUIREMENT 2,HIERARCHY OF RESPONSIBLE MANAGEMENT,Are items directed to reuse when technically capable?,Transaction records showing reuse prioritization,CR2,CR2
+14,CORE REQUIREMENT 2: HIERARCHY OF RESPONSIBLE MANAGEMENT,CORE REQUIREMENT 2,HIERARCHY OF RESPONSIBLE MANAGEMENT,How are non-reusable items directed to materials recovery?,Process flow documentation and routing records,CR2,CR2
+15,CORE REQUIREMENT 2: HIERARCHY OF RESPONSIBLE MANAGEMENT,CORE REQUIREMENT 2,HIERARCHY OF RESPONSIBLE MANAGEMENT,Are focus materials ever sent to energy recovery or landfill?,Records showing no disposal unless legally required,CR2,CR2
+16,CORE REQUIREMENT 2: HIERARCHY OF RESPONSIBLE MANAGEMENT,CORE REQUIREMENT 2,HIERARCHY OF RESPONSIBLE MANAGEMENT,How does the facility verify downstream vendors follow the hierarchy?,DSV audit records showing hierarchy compliance,CR2,CR2
+17,CORE REQUIREMENT 2: HIERARCHY OF RESPONSIBLE MANAGEMENT,CORE REQUIREMENT 2,HIERARCHY OF RESPONSIBLE MANAGEMENT,Are recalled or counterfeit items properly excluded from reuse?,Procedures for identifying and routing prohibited items,CR2,CR2
+18,CORE REQUIREMENT 2: HIERARCHY OF RESPONSIBLE MANAGEMENT,CORE REQUIREMENT 2,HIERARCHY OF RESPONSIBLE MANAGEMENT,Is disposal only used when no recycling options exist?,Documentation of technical/economic infeasibility,CR2,CR2
+19,CORE REQUIREMENT 2: HIERARCHY OF RESPONSIBLE MANAGEMENT,CORE REQUIREMENT 2,HIERARCHY OF RESPONSIBLE MANAGEMENT,How are extreme circumstances for FM disposal documented?,"Written justification if applicable, legal requirements",CR2,CR2
+20,CORE REQUIREMENT 2: HIERARCHY OF RESPONSIBLE MANAGEMENT,CORE REQUIREMENT 2,HIERARCHY OF RESPONSIBLE MANAGEMENT,Does the hierarchy policy cover both on-site and off-site activities?,Policy explicitly addressing all controlled operations,CR2,CR2
+21,CORE REQUIREMENT 3: EH&S MANAGEMENT SYSTEM,CORE REQUIREMENT 3,EH&S MANAGEMENT SYSTEM,Does the facility maintain current EHSMS certification from an accredited CB?,Valid ISO 14001/45001 or equivalent certificate,CR3,CR3
+22,CORE REQUIREMENT 3: EH&S MANAGEMENT SYSTEM,CORE REQUIREMENT 3,EH&S MANAGEMENT SYSTEM,Are all R2 requirements integrated into the EHSMS?,EHSMS documentation showing R2 integration,CR3,CR3
+23,CORE REQUIREMENT 3: EH&S MANAGEMENT SYSTEM,CORE REQUIREMENT 3,EH&S MANAGEMENT SYSTEM,Are documents and records maintained for at least three years?,Records retention policy and archived documents,CR3,CR3
+24,CORE REQUIREMENT 3: EH&S MANAGEMENT SYSTEM,CORE REQUIREMENT 3,EH&S MANAGEMENT SYSTEM,Has a full internal R2 audit been conducted within the past year?,Internal audit report covering all requirements,CR3;A,CR3;A
+25,CORE REQUIREMENT 3: EH&S MANAGEMENT SYSTEM,CORE REQUIREMENT 3,EH&S MANAGEMENT SYSTEM,Does the facility demonstrate technical capability for all accepted materials?,"Training records, equipment specifications",CR3,CR3
+26,CORE REQUIREMENT 3: EH&S MANAGEMENT SYSTEM,CORE REQUIREMENT 3,EH&S MANAGEMENT SYSTEM,Have environmental impacts been identified and analyzed?,Environmental aspects register with controls,CR3,CR3
+27,CORE REQUIREMENT 3: EH&S MANAGEMENT SYSTEM,CORE REQUIREMENT 3,EH&S MANAGEMENT SYSTEM,Has health and safety risk assessment been completed?,Risk assessment documentation with controls,CR3,CR3
+28,CORE REQUIREMENT 3: EH&S MANAGEMENT SYSTEM,CORE REQUIREMENT 3,EH&S MANAGEMENT SYSTEM,Is there a process for evaluating hazardous substance exposure?,IH monitoring program and results,CR3;A,CR3;A
+29,CORE REQUIREMENT 3: EH&S MANAGEMENT SYSTEM,CORE REQUIREMENT 3,EH&S MANAGEMENT SYSTEM,Are incoming materials inspected for damage or hazards?,Receiving inspection procedures and records,CR3,CR3
+30,CORE REQUIREMENT 3: EH&S MANAGEMENT SYSTEM,CORE REQUIREMENT 3,EH&S MANAGEMENT SYSTEM,Are housekeeping standards maintained throughout the facility?,Housekeeping schedule and inspection records,CR3,CR3
+31,CORE REQUIREMENT 3: EH&S MANAGEMENT SYSTEM,CORE REQUIREMENT 3,EH&S MANAGEMENT SYSTEM,Are sanitary facilities provided for workers?,Physical verification of adequate facilities,CR3,CR3
+32,CORE REQUIREMENT 3: EH&S MANAGEMENT SYSTEM,CORE REQUIREMENT 3,EH&S MANAGEMENT SYSTEM,Is food/beverage consumption restricted in contaminated areas?,Posted policies and designated clean areas,CR3,CR3
+33,CORE REQUIREMENT 3: EH&S MANAGEMENT SYSTEM,CORE REQUIREMENT 3,EH&S MANAGEMENT SYSTEM,Do temporary workers receive the same protections as employees?,Training and PPE records for all workers,CR3,CR3
+34,CORE REQUIREMENT 3: EH&S MANAGEMENT SYSTEM,CORE REQUIREMENT 3,EH&S MANAGEMENT SYSTEM,Is there a designated EH&S coordinator?,Named individual with defined responsibilities,CR3;A,CR3;A
+35,CORE REQUIREMENT 3: EH&S MANAGEMENT SYSTEM,CORE REQUIREMENT 3,EH&S MANAGEMENT SYSTEM,"Are mercury, lead, and other toxics specifically evaluated?",Hazard assessment for listed substances,CR3,CR3
+36,CORE REQUIREMENT 4: LEGAL AND OTHER REQUIREMENTS,CORE REQUIREMENT 4,LEGAL AND OTHER REQUIREMENTS,Does the facility have a comprehensive legal compliance plan?,Written plan identifying all applicable laws,CR4;A,CR4;A
+37,CORE REQUIREMENT 4: LEGAL AND OTHER REQUIREMENTS,CORE REQUIREMENT 4,LEGAL AND OTHER REQUIREMENTS,Are all environmental permits current and available?,Permit files with no expirations,CR4,CR4
+38,CORE REQUIREMENT 4: LEGAL AND OTHER REQUIREMENTS,CORE REQUIREMENT 4,LEGAL AND OTHER REQUIREMENTS,How are import/export laws identified and documented?,Legal requirements for all countries involved,CR4,CR4
+39,CORE REQUIREMENT 4: LEGAL AND OTHER REQUIREMENTS,CORE REQUIREMENT 4,LEGAL AND OTHER REQUIREMENTS,Has a compliance audit been conducted by a competent auditor?,Audit report with auditor qualifications,CR4;A,CR4;A
+40,CORE REQUIREMENT 4: LEGAL AND OTHER REQUIREMENTS,CORE REQUIREMENT 4,LEGAL AND OTHER REQUIREMENTS,Are regulatory violations reported to the CB within 30 days?,Notification records if applicable,CR4,CR4
+41,CORE REQUIREMENT 4: LEGAL AND OTHER REQUIREMENTS,CORE REQUIREMENT 4,LEGAL AND OTHER REQUIREMENTS,Is child labor prohibited and verified?,Age verification procedures and records,CR4,CR4
+42,CORE REQUIREMENT 4: LEGAL AND OTHER REQUIREMENTS,CORE REQUIREMENT 4,LEGAL AND OTHER REQUIREMENTS,"If prison labor is used, is it voluntary and compensated?",Prison labor agreements if applicable,CR4,CR4
+43,CORE REQUIREMENT 4: LEGAL AND OTHER REQUIREMENTS,CORE REQUIREMENT 4,LEGAL AND OTHER REQUIREMENTS,Does the facility maintain a non-discrimination policy?,Written policy with complaint procedures,CR4;A,CR4;A
+44,CORE REQUIREMENT 4: LEGAL AND OTHER REQUIREMENTS,CORE REQUIREMENT 4,LEGAL AND OTHER REQUIREMENTS,Are transboundary shipments verified as legal?,Export/import documentation for international shipments,CR4,CR4
+45,CORE REQUIREMENT 4: LEGAL AND OTHER REQUIREMENTS,CORE REQUIREMENT 4,LEGAL AND OTHER REQUIREMENTS,How are data security legal requirements addressed?,Data protection compliance documentation,CR4,CR4
+46,CORE REQUIREMENT 4: LEGAL AND OTHER REQUIREMENTS,CORE REQUIREMENT 4,LEGAL AND OTHER REQUIREMENTS,Are corrective actions implemented for non-compliance?,CAR records for any violations,CR4,CR4
+47,CORE REQUIREMENT 4: LEGAL AND OTHER REQUIREMENTS,CORE REQUIREMENT 4,LEGAL AND OTHER REQUIREMENTS,Is the legal compliance plan updated with regulation changes?,Review and update records,CR4,CR4
+48,CORE REQUIREMENT 4: LEGAL AND OTHER REQUIREMENTS,CORE REQUIREMENT 4,LEGAL AND OTHER REQUIREMENTS,Are downstream vendor shipments verified for legality?,DSV international shipment documentation,CR4,CR4
+49,CORE REQUIREMENT 4: LEGAL AND OTHER REQUIREMENTS,CORE REQUIREMENT 4,LEGAL AND OTHER REQUIREMENTS,Does the facility track Basel Convention requirements?,Basel waste determination procedures,CR4,CR4
+50,CORE REQUIREMENT 4: LEGAL AND OTHER REQUIREMENTS,CORE REQUIREMENT 4,LEGAL AND OTHER REQUIREMENTS,Are workers paid in compliance with wage laws?,Payroll records showing legal compliance,CR4,CR4
+51,CORE REQUIREMENT 5: TRACKING THROUGHPUT,CORE REQUIREMENT 5,TRACKING THROUGHPUT,Are bills of lading maintained for all inbound materials?,Complete BOL files with signatures,CR5,CR5
+52,CORE REQUIREMENT 5: TRACKING THROUGHPUT,CORE REQUIREMENT 5,TRACKING THROUGHPUT,Do inbound records include accurate dates and descriptions?,Detailed receiving documentation,CR5,CR5
+53,CORE REQUIREMENT 5: TRACKING THROUGHPUT,CORE REQUIREMENT 5,TRACKING THROUGHPUT,Is a summary report of all transactions maintained?,12-month transaction summary report,CR5;A,CR5;A
+54,CORE REQUIREMENT 5: TRACKING THROUGHPUT,CORE REQUIREMENT 5,TRACKING THROUGHPUT,How are R2 Controlled Streams tracked through processing?,Inventory tracking system records,CR5,CR5
+55,CORE REQUIREMENT 5: TRACKING THROUGHPUT,CORE REQUIREMENT 5,TRACKING THROUGHPUT,Are inventory levels below defined limits?,Current inventory vs. permitted limits,CR5,CR5
+56,CORE REQUIREMENT 5: TRACKING THROUGHPUT,CORE REQUIREMENT 5,TRACKING THROUGHPUT,Are materials stored less than one year?,Date tracking showing <1 year storage,CR5,CR5
+57,CORE REQUIREMENT 5: TRACKING THROUGHPUT,CORE REQUIREMENT 5,TRACKING THROUGHPUT,Are tested components properly inventoried if stored longer?,Component inventory per Appendix C,CR5,CR5
+58,CORE REQUIREMENT 5: TRACKING THROUGHPUT,CORE REQUIREMENT 5,TRACKING THROUGHPUT,Do outbound records match the tracking requirements?,Shipping records with required details,CR5,CR5
+59,CORE REQUIREMENT 5: TRACKING THROUGHPUT,CORE REQUIREMENT 5,TRACKING THROUGHPUT,Are international shipments properly documented?,Bill of lading and container numbers,CR5,CR5
+60,CORE REQUIREMENT 5: TRACKING THROUGHPUT,CORE REQUIREMENT 5,TRACKING THROUGHPUT,Is throughput consistent with processing capabilities?,Input/output reconciliation records,CR5,CR5
+61,CORE REQUIREMENT 5: TRACKING THROUGHPUT,CORE REQUIREMENT 5,TRACKING THROUGHPUT,How are negative value materials tracked?,Separate tracking for materials with costs,CR5,CR5
+62,CORE REQUIREMENT 5: TRACKING THROUGHPUT,CORE REQUIREMENT 5,TRACKING THROUGHPUT,Are in-process inventories accurately maintained?,WIP inventory records,CR5,CR5
+63,CORE REQUIREMENT 5: TRACKING THROUGHPUT,CORE REQUIREMENT 5,TRACKING THROUGHPUT,Do outputs correlate with inputs and processes?,Mass balance documentation,CR5,CR5
+64,CORE REQUIREMENT 5: TRACKING THROUGHPUT,CORE REQUIREMENT 5,TRACKING THROUGHPUT,Are contractual processing timeframes met?,Processing time records vs. agreements,CR5,CR5
+65,CORE REQUIREMENT 5: TRACKING THROUGHPUT,CORE REQUIREMENT 5,TRACKING THROUGHPUT,How are brokered materials tracked if not physically received?,Broker transaction documentation,CR5,CR5
+66,"CORE REQUIREMENT 6: SORTING, CATEGORIZATION, AND PROCESSING",CORE REQUIREMENT 6,"SORTING, CATEGORIZATION, AND PROCESSING",Is there a documented sorting and categorization process?,Written procedures matching REC categories,CR6;A,CR6;A
+67,"CORE REQUIREMENT 6: SORTING, CATEGORIZATION, AND PROCESSING",CORE REQUIREMENT 6,"SORTING, CATEGORIZATION, AND PROCESSING",Are REC categories or equivalent used for all materials?,Category correlation documentation,CR6,CR6
+68,"CORE REQUIREMENT 6: SORTING, CATEGORIZATION, AND PROCESSING",CORE REQUIREMENT 6,"SORTING, CATEGORIZATION, AND PROCESSING",How are data storage devices identified during sorting?,Data device identification procedures,CR6,CR6
+69,"CORE REQUIREMENT 6: SORTING, CATEGORIZATION, AND PROCESSING",CORE REQUIREMENT 6,"SORTING, CATEGORIZATION, AND PROCESSING",Are reuse capability criteria clearly defined?,Written evaluation criteria,CR6,CR6
+70,"CORE REQUIREMENT 6: SORTING, CATEGORIZATION, AND PROCESSING",CORE REQUIREMENT 6,"SORTING, CATEGORIZATION, AND PROCESSING",Is equipment re-evaluated when processing changes categories?,Re-categorization procedures,CR6,CR6
+71,"CORE REQUIREMENT 6: SORTING, CATEGORIZATION, AND PROCESSING",CORE REQUIREMENT 6,"SORTING, CATEGORIZATION, AND PROCESSING",How are R2 Controlled Streams distinguished from Unrestricted?,Clear identification methods,CR6,CR6
+72,"CORE REQUIREMENT 6: SORTING, CATEGORIZATION, AND PROCESSING",CORE REQUIREMENT 6,"SORTING, CATEGORIZATION, AND PROCESSING",Are materials from other R2 facilities properly recognized?,Verification procedures for R2 materials,CR6,CR6
+73,"CORE REQUIREMENT 6: SORTING, CATEGORIZATION, AND PROCESSING",CORE REQUIREMENT 6,"SORTING, CATEGORIZATION, AND PROCESSING",Is sampling used to verify non-R2 facility categorization?,Documented sampling process,CR6,CR6
+74,"CORE REQUIREMENT 6: SORTING, CATEGORIZATION, AND PROCESSING",CORE REQUIREMENT 6,"SORTING, CATEGORIZATION, AND PROCESSING",Are data-containing devices secured until sanitized?,Security controls and access logs,CR6,CR6
+75,"CORE REQUIREMENT 6: SORTING, CATEGORIZATION, AND PROCESSING",CORE REQUIREMENT 6,"SORTING, CATEGORIZATION, AND PROCESSING",Are commercial agreements restricting reuse followed?,Contract compliance procedures,CR6,CR6
+76,"CORE REQUIREMENT 6: SORTING, CATEGORIZATION, AND PROCESSING",CORE REQUIREMENT 6,"SORTING, CATEGORIZATION, AND PROCESSING",Is reusable equipment assigned unique identifiers?,Serialization or batch tracking system,CR6,CR6
+77,"CORE REQUIREMENT 6: SORTING, CATEGORIZATION, AND PROCESSING",CORE REQUIREMENT 6,"SORTING, CATEGORIZATION, AND PROCESSING",Are functioning products properly categorized before sale?,REC category assignment records,CR6,CR6
+78,"CORE REQUIREMENT 6: SORTING, CATEGORIZATION, AND PROCESSING",CORE REQUIREMENT 6,"SORTING, CATEGORIZATION, AND PROCESSING",Is cosmetic condition disclosed to buyers?,Condition grading documentation,CR6,CR6
+79,"CORE REQUIREMENT 6: SORTING, CATEGORIZATION, AND PROCESSING",CORE REQUIREMENT 6,"SORTING, CATEGORIZATION, AND PROCESSING",Are collectible electronics properly managed?,Procedures for vintage/rare items,CR6,CR6
+80,"CORE REQUIREMENT 6: SORTING, CATEGORIZATION, AND PROCESSING",CORE REQUIREMENT 6,"SORTING, CATEGORIZATION, AND PROCESSING",How are prohibited items excluded from reuse?,Screening for recalled/counterfeit products,CR6,CR6
+81,CORE REQUIREMENT 7: DATA SECURITY,CORE REQUIREMENT 7,DATA SECURITY,Does the facility have a comprehensive Data Sanitization Plan?,Written plan with all required elements,CR7;A,CR7;A
+82,CORE REQUIREMENT 7: DATA SECURITY,CORE REQUIREMENT 7,DATA SECURITY,Are secured areas for data sanitization defined?,Physical security documentation,CR7,CR7
+83,CORE REQUIREMENT 7: DATA SECURITY,CORE REQUIREMENT 7,DATA SECURITY,Are all data storage device types identified?,List of accepted device types,CR7,CR7
+84,CORE REQUIREMENT 7: DATA SECURITY,CORE REQUIREMENT 7,DATA SECURITY,Is general information distinguished from protected data?,Data classification procedures,CR7,CR7
+85,CORE REQUIREMENT 7: DATA SECURITY,CORE REQUIREMENT 7,DATA SECURITY,How are network service connections addressed?,Account removal procedures,CR7,CR7
+86,CORE REQUIREMENT 7: DATA SECURITY,CORE REQUIREMENT 7,DATA SECURITY,Are data breach regulations identified?,Privacy law compliance documentation,CR7,CR7
+87,CORE REQUIREMENT 7: DATA SECURITY,CORE REQUIREMENT 7,DATA SECURITY,Are sanitization methods defined for each device type?,Method specifications by device,CR7,CR7
+88,CORE REQUIREMENT 7: DATA SECURITY,CORE REQUIREMENT 7,DATA SECURITY,Is there a Data Protection Representative designated?,Named individual with authority,CR7;A,CR7;A
+89,CORE REQUIREMENT 7: DATA SECURITY,CORE REQUIREMENT 7,DATA SECURITY,Are workers trained on data security policies?,Training records and competency verification,CR7,CR7
+90,CORE REQUIREMENT 7: DATA SECURITY,CORE REQUIREMENT 7,DATA SECURITY,Are security authorizations properly managed?,Authorization levels and access controls,CR7,CR7
+91,CORE REQUIREMENT 7: DATA SECURITY,CORE REQUIREMENT 7,DATA SECURITY,Is unauthorized access to data areas prevented?,Access logs and security measures,CR7,CR7
+92,CORE REQUIREMENT 7: DATA SECURITY,CORE REQUIREMENT 7,DATA SECURITY,Are data breach response procedures documented?,Incident response plan,CR7,CR7
+93,CORE REQUIREMENT 7: DATA SECURITY,CORE REQUIREMENT 7,DATA SECURITY,Do suppliers receive confirmation of receipt?,Receipt acknowledgment records,CR7,CR7
+94,CORE REQUIREMENT 7: DATA SECURITY,CORE REQUIREMENT 7,DATA SECURITY,Are sanitization methods disclosed to suppliers?,Method disclosure documentation,CR7,CR7
+95,CORE REQUIREMENT 7: DATA SECURITY,CORE REQUIREMENT 7,DATA SECURITY,Are downstream data vendors properly qualified?,DSV data security audit records,CR7,CR7
+96,CORE REQUIREMENT 7: DATA SECURITY,CORE REQUIREMENT 7,DATA SECURITY,Are internal data audits conducted annually?,Independent audit reports,CR7,CR7
+97,CORE REQUIREMENT 7: DATA SECURITY,CORE REQUIREMENT 7,DATA SECURITY,Are confidentiality agreements required?,Signed agreements for data handlers,CR7,CR7
+98,CORE REQUIREMENT 7: DATA SECURITY,CORE REQUIREMENT 7,DATA SECURITY,How is physical destruction verified as complete?,100% destruction verification process,CR7,CR7
+99,CORE REQUIREMENT 7: DATA SECURITY,CORE REQUIREMENT 7,DATA SECURITY,Are security breaches reported to affected parties?,Breach notification procedures,CR7,CR7
+100,CORE REQUIREMENT 7: DATA SECURITY,CORE REQUIREMENT 7,DATA SECURITY,Is equipment theft tracked and reported?,Theft reporting procedures,CR7,CR7
+101,CORE REQUIREMENT 8: FOCUS MATERIALS,CORE REQUIREMENT 8,FOCUS MATERIALS,Does the facility have a current FM Management Plan?,Written plan updated regularly,CR8;A,CR8;A
+102,CORE REQUIREMENT 8: FOCUS MATERIALS,CORE REQUIREMENT 8,FOCUS MATERIALS,Are all FM types identified in the plan?,Complete FM listing,CR8,CR8
+103,CORE REQUIREMENT 8: FOCUS MATERIALS,CORE REQUIREMENT 8,FOCUS MATERIALS,Is demonstrated expertise documented for each FM?,Capability documentation by FM type,CR8,CR8
+104,CORE REQUIREMENT 8: FOCUS MATERIALS,CORE REQUIREMENT 8,FOCUS MATERIALS,Are processing methods defined for each FM?,Method specifications,CR8,CR8
+105,CORE REQUIREMENT 8: FOCUS MATERIALS,CORE REQUIREMENT 8,FOCUS MATERIALS,Is the downstream recycling chain flowcharted?,Visual flowchart to final disposition,CR8,CR8
+106,CORE REQUIREMENT 8: FOCUS MATERIALS,CORE REQUIREMENT 8,FOCUS MATERIALS,Are international FM movements identified?,Transboundary movement documentation,CR8,CR8
+107,CORE REQUIREMENT 8: FOCUS MATERIALS,CORE REQUIREMENT 8,FOCUS MATERIALS,Are print cartridges managed appropriately?,OEM or remanufacturer routing,CR8,CR8
+108,CORE REQUIREMENT 8: FOCUS MATERIALS,CORE REQUIREMENT 8,FOCUS MATERIALS,How are PCB-containing items managed?,PCB identification and handling procedures,CR8,CR8
+109,CORE REQUIREMENT 8: FOCUS MATERIALS,CORE REQUIREMENT 8,FOCUS MATERIALS,Are mercury-containing devices properly handled?,Mercury management procedures,CR8,CR8
+110,CORE REQUIREMENT 8: FOCUS MATERIALS,CORE REQUIREMENT 8,FOCUS MATERIALS,Is CRT glass processed according to requirements?,CRT processing documentation,CR8,CR8
+111,CORE REQUIREMENT 8: FOCUS MATERIALS,CORE REQUIREMENT 8,FOCUS MATERIALS,Are all battery types properly managed?,Battery sorting and routing procedures,CR8,CR8
+112,CORE REQUIREMENT 8: FOCUS MATERIALS,CORE REQUIREMENT 8,FOCUS MATERIALS,Are circuit boards tracked to metal recovery?,Circuit board downstream documentation,CR8,CR8
+113,CORE REQUIREMENT 8: FOCUS MATERIALS,CORE REQUIREMENT 8,FOCUS MATERIALS,How are solar cells from PV modules managed?,Solar cell recovery procedures,CR8,CR8
+114,CORE REQUIREMENT 8: FOCUS MATERIALS,CORE REQUIREMENT 8,FOCUS MATERIALS,Are de minimis FM amounts properly determined?,De minimis determination procedures,CR8,CR8
+115,CORE REQUIREMENT 8: FOCUS MATERIALS,CORE REQUIREMENT 8,FOCUS MATERIALS,Is FM tracking maintained to final disposition?,Complete chain documentation,CR8,CR8
+116,CORE REQUIREMENT 9: FACILITY REQUIREMENTS,CORE REQUIREMENT 9,FACILITY REQUIREMENTS,Are all processing operations conducted indoors?,Indoor processing or outdoor risk assessment,CR9,CR9
+117,CORE REQUIREMENT 9: FACILITY REQUIREMENTS,CORE REQUIREMENT 9,FACILITY REQUIREMENTS,Are R2 Controlled Streams stored properly?,Weather protection and security measures,CR9,CR9
+118,CORE REQUIREMENT 9: FACILITY REQUIREMENTS,CORE REQUIREMENT 9,FACILITY REQUIREMENTS,Is reuse equipment stored in enclosed environments?,Protected storage verification,CR9,CR9
+119,CORE REQUIREMENT 9: FACILITY REQUIREMENTS,CORE REQUIREMENT 9,FACILITY REQUIREMENTS,Are storage areas clearly labeled?,Container and area labeling,CR9,CR9
+120,CORE REQUIREMENT 9: FACILITY REQUIREMENTS,CORE REQUIREMENT 9,FACILITY REQUIREMENTS,Does the facility have appropriate insurance coverage?,Current insurance certificates,CR9,CR9
+121,CORE REQUIREMENT 9: FACILITY REQUIREMENTS,CORE REQUIREMENT 9,FACILITY REQUIREMENTS,Is workers' compensation insurance maintained?,Workers' comp policy documentation,CR9,CR9
+122,CORE REQUIREMENT 9: FACILITY REQUIREMENTS,CORE REQUIREMENT 9,FACILITY REQUIREMENTS,Does the facility have a written closure plan?,Current closure plan document,CR9;A,CR9;A
+123,CORE REQUIREMENT 9: FACILITY REQUIREMENTS,CORE REQUIREMENT 9,FACILITY REQUIREMENTS,Are closure costs properly estimated?,Cost calculations including remediation,CR9,CR9
+124,CORE REQUIREMENT 9: FACILITY REQUIREMENTS,CORE REQUIREMENT 9,FACILITY REQUIREMENTS,Is financial assurance established for closure?,"Bond, insurance, or other instrument",CR9,CR9
+125,CORE REQUIREMENT 9: FACILITY REQUIREMENTS,CORE REQUIREMENT 9,FACILITY REQUIREMENTS,Are financial instrument exemptions properly justified?,Documentation meeting all three criteria,CR9,CR9
+126,CORE REQUIREMENT 9: FACILITY REQUIREMENTS,CORE REQUIREMENT 9,FACILITY REQUIREMENTS,Is pollution liability insurance maintained?,Pollution policy if required,CR9,CR9
+127,CORE REQUIREMENT 9: FACILITY REQUIREMENTS,CORE REQUIREMENT 9,FACILITY REQUIREMENTS,Are storage areas secure from unauthorized access?,Security measures documentation,CR9,CR9
+128,CORE REQUIREMENT 9: FACILITY REQUIREMENTS,CORE REQUIREMENT 9,FACILITY REQUIREMENTS,Is the facility properly zoned for operations?,Commercial/industrial zoning verification,CR9,CR9
+129,CORE REQUIREMENT 9: FACILITY REQUIREMENTS,CORE REQUIREMENT 9,FACILITY REQUIREMENTS,Are risks evaluated for changes in operations?,Risk reassessment records,CR9,CR9
+130,CORE REQUIREMENT 9: FACILITY REQUIREMENTS,CORE REQUIREMENT 9,FACILITY REQUIREMENTS,Are reserves appropriate for operational risks?,Reserve adequacy documentation,CR9,CR9
+131,CORE REQUIREMENT 10: TRANSPORT,CORE REQUIREMENT 10,TRANSPORT,Are materials packed to prevent damage during transport?,Packaging procedures and standards,CR10,CR10
+132,CORE REQUIREMENT 10: TRANSPORT,CORE REQUIREMENT 10,TRANSPORT,Are data-containing devices secured during transport?,Security measures for shipments,CR10,CR10
+133,CORE REQUIREMENT 10: TRANSPORT,CORE REQUIREMENT 10,TRANSPORT,Are packages concealed from public view?,Concealment methods documentation,CR10,CR10
+134,CORE REQUIREMENT 10: TRANSPORT,CORE REQUIREMENT 10,TRANSPORT,Are shipping documents accurately coded?,Proper waste codes and descriptions,CR10,CR10
+135,CORE REQUIREMENT 10: TRANSPORT,CORE REQUIREMENT 10,TRANSPORT,Are transporters properly qualified?,Transporter permits and qualifications,CR10,CR10
+136,CORE REQUIREMENT 10: TRANSPORT,CORE REQUIREMENT 10,TRANSPORT,Is chain of custody maintained during transport?,Tracking and custody documentation,CR10,CR10
+137,CORE REQUIREMENT 10: TRANSPORT,CORE REQUIREMENT 10,TRANSPORT,Are hazmat requirements followed?,DOT/IATA compliance documentation,CR10,CR10
+138,CORE REQUIREMENT 10: TRANSPORT,CORE REQUIREMENT 10,TRANSPORT,Are export declarations accurate?,Customs documentation review,CR10,CR10
+139,CORE REQUIREMENT 10: TRANSPORT,CORE REQUIREMENT 10,TRANSPORT,Are transport contracts enforced?,Contract compliance monitoring,CR10,CR10
+140,CORE REQUIREMENT 10: TRANSPORT,CORE REQUIREMENT 10,TRANSPORT,Is packaging appropriate for intended use?,Use-based packaging standards,CR10,CR10
+141,APPENDIX A: DOWNSTREAM RECYCLING CHAIN,APPENDIX A,DOWNSTREAM RECYCLING CHAIN,Are all downstream vendors identified and qualified?,Complete DSV listing with qualifications,A,A
+142,APPENDIX A: DOWNSTREAM RECYCLING CHAIN,APPENDIX A,DOWNSTREAM RECYCLING CHAIN,Is 100% due diligence performed on active DSVs?,Due diligence records for all vendors,A,A
+143,APPENDIX A: DOWNSTREAM RECYCLING CHAIN,APPENDIX A,DOWNSTREAM RECYCLING CHAIN,Are R2 certifications verified as current?,R2 certificate verification records,A,A
+144,APPENDIX A: DOWNSTREAM RECYCLING CHAIN,APPENDIX A,DOWNSTREAM RECYCLING CHAIN,Are non-R2 vendors audited annually?,Annual audit reports,A,A
+145,APPENDIX A: DOWNSTREAM RECYCLING CHAIN,APPENDIX A,DOWNSTREAM RECYCLING CHAIN,Is the recycling chain tracked to final disposition?,Complete chain documentation,A,A
+146,APPENDIX A: DOWNSTREAM RECYCLING CHAIN,APPENDIX A,DOWNSTREAM RECYCLING CHAIN,Are DSV changes registered with SERI if using A(4)(b)?,SERI registration confirmation,A,A
+147,APPENDIX A: DOWNSTREAM RECYCLING CHAIN,APPENDIX A,DOWNSTREAM RECYCLING CHAIN,Are transboundary movements verified as legal?,Import/export compliance documentation,A,A
+148,APPENDIX A: DOWNSTREAM RECYCLING CHAIN,APPENDIX A,DOWNSTREAM RECYCLING CHAIN,Is waste status determined for international shipments?,Waste determination procedures,A,A
+149,APPENDIX A: DOWNSTREAM RECYCLING CHAIN,APPENDIX A,DOWNSTREAM RECYCLING CHAIN,Are DSV capabilities verified for FM processing?,Capability assessment documentation,A,A
+150,APPENDIX A: DOWNSTREAM RECYCLING CHAIN,APPENDIX A,DOWNSTREAM RECYCLING CHAIN,Do DSVs have required management systems?,DSV EHSMS verification,A,A
+151,APPENDIX A: DOWNSTREAM RECYCLING CHAIN,APPENDIX A,DOWNSTREAM RECYCLING CHAIN,Are DSV permits current and appropriate?,Permit verification records,A,A
+152,APPENDIX A: DOWNSTREAM RECYCLING CHAIN,APPENDIX A,DOWNSTREAM RECYCLING CHAIN,Are data sanitization DSVs properly audited?,Independent audit by qualified auditor,A,A
+153,APPENDIX A: DOWNSTREAM RECYCLING CHAIN,APPENDIX A,DOWNSTREAM RECYCLING CHAIN,Do refurbishment DSVs only sell functional equipment?,DSV sales verification,A,A
+154,APPENDIX A: DOWNSTREAM RECYCLING CHAIN,APPENDIX A,DOWNSTREAM RECYCLING CHAIN,Are materials recovery DSVs compliant with Appendix E?,Appendix E compliance verification,A;E,A;E
+155,APPENDIX A: DOWNSTREAM RECYCLING CHAIN,APPENDIX A,DOWNSTREAM RECYCLING CHAIN,Are brokering DSVs qualified to Appendix F?,Broker qualification records,A;F,A;F
+156,APPENDIX A: DOWNSTREAM RECYCLING CHAIN,APPENDIX A,DOWNSTREAM RECYCLING CHAIN,Is DSV throughput tracking verified?,DSV tracking documentation,A,A
+157,APPENDIX A: DOWNSTREAM RECYCLING CHAIN,APPENDIX A,DOWNSTREAM RECYCLING CHAIN,Are negative value materials covered by insurance?,Pollution liability verification,A,A
+158,APPENDIX A: DOWNSTREAM RECYCLING CHAIN,APPENDIX A,DOWNSTREAM RECYCLING CHAIN,Are supplier notifications provided upon request?,Transparency procedures,A,A
+159,APPENDIX A: DOWNSTREAM RECYCLING CHAIN,APPENDIX A,DOWNSTREAM RECYCLING CHAIN,Is receipt at DSVs verified?,Delivery confirmation records,A,A
+160,APPENDIX A: DOWNSTREAM RECYCLING CHAIN,APPENDIX A,DOWNSTREAM RECYCLING CHAIN,Are DSV storage times monitored?,<1 year storage verification,A,A
+161,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Are logical and physical sanitization methods defined?,Method specifications for each,B,B
+162,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Are quality controls documented for verification?,QC procedures and records,B,B
+163,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Is device traceability maintained through sanitization?,Unique identifier tracking,B,B
+164,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Are workers trained on specific sanitization methods?,Method-specific training records,B,B
+165,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Are user markings removed from devices?,Label removal procedures,B,B
+166,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Are physical security controls appropriate?,Locked/alarmed access points,B,B
+167,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Are work areas fully enclosed and secured?,Enclosed space verification,B,B
+168,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Is CCTV coverage comprehensive with 60-day retention?,Camera coverage map and recordings,B,B
+169,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Is security actively monitored?,Monitoring procedures and logs,B,B
+170,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Are security controls regularly tested?,Security test records,B,B
+171,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Can any device be located at any time?,Real-time inventory tracking,B,B
+172,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Are off-site sanitization services compliant?,Off-site compliance verification,B,B
+173,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Are physical destruction methods appropriate?,Table 1 method compliance,B,B
+174,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Are NSA-approved methods used where applicable?,EPL equipment verification,B,B
+175,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Are degaussers rated for media types?,Degausser specifications,B,B
+176,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Are more stringent customer requirements met?,Customer requirement compliance,B,B
+177,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Are destruction videos retained for 60 days?,Video retention verification,B,B
+178,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Are software sanitization records complete?,Electronic records by serial number,B,B
+179,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Is software configured to sanitize all locations?,Software configuration verification,B,B
+180,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Is software maintained with current patches?,Patch management records,B,B
+181,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Are remote service connections removed?,Account disconnection procedures,B,B
+182,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Is 1-5% sampling performed on logical sanitization?,Sampling records and results,B,B
+183,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Are unsuccessful sanitizations physically destroyed?,Failed device destruction records,B,B
+184,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Are quantities processed reconciled with received?,Quantity reconciliation records,B,B
+185,APPENDIX B: DATA SANITIZATION,APPENDIX B,DATA SANITIZATION,Is Data Protection Representative approval required?,Release authorization records,B,B
+186,APPENDIX C: TEST AND REPAIR,APPENDIX C,TEST AND REPAIR,Is QMS certification maintained for test/repair operations?,Valid QMS certificate with appropriate scope,C,C
+187,APPENDIX C: TEST AND REPAIR,APPENDIX C,TEST AND REPAIR,Is an R2 Reuse Plan documented?,Complete reuse plan document,C,C
+188,APPENDIX C: TEST AND REPAIR,APPENDIX C,TEST AND REPAIR,Are worker competencies defined and verified?,Competency requirements and records,C,C
+189,APPENDIX C: TEST AND REPAIR,APPENDIX C,TEST AND REPAIR,Are product safety plans implemented?,Safety verification procedures,C,C
+190,APPENDIX C: TEST AND REPAIR,APPENDIX C,TEST AND REPAIR,Are test plans defined for each equipment type?,Function-specific test procedures,C,C
+191,APPENDIX C: TEST AND REPAIR,APPENDIX C,TEST AND REPAIR,Are pass/fail criteria clearly established?,Documented acceptance criteria,C,C
+192,APPENDIX C: TEST AND REPAIR,APPENDIX C,TEST AND REPAIR,Are test results documented and stored?,Test records by serial number,C,C
+193,APPENDIX C: TEST AND REPAIR,APPENDIX C,TEST AND REPAIR,Are quality assurance plans effective?,QA procedures and metrics,C,C
+194,APPENDIX C: TEST AND REPAIR,APPENDIX C,TEST AND REPAIR,Is test equipment accuracy verified?,Calibration records,C,C
+195,APPENDIX C: TEST AND REPAIR,APPENDIX C,TEST AND REPAIR,Are failed items prevented from unintended use?,Segregation and control procedures,C,C
+196,APPENDIX C: TEST AND REPAIR,APPENDIX C,TEST AND REPAIR,Is a product return policy maintained?,Return policy documentation,A;C,A;C
+197,APPENDIX C: TEST AND REPAIR,APPENDIX C,TEST AND REPAIR,Are items tested within one year of receipt?,Processing time records,C,C
+198,APPENDIX C: TEST AND REPAIR,APPENDIX C,TEST AND REPAIR,Is data sanitized before testing?,Pre-test sanitization verification,C,C
+199,APPENDIX C: TEST AND REPAIR,APPENDIX C,TEST AND REPAIR,Are functional categories properly assigned?,REC category assignment records,C,C
+200,APPENDIX C: TEST AND REPAIR,APPENDIX C,TEST AND REPAIR,Are safety assessments performed on functional equipment?,Safety check documentation,C,C
+201,APPENDIX C: TEST AND REPAIR,APPENDIX C,TEST AND REPAIR,Are test results maintained for each function?,Complete test documentation,C,C
+202,APPENDIX C: TEST AND REPAIR,APPENDIX C,TEST AND REPAIR,Are non-functional items properly managed?,Repair or materials recovery routing,C,C
+203,APPENDIX C: TEST AND REPAIR,APPENDIX C,TEST AND REPAIR,Are reusable components harvested?,Component recovery procedures,C,C
+204,APPENDIX C: TEST AND REPAIR,APPENDIX C,TEST AND REPAIR,Is cosmetic condition accurately described?,Condition grading standards,C,C
+205,APPENDIX C: TEST AND REPAIR,APPENDIX C,TEST AND REPAIR,Are recalls checked and addressed?,Recall verification procedures,C,C
+206,APPENDIX D: SPECIALTY ELECTRONICS REUSE,APPENDIX D,SPECIALTY ELECTRONICS REUSE,Is Appendix C certification also maintained?,Dual certification verification,C;D,C;D
+207,APPENDIX D: SPECIALTY ELECTRONICS REUSE,APPENDIX D,SPECIALTY ELECTRONICS REUSE,Are technicians competent for specialty electronics?,Specialized training records,D,D
+208,APPENDIX D: SPECIALTY ELECTRONICS REUSE,APPENDIX D,SPECIALTY ELECTRONICS REUSE,Is testable specialty equipment actually tested?,Test records where capable,D,D
+209,APPENDIX D: SPECIALTY ELECTRONICS REUSE,APPENDIX D,SPECIALTY ELECTRONICS REUSE,Is prior functionality verified for untestable items?,Source verification documentation,D,D
+210,APPENDIX D: SPECIALTY ELECTRONICS REUSE,APPENDIX D,SPECIALTY ELECTRONICS REUSE,Are items inspected for physical damage?,Visual inspection records,D,D
+211,APPENDIX D: SPECIALTY ELECTRONICS REUSE,APPENDIX D,SPECIALTY ELECTRONICS REUSE,Are part numbers verified as accurate?,Part number verification procedures,D,D
+212,APPENDIX D: SPECIALTY ELECTRONICS REUSE,APPENDIX D,SPECIALTY ELECTRONICS REUSE,Is data sanitization verified from source?,Source sanitization confirmation,D,D
+213,APPENDIX D: SPECIALTY ELECTRONICS REUSE,APPENDIX D,SPECIALTY ELECTRONICS REUSE,Are failed verifications properly managed?,Component harvesting procedures,D,D
+214,APPENDIX D: SPECIALTY ELECTRONICS REUSE,APPENDIX D,SPECIALTY ELECTRONICS REUSE,Are verified items tracked individually?,Unique identifier assignment,D,D
+215,APPENDIX D: SPECIALTY ELECTRONICS REUSE,APPENDIX D,SPECIALTY ELECTRONICS REUSE,Is specialty equipment protected during storage?,Protective packaging standards,D,D
+216,APPENDIX D: SPECIALTY ELECTRONICS REUSE,APPENDIX D,SPECIALTY ELECTRONICS REUSE,Are items labeled with facility information?,Label application records,D,D
+217,APPENDIX D: SPECIALTY ELECTRONICS REUSE,APPENDIX D,SPECIALTY ELECTRONICS REUSE,Are items identified as Verified Specialty Electronics?,REC category assignment,D,D
+218,APPENDIX D: SPECIALTY ELECTRONICS REUSE,APPENDIX D,SPECIALTY ELECTRONICS REUSE,Do stored items maintain positive value?,Value assessment records,D,D
+219,APPENDIX D: SPECIALTY ELECTRONICS REUSE,APPENDIX D,SPECIALTY ELECTRONICS REUSE,Are sales limited to specific part requests?,Sales order verification,D,D
+220,APPENDIX D: SPECIALTY ELECTRONICS REUSE,APPENDIX D,SPECIALTY ELECTRONICS REUSE,Do customers accept untested status?,Customer acknowledgment records,D,D
+221,APPENDIX D: SPECIALTY ELECTRONICS REUSE,APPENDIX D,SPECIALTY ELECTRONICS REUSE,Are returns accepted at no charge?,No-charge return policy,D,D
+222,APPENDIX D: SPECIALTY ELECTRONICS REUSE,APPENDIX D,SPECIALTY ELECTRONICS REUSE,Is end-user sales verification available?,Sales tracking to end users,D,D
+223,APPENDIX D: SPECIALTY ELECTRONICS REUSE,APPENDIX D,SPECIALTY ELECTRONICS REUSE,Are recycling returns offered free?,Free recycling return program,D,D
+224,APPENDIX D: SPECIALTY ELECTRONICS REUSE,APPENDIX D,SPECIALTY ELECTRONICS REUSE,Are serial numbers tracked on sales documents?,Serial number documentation,D,D
+225,APPENDIX D: SPECIALTY ELECTRONICS REUSE,APPENDIX D,SPECIALTY ELECTRONICS REUSE,Are storage conditions appropriate for electronics?,Environmental control verification,D,D
+226,APPENDIX E: MATERIALS RECOVERY,APPENDIX E,MATERIALS RECOVERY,Has a hazards assessment been conducted?,Written hazards identification,A;E,A;E
+227,APPENDIX E: MATERIALS RECOVERY,APPENDIX E,MATERIALS RECOVERY,Is the assessment performed by qualified individuals?,Assessor qualification records,E,E
+228,APPENDIX E: MATERIALS RECOVERY,APPENDIX E,MATERIALS RECOVERY,Are wash facilities available for decontamination?,Decontamination station verification,E,E
+229,APPENDIX E: MATERIALS RECOVERY,APPENDIX E,MATERIALS RECOVERY,Are clean eating areas separated from work areas?,Designated clean areas,E,E
+230,APPENDIX E: MATERIALS RECOVERY,APPENDIX E,MATERIALS RECOVERY,Are work clothes restricted from leaving facility?,Clothing control procedures,E,E
+231,APPENDIX E: MATERIALS RECOVERY,APPENDIX E,MATERIALS RECOVERY,Is PPE properly cleaned and maintained?,PPE care procedures,E,E
+232,APPENDIX E: MATERIALS RECOVERY,APPENDIX E,MATERIALS RECOVERY,Are work areas regularly cleaned?,Cleaning schedules and records,E,E
+233,APPENDIX E: MATERIALS RECOVERY,APPENDIX E,MATERIALS RECOVERY,Are lockout/tagout procedures implemented?,LOTO program documentation,E,E
+234,APPENDIX E: MATERIALS RECOVERY,APPENDIX E,MATERIALS RECOVERY,Are machine guards in place and functional?,Guard inspection records,E,E
+235,APPENDIX E: MATERIALS RECOVERY,APPENDIX E,MATERIALS RECOVERY,Are pre-use equipment inspections performed?,Equipment inspection logs,E,E
+236,APPENDIX E: MATERIALS RECOVERY,APPENDIX E,MATERIALS RECOVERY,Is industrial hygiene monitoring conducted?,Air and wipe sampling results,E,E
+237,APPENDIX E: MATERIALS RECOVERY,APPENDIX E,MATERIALS RECOVERY,Are mechanical processes re-evaluated annually?,Annual risk reassessment,E,E
+238,APPENDIX E: MATERIALS RECOVERY,APPENDIX E,MATERIALS RECOVERY,Is mercury monitored where lamps are processed?,Mercury monitoring data,E,E
+239,APPENDIX E: MATERIALS RECOVERY,APPENDIX E,MATERIALS RECOVERY,Is medical monitoring provided for exposures?,Medical surveillance program,E,E
+240,APPENDIX E: MATERIALS RECOVERY,APPENDIX E,MATERIALS RECOVERY,Are battery removal areas properly controlled?,Containment measures verification,E,E
+241,APPENDIX E: MATERIALS RECOVERY,APPENDIX E,MATERIALS RECOVERY,Are FMs removed before shredding?,Pre-shredding inspection records,E,E
+242,APPENDIX E: MATERIALS RECOVERY,APPENDIX E,MATERIALS RECOVERY,Is mercury recovery demonstrated?,Mercury recovery data,E,E
+243,APPENDIX E: MATERIALS RECOVERY,APPENDIX E,MATERIALS RECOVERY,Are CRTs/batteries/boards exceptions documented?,Exception justification records,E,E
+244,APPENDIX E: MATERIALS RECOVERY,APPENDIX E,MATERIALS RECOVERY,Is pollution liability insurance maintained?,Insurance policy verification,E,E
+245,APPENDIX E: MATERIALS RECOVERY,APPENDIX E,MATERIALS RECOVERY,Are output streams re-categorized?,Output categorization procedures,E,E
+246,APPENDIX F: BROKERING,APPENDIX F,BROKERING,Are all brokering activities declared in scope?,Scope documentation of brokering,F,F
+247,APPENDIX F: BROKERING,APPENDIX F,BROKERING,Are brokered materials DSVs properly qualified?,DSV qualification for brokered streams,F,F
+248,APPENDIX F: BROKERING,APPENDIX F,BROKERING,Is QMS certification maintained for brokering?,Valid QMS certificate,F,F
+249,APPENDIX F: BROKERING,APPENDIX F,BROKERING,Are legal requirements identified for brokered materials?,Legal compliance for transactions,F,F
+250,APPENDIX F: BROKERING,APPENDIX F,BROKERING,Are brokered materials tracked using REC categories?,REC application to brokered items,F,F
+251,APPENDIX F: BROKERING,APPENDIX F,BROKERING,Is data security maintained during brokered transport?,Security procedures for shipments,F,F
+252,APPENDIX F: BROKERING,APPENDIX F,BROKERING,Are throughput records maintained for brokered materials?,Transaction documentation,F,F
+253,APPENDIX F: BROKERING,APPENDIX F,BROKERING,Are packaging requirements provided to sellers?,Packaging instruction records,F,F
+254,APPENDIX F: BROKERING,APPENDIX F,BROKERING,"If no facility exists, are Core 3 and 9 exemptions documented?",Exemption justification,F,F
+255,APPENDIX F: BROKERING,APPENDIX F,BROKERING,Are broker-only operations properly identified on certificate?,"""Broker Only"""" certificate designation""",F,F
+256,APPENDIX F: BROKERING,APPENDIX F,BROKERING,Are brokered international shipments verified as legal?,Import/export documentation,F,F
+257,APPENDIX F: BROKERING,APPENDIX F,BROKERING,Is Core 10 audited for all brokering operations?,Transport requirement compliance,F,F
+258,APPENDIX F: BROKERING,APPENDIX F,BROKERING,Are direct shipments from supplier to DSV tracked?,Direct shipment documentation,F,F
+259,APPENDIX F: BROKERING,APPENDIX F,BROKERING,Are brokered FM materials properly managed?,FM management for brokered items,F,F
+260,APPENDIX F: BROKERING,APPENDIX F,BROKERING,Are customer requirements communicated to DSVs?,Requirement flow-down records,F,F
+261,APPENDIX G: PHOTOVOLTAIC (PV) MODULES,APPENDIX G,PHOTOVOLTAIC (PV) MODULES,Are PV modules managed as R2 Controlled Streams?,PV module categorization records,G,G
+262,APPENDIX G: PHOTOVOLTAIC (PV) MODULES,APPENDIX G,PHOTOVOLTAIC (PV) MODULES,Are electrical safety hazards assessed?,Electrical hazard assessment,G,G
+263,APPENDIX G: PHOTOVOLTAIC (PV) MODULES,APPENDIX G,PHOTOVOLTAIC (PV) MODULES,Are PV modules included in FM Management Plan?,FM Plan with PV modules,G,G
+264,APPENDIX G: PHOTOVOLTAIC (PV) MODULES,APPENDIX G,PHOTOVOLTAIC (PV) MODULES,Is there a process to prevent electrical conduction?,Written safety procedures,A;G,A;G
+265,APPENDIX G: PHOTOVOLTAIC (PV) MODULES,APPENDIX G,PHOTOVOLTAIC (PV) MODULES,Are damaged PV modules stored indoors?,Indoor storage verification,G,G
+266,APPENDIX G: PHOTOVOLTAIC (PV) MODULES,APPENDIX G,PHOTOVOLTAIC (PV) MODULES,Are PV modules evaluated for reuse capability?,Evaluation procedures,G,G
+267,APPENDIX G: PHOTOVOLTAIC (PV) MODULES,APPENDIX G,PHOTOVOLTAIC (PV) MODULES,Is power output testing performed?,Wattage test results,G,G
+268,APPENDIX G: PHOTOVOLTAIC (PV) MODULES,APPENDIX G,PHOTOVOLTAIC (PV) MODULES,Is output ratio to original capacity disclosed?,Performance disclosure records,G,G
+269,APPENDIX G: PHOTOVOLTAIC (PV) MODULES,APPENDIX G,PHOTOVOLTAIC (PV) MODULES,Are repairs to PV modules documented?,Repair documentation,G,G
+270,APPENDIX G: PHOTOVOLTAIC (PV) MODULES,APPENDIX G,PHOTOVOLTAIC (PV) MODULES,Are DSVs qualified for PV module processing?,DSV PV capability verification,G,G
+271,APPENDIX G: PHOTOVOLTAIC (PV) MODULES,APPENDIX G,PHOTOVOLTAIC (PV) MODULES,Are materials recovery DSVs compliant with requirements?,Appendix E compliance for PV,G,G
+272,APPENDIX G: PHOTOVOLTAIC (PV) MODULES,APPENDIX G,PHOTOVOLTAIC (PV) MODULES,Is QMS scope appropriate for PV operations?,QMS certificate including PV/solar,G,G
+273,APPENDIX G: PHOTOVOLTAIC (PV) MODULES,APPENDIX G,PHOTOVOLTAIC (PV) MODULES,Is EHSMS scope appropriate for PV handling?,EHSMS certificate including PV/solar,G,G
+274,APPENDIX G: PHOTOVOLTAIC (PV) MODULES,APPENDIX G,PHOTOVOLTAIC (PV) MODULES,Are solar cells properly managed as FMs?,Solar cell FM procedures,G,G
+275,APPENDIX G: PHOTOVOLTAIC (PV) MODULES,APPENDIX G,PHOTOVOLTAIC (PV) MODULES,Are brokered PV modules properly tracked?,PV brokering documentation,G,G
+276,AUDIT PROCESS AND DOCUMENTATION,AUDIT PROCESS AND DOCUMENTATION,,Has the facility completed readiness review requirements?,Readiness checklist completion,,
+277,AUDIT PROCESS AND DOCUMENTATION,AUDIT PROCESS AND DOCUMENTATION,,Are all required management system certificates valid?,Current certificates from IAF MLA signatory,,
+278,AUDIT PROCESS AND DOCUMENTATION,AUDIT PROCESS AND DOCUMENTATION,,Has the facility been audited within required timeframes?,Audit schedule compliance,,
+279,AUDIT PROCESS AND DOCUMENTATION,AUDIT PROCESS AND DOCUMENTATION,,Are all nonconformities properly closed?,NC closure evidence,,
+280,AUDIT PROCESS AND DOCUMENTATION,AUDIT PROCESS AND DOCUMENTATION,,Are audit packages complete with required attachments?,Table 8 document checklist,,
+281,AUDIT PROCESS AND DOCUMENTATION,AUDIT PROCESS AND DOCUMENTATION,,Is the FM Management Plan current and complete?,Updated FM plan with flowchart,,
+282,AUDIT PROCESS AND DOCUMENTATION,AUDIT PROCESS AND DOCUMENTATION,,Are transaction sheets accurately completed?,Transaction documentation,,
+283,AUDIT PROCESS AND DOCUMENTATION,AUDIT PROCESS AND DOCUMENTATION,,Are campus locations all properly audited?,Multi-location audit evidence,,
+284,AUDIT PROCESS AND DOCUMENTATION,AUDIT PROCESS AND DOCUMENTATION,,Is the correct certification structure identified?,Table 3 structure verification,,
+285,AUDIT PROCESS AND DOCUMENTATION,AUDIT PROCESS AND DOCUMENTATION,,Are consultant relationships properly documented?,Consultant disclosure records,,
+286,AUDIT PROCESS AND DOCUMENTATION,AUDIT PROCESS AND DOCUMENTATION,,Have all legal entities been verified?,Business registration documents,,
+287,AUDIT PROCESS AND DOCUMENTATION,AUDIT PROCESS AND DOCUMENTATION,,Are DBAs and trade names properly listed?,Name registration verification,,
+288,AUDIT PROCESS AND DOCUMENTATION,AUDIT PROCESS AND DOCUMENTATION,,Is the audit time calculation appropriate?,Tables 4 and 5 compliance,,
+289,AUDIT PROCESS AND DOCUMENTATION,AUDIT PROCESS AND DOCUMENTATION,,Are remote audit requirements met if applicable?,Remote audit qualification,,
+290,AUDIT PROCESS AND DOCUMENTATION,AUDIT PROCESS AND DOCUMENTATION,,Are witness inspection findings addressed?,SERI inspection responses,,
+291,RISK MANAGEMENT AND COMPLIANCE,RISK MANAGEMENT AND COMPLIANCE,,Are financial assurances adequate for risks?,Risk-based financial calculations,,
+292,RISK MANAGEMENT AND COMPLIANCE,RISK MANAGEMENT AND COMPLIANCE,,Is the closure plan comprehensive?,Complete closure procedures,,
+293,RISK MANAGEMENT AND COMPLIANCE,RISK MANAGEMENT AND COMPLIANCE,,Are emergency response procedures documented?,Emergency response plan,,
+294,RISK MANAGEMENT AND COMPLIANCE,RISK MANAGEMENT AND COMPLIANCE,,Are incident investigations conducted?,Incident investigation records,,
+295,RISK MANAGEMENT AND COMPLIANCE,RISK MANAGEMENT AND COMPLIANCE,,Are regulatory inspections properly managed?,Inspection response procedures,,
+296,RISK MANAGEMENT AND COMPLIANCE,RISK MANAGEMENT AND COMPLIANCE,,Is management review conducted regularly?,Management review minutes,,
+297,RISK MANAGEMENT AND COMPLIANCE,RISK MANAGEMENT AND COMPLIANCE,,Are performance metrics tracked?,KPI tracking records,,
+298,RISK MANAGEMENT AND COMPLIANCE,RISK MANAGEMENT AND COMPLIANCE,,Are customer complaints properly addressed?,Complaint resolution records,,
+299,RISK MANAGEMENT AND COMPLIANCE,RISK MANAGEMENT AND COMPLIANCE,,Is continuous improvement demonstrated?,Improvement project documentation,,
+300,RISK MANAGEMENT AND COMPLIANCE,RISK MANAGEMENT AND COMPLIANCE,,Are internal communications effective?,Communication records,,
+301,WORKER SAFETY AND TRAINING,WORKER SAFETY AND TRAINING,,Are all workers properly trained before work?,Pre-work training records,,
+302,WORKER SAFETY AND TRAINING,WORKER SAFETY AND TRAINING,,Is competency verified for assigned tasks?,Competency assessments,,
+303,WORKER SAFETY AND TRAINING,WORKER SAFETY AND TRAINING,,Are safety meetings conducted regularly?,Safety meeting minutes,,
+304,WORKER SAFETY AND TRAINING,WORKER SAFETY AND TRAINING,,Is PPE appropriate for hazards?,PPE assessment records,,
+305,WORKER SAFETY AND TRAINING,WORKER SAFETY AND TRAINING,,Are exposure monitoring results communicated?,Employee notification records,,
+306,WORKER SAFETY AND TRAINING,WORKER SAFETY AND TRAINING,,Are work restrictions followed for exposures?,Medical restriction compliance,,
+307,WORKER SAFETY AND TRAINING,WORKER SAFETY AND TRAINING,,Is first aid available and adequate?,First aid station verification,,
+308,WORKER SAFETY AND TRAINING,WORKER SAFETY AND TRAINING,,Are emergency evacuations practiced?,Evacuation drill records,,
+309,WORKER SAFETY AND TRAINING,WORKER SAFETY AND TRAINING,,Are visitors properly controlled?,Visitor management procedures,,
+310,WORKER SAFETY AND TRAINING,WORKER SAFETY AND TRAINING,,Are contractor safety requirements enforced?,Contractor safety programs,,
+311,QUALITY CONTROL AND VERIFICATION,QUALITY CONTROL AND VERIFICATION,,Are receiving inspections performed?,Incoming inspection records,,
+312,QUALITY CONTROL AND VERIFICATION,QUALITY CONTROL AND VERIFICATION,,Are process controls maintained?,Process control documentation,,
+313,QUALITY CONTROL AND VERIFICATION,QUALITY CONTROL AND VERIFICATION,,Are non-conforming materials segregated?,Segregation procedures,,
+314,QUALITY CONTROL AND VERIFICATION,QUALITY CONTROL AND VERIFICATION,,Are corrective actions effective?,CAR effectiveness verification,,
+315,QUALITY CONTROL AND VERIFICATION,QUALITY CONTROL AND VERIFICATION,,Are preventive actions implemented?,Preventive action records,,
+316,QUALITY CONTROL AND VERIFICATION,QUALITY CONTROL AND VERIFICATION,,Is equipment calibrated as required?,Calibration certificates,,
+317,QUALITY CONTROL AND VERIFICATION,QUALITY CONTROL AND VERIFICATION,,Are work instructions current?,Controlled document system,,
+318,QUALITY CONTROL AND VERIFICATION,QUALITY CONTROL AND VERIFICATION,,Are process changes properly managed?,Change control procedures,,
+319,QUALITY CONTROL AND VERIFICATION,QUALITY CONTROL AND VERIFICATION,,Are supplier evaluations conducted?,Supplier assessment records,,
+320,QUALITY CONTROL AND VERIFICATION,QUALITY CONTROL AND VERIFICATION,,Are customer requirements verified?,Requirement verification records,,
+321,ENVIRONMENTAL COMPLIANCE,ENVIRONMENTAL COMPLIANCE,,Are air emissions properly controlled?,Emission control verification,,
+322,ENVIRONMENTAL COMPLIANCE,ENVIRONMENTAL COMPLIANCE,,Are wastewater discharges compliant?,Discharge monitoring records,,
+323,ENVIRONMENTAL COMPLIANCE,ENVIRONMENTAL COMPLIANCE,,Are hazardous wastes properly managed?,Waste manifests and records,,
+324,ENVIRONMENTAL COMPLIANCE,ENVIRONMENTAL COMPLIANCE,,Are spill controls adequate?,Spill prevention procedures,,
+325,ENVIRONMENTAL COMPLIANCE,ENVIRONMENTAL COMPLIANCE,,Are storm water controls effective?,Storm water management plan,,
+326,ENVIRONMENTAL COMPLIANCE,ENVIRONMENTAL COMPLIANCE,,Is waste minimization practiced?,Waste reduction initiatives,,
+327,ENVIRONMENTAL COMPLIANCE,ENVIRONMENTAL COMPLIANCE,,Are recycling targets met?,Recycling performance data,,
+328,ENVIRONMENTAL COMPLIANCE,ENVIRONMENTAL COMPLIANCE,,Are environmental objectives established?,Objective tracking records,,
+329,ENVIRONMENTAL COMPLIANCE,ENVIRONMENTAL COMPLIANCE,,Are chemical inventories maintained?,Chemical inventory lists,,
+330,ENVIRONMENTAL COMPLIANCE,ENVIRONMENTAL COMPLIANCE,,Are SDSs readily available?,SDS accessibility verification,,
+331,BUSINESS CONTINUITY,BUSINESS CONTINUITY,,Is business continuity planning performed?,Continuity plan documentation,,
+332,BUSINESS CONTINUITY,BUSINESS CONTINUITY,,Are critical suppliers identified?,Supplier risk assessment,,
+333,BUSINESS CONTINUITY,BUSINESS CONTINUITY,,Are backup systems maintained?,Backup system testing,,
+334,BUSINESS CONTINUITY,BUSINESS CONTINUITY,,Is data backup performed regularly?,Data backup records,,
+335,BUSINESS CONTINUITY,BUSINESS CONTINUITY,,Are alternative processing options identified?,Contingency arrangements,,
+336,BUSINESS CONTINUITY,BUSINESS CONTINUITY,,Is insurance coverage reviewed annually?,Insurance review records,,
+337,BUSINESS CONTINUITY,BUSINESS CONTINUITY,,Are financial controls adequate?,Financial audit results,,
+338,BUSINESS CONTINUITY,BUSINESS CONTINUITY,,Are contracts properly managed?,Contract management system,,
+339,BUSINESS CONTINUITY,BUSINESS CONTINUITY,,Are intellectual property rights protected?,IP protection measures,,
+340,BUSINESS CONTINUITY,BUSINESS CONTINUITY,,Are confidentiality agreements enforced?,NDA management records,,
+341,STAKEHOLDER ENGAGEMENT,STAKEHOLDER ENGAGEMENT,,Are customer requirements documented?,Customer requirement records,,
+342,STAKEHOLDER ENGAGEMENT,STAKEHOLDER ENGAGEMENT,,Is customer satisfaction measured?,Satisfaction survey results,,
+343,STAKEHOLDER ENGAGEMENT,STAKEHOLDER ENGAGEMENT,,Are supplier relationships managed?,Supplier management program,,
+344,STAKEHOLDER ENGAGEMENT,STAKEHOLDER ENGAGEMENT,,Is community engagement performed?,Community interaction records,,
+345,STAKEHOLDER ENGAGEMENT,STAKEHOLDER ENGAGEMENT,,Are regulatory relationships maintained?,Regulatory correspondence,,
+346,STAKEHOLDER ENGAGEMENT,STAKEHOLDER ENGAGEMENT,,Are industry associations engaged?,Association participation,,
+347,STAKEHOLDER ENGAGEMENT,STAKEHOLDER ENGAGEMENT,,Is transparency maintained as required?,Public disclosure records,,
+348,STAKEHOLDER ENGAGEMENT,STAKEHOLDER ENGAGEMENT,,Are stakeholder concerns addressed?,Concern response records,,
+349,STAKEHOLDER ENGAGEMENT,STAKEHOLDER ENGAGEMENT,,Is marketing accurate and compliant?,Marketing material review,,
+350,STAKEHOLDER ENGAGEMENT,STAKEHOLDER ENGAGEMENT,,Are certifications properly displayed?,Certificate display verification,,
+351,SPECIAL CONSIDERATIONS,SPECIAL CONSIDERATIONS,,Are Basel Convention requirements met?,Basel compliance documentation,,
+352,SPECIAL CONSIDERATIONS,SPECIAL CONSIDERATIONS,,Are e-Stewards requirements considered?,Dual certification management,,
+353,SPECIAL CONSIDERATIONS,SPECIAL CONSIDERATIONS,,Are OEM requirements fulfilled?,OEM agreement compliance,,
+354,SPECIAL CONSIDERATIONS,SPECIAL CONSIDERATIONS,,Are government contracts properly managed?,Government compliance records,,
+355,SPECIAL CONSIDERATIONS,SPECIAL CONSIDERATIONS,,Are data destruction certificates provided?,Certificate issuance records,,
+356,SPECIAL CONSIDERATIONS,SPECIAL CONSIDERATIONS,,Are asset recovery services documented?,Asset tracking documentation,,
+357,SPECIAL CONSIDERATIONS,SPECIAL CONSIDERATIONS,,Are ITAD services properly managed?,ITAD service records,,
+358,SPECIAL CONSIDERATIONS,SPECIAL CONSIDERATIONS,,Are refurbishment standards maintained?,Refurbishment specifications,,
+359,SPECIAL CONSIDERATIONS,SPECIAL CONSIDERATIONS,,Are warranty provisions adequate?,Warranty program documentation,,
+360,SPECIAL CONSIDERATIONS,SPECIAL CONSIDERATIONS,,Are reverse logistics managed?,Return logistics procedures,,
+361,CERTIFICATION MAINTENANCE,CERTIFICATION MAINTENANCE,,Are surveillance audits scheduled properly?,12-month maximum intervals,,
+362,CERTIFICATION MAINTENANCE,CERTIFICATION MAINTENANCE,,Are certificate changes reported timely?,7-day notification records,,
+363,CERTIFICATION MAINTENANCE,CERTIFICATION MAINTENANCE,,Are scope changes properly evaluated?,Scope change assessments,,
+364,CERTIFICATION MAINTENANCE,CERTIFICATION MAINTENANCE,,Are facility moves properly managed?,Location change procedures,,
+365,CERTIFICATION MAINTENANCE,CERTIFICATION MAINTENANCE,,Are name changes properly documented?,Name change verification,,
+366,CERTIFICATION MAINTENANCE,CERTIFICATION MAINTENANCE,,Are structure changes properly assessed?,Structure change evaluation,,
+367,CERTIFICATION MAINTENANCE,CERTIFICATION MAINTENANCE,,Is SERI licensing current?,License acknowledgment,,
+368,CERTIFICATION MAINTENANCE,CERTIFICATION MAINTENANCE,,Are CB communications timely?,Communication records,,
+369,CERTIFICATION MAINTENANCE,CERTIFICATION MAINTENANCE,,Are nonconformity deadlines met?,Table 6 compliance,,
+370,CERTIFICATION MAINTENANCE,CERTIFICATION MAINTENANCE,,Are major NCs properly managed?,Major NC resolution,,
+371,FINAL VERIFICATION,FINAL VERIFICATION,,Can the facility demonstrate overall R2 compliance?,Comprehensive compliance evidence,,
+372,FINAL VERIFICATION,FINAL VERIFICATION,,Are all applicable appendices properly implemented?,Appendix implementation verification,,
+373,FINAL VERIFICATION,FINAL VERIFICATION,,Is the management system effectively integrated?,System integration evidence,,
+374,FINAL VERIFICATION,FINAL VERIFICATION,,Are resources adequate for compliance?,Resource adequacy assessment,,
+375,FINAL VERIFICATION,FINAL VERIFICATION,,Is top management committed to R2?,Management commitment evidence,,
+376,FINAL VERIFICATION,FINAL VERIFICATION,,Are roles and responsibilities clearly defined?,Organizational chart and descriptions,,
+377,FINAL VERIFICATION,FINAL VERIFICATION,,Is documentation control effective?,Document control system,,
+378,FINAL VERIFICATION,FINAL VERIFICATION,,Are records properly maintained?,Records management system,,
+379,FINAL VERIFICATION,FINAL VERIFICATION,,Is the facility prepared for unannounced inspections?,Inspection readiness,,
+380,FINAL VERIFICATION,FINAL VERIFICATION,,Are all R2 requirements demonstrably met?,Complete conformance portfolio,,
+381,REMOTE AUDIT SPECIFIC (WHERE APPLICABLE),REMOTE AUDIT SPECIFIC (WHERE APPLICABLE),,Are remote audit prerequisites met?,Phase 1 qualification checklist,,
+382,REMOTE AUDIT SPECIFIC (WHERE APPLICABLE),REMOTE AUDIT SPECIFIC (WHERE APPLICABLE),,Is documentation uploaded timely?,10-day advance upload,,
+383,REMOTE AUDIT SPECIFIC (WHERE APPLICABLE),REMOTE AUDIT SPECIFIC (WHERE APPLICABLE),,Are video capabilities adequate?,Video tour capability,,
+384,REMOTE AUDIT SPECIFIC (WHERE APPLICABLE),REMOTE AUDIT SPECIFIC (WHERE APPLICABLE),,Is file sharing secure and functional?,Secure platform access,,
+385,REMOTE AUDIT SPECIFIC (WHERE APPLICABLE),REMOTE AUDIT SPECIFIC (WHERE APPLICABLE),,Are all areas accessible virtually?,Complete facility coverage,,
+386,REMOTE AUDIT SPECIFIC (WHERE APPLICABLE),REMOTE AUDIT SPECIFIC (WHERE APPLICABLE),,Are workers available for interviews?,Interview scheduling,,
+387,REMOTE AUDIT SPECIFIC (WHERE APPLICABLE),REMOTE AUDIT SPECIFIC (WHERE APPLICABLE),,Can operations be observed live?,Active operations verification,,
+388,REMOTE AUDIT SPECIFIC (WHERE APPLICABLE),REMOTE AUDIT SPECIFIC (WHERE APPLICABLE),,Are connectivity issues resolved?,Stable connection verification,,
+389,REMOTE AUDIT SPECIFIC (WHERE APPLICABLE),REMOTE AUDIT SPECIFIC (WHERE APPLICABLE),,Is documentation in auditor's language?,Translation if needed,,
+390,REMOTE AUDIT SPECIFIC (WHERE APPLICABLE),REMOTE AUDIT SPECIFIC (WHERE APPLICABLE),,Are follow-up requirements understood?,Phase 5 completion,,
+391,CONTINUOUS IMPROVEMENT,CONTINUOUS IMPROVEMENT,,Are lessons learned captured?,Improvement tracking system,,
+392,CONTINUOUS IMPROVEMENT,CONTINUOUS IMPROVEMENT,,Are best practices shared?,Knowledge sharing records,,
+393,CONTINUOUS IMPROVEMENT,CONTINUOUS IMPROVEMENT,,Are efficiency improvements tracked?,Efficiency metrics,,
+394,CONTINUOUS IMPROVEMENT,CONTINUOUS IMPROVEMENT,,Are cost reductions documented?,Cost benefit analysis,,
+395,CONTINUOUS IMPROVEMENT,CONTINUOUS IMPROVEMENT,,Are innovation initiatives supported?,Innovation program evidence,,
+396,CONTINUOUS IMPROVEMENT,CONTINUOUS IMPROVEMENT,,Are employee suggestions implemented?,Suggestion program records,,
+397,CONTINUOUS IMPROVEMENT,CONTINUOUS IMPROVEMENT,,Are benchmarking activities performed?,Benchmark comparisons,,
+398,CONTINUOUS IMPROVEMENT,CONTINUOUS IMPROVEMENT,,Are industry trends monitored?,Trend analysis records,,
+399,CONTINUOUS IMPROVEMENT,CONTINUOUS IMPROVEMENT,,Are technology upgrades evaluated?,Technology assessment,,
+400,CONTINUOUS IMPROVEMENT,CONTINUOUS IMPROVEMENT,,Is overall performance improving?,Performance trend data,,

@@ -1,0 +1,316 @@
+name: PR Auto Labeler
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  label-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Auto-label PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            const prTitle = pr.title.toLowerCase();
+            const prBody = (pr.body || '').toLowerCase();
+            const branch = pr.head.ref.toLowerCase();
+            const labelsToAdd = new Set();
+            const labelsToRemove = new Set();
+
+            // Label definitions - ensure these labels exist in your repository
+            // You can create them manually or via Settings > Labels in GitHub
+            const labelCategories = {
+              type: ['type: feat', 'type: fix', 'type: docs', 'type: refactor', 'type: test', 'type: chore', 'type: ci', 'type: perf', 'type: security'],
+              area: ['area: frontend', 'area: backend', 'area: database', 'area: ci/cd', 'area: docs', 'area: config'],
+              size: ['size: xs', 'size: s', 'size: m', 'size: l', 'size: xl'],
+              priority: ['priority: critical', 'priority: high', 'priority: medium', 'priority: low'],
+              status: ['needs: review', 'in: review', 'approved']
+            };
+
+            // Helper function to get all labels to ensure they exist
+            async function ensureLabelsExist() {
+              const requiredLabels = [
+                // Type labels
+                { name: 'type: feat', color: '0e8a16', description: 'New feature' },
+                { name: 'type: fix', color: 'd73a4a', description: 'Bug fix' },
+                { name: 'type: docs', color: '0075ca', description: 'Documentation changes' },
+                { name: 'type: refactor', color: 'fbca04', description: 'Code refactoring' },
+                { name: 'type: test', color: 'bfd4f2', description: 'Test changes' },
+                { name: 'type: chore', color: 'fef2c0', description: 'Maintenance tasks' },
+                { name: 'type: ci', color: '128a0c', description: 'CI/CD changes' },
+                { name: 'type: perf', color: 'ff6b6b', description: 'Performance improvements' },
+                { name: 'type: security', color: 'ee0701', description: 'Security fixes' },
+                // Area labels
+                { name: 'area: frontend', color: '5319e7', description: 'Frontend changes' },
+                { name: 'area: backend', color: '1d76db', description: 'Backend changes' },
+                { name: 'area: database', color: 'c5def5', description: 'Database changes' },
+                { name: 'area: ci/cd', color: '0e8a16', description: 'CI/CD changes' },
+                { name: 'area: docs', color: '0075ca', description: 'Documentation changes' },
+                { name: 'area: config', color: 'd4c5f9', description: 'Configuration changes' },
+                // Size labels
+                { name: 'size: xs', color: '00ff00', description: 'Extra small PR (< 10 lines)' },
+                { name: 'size: s', color: '7fff00', description: 'Small PR (10-100 lines)' },
+                { name: 'size: m', color: 'ffff00', description: 'Medium PR (100-500 lines)' },
+                { name: 'size: l', color: 'ff8c00', description: 'Large PR (500-1000 lines)' },
+                { name: 'size: xl', color: 'ff0000', description: 'Extra large PR (> 1000 lines)' },
+                // Priority labels
+                { name: 'priority: critical', color: 'b60205', description: 'Critical priority' },
+                { name: 'priority: high', color: 'd93f0b', description: 'High priority' },
+                { name: 'priority: medium', color: 'fbca04', description: 'Medium priority' },
+                { name: 'priority: low', color: 'c5def5', description: 'Low priority' },
+                // Status labels
+                { name: 'needs: review', color: 'ededed', description: 'Awaiting review' },
+                { name: 'in: review', color: 'fbca04', description: 'Currently in review' },
+                { name: 'approved', color: '0e8a16', description: 'Approved for merge' }
+              ];
+
+              const existingLabels = await github.rest.issues.listLabelsForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100
+              });
+
+              const existingLabelNames = existingLabels.data.map(l => l.name);
+
+              for (const label of requiredLabels) {
+                if (!existingLabelNames.includes(label.name)) {
+                  try {
+                    await github.rest.issues.createLabel({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      name: label.name,
+                      color: label.color,
+                      description: label.description
+                    });
+                    console.log(`Created label: ${label.name}`);
+                  } catch (error) {
+                    console.log(`Label ${label.name} might already exist or error creating: ${error.message}`);
+                  }
+                }
+              }
+            }
+
+            // Ensure labels exist
+            await ensureLabelsExist();
+
+            // Get current PR labels
+            const currentLabels = pr.labels.map(label => label.name);
+
+            // 1. TYPE LABELS - Analyze PR title and commits
+            const typePatterns = {
+              'type: feat': /^feat(\(.*?\))?:|feature/i,
+              'type: fix': /^fix(\(.*?\))?:|bug|hotfix/i,
+              'type: docs': /^docs(\(.*?\))?:|documentation/i,
+              'type: refactor': /^refactor(\(.*?\))?:/i,
+              'type: test': /^test(\(.*?\))?:|testing/i,
+              'type: chore': /^chore(\(.*?\))?:|maintenance/i,
+              'type: ci': /^ci(\(.*?\))?:|workflow|pipeline/i,
+              'type: perf': /^perf(\(.*?\))?:|performance|optimization/i,
+              'type: security': /^security(\(.*?\))?:|vulnerability|cve/i
+            };
+
+            let typeFound = false;
+            for (const [label, pattern] of Object.entries(typePatterns)) {
+              if (pattern.test(prTitle) || pattern.test(branch)) {
+                labelsToAdd.add(label);
+                typeFound = true;
+                break;
+              }
+            }
+
+            // If no type found, check commits
+            if (!typeFound) {
+              const commits = await github.rest.pulls.listCommits({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number
+              });
+
+              for (const commit of commits.data) {
+                const message = commit.commit.message.toLowerCase();
+                for (const [label, pattern] of Object.entries(typePatterns)) {
+                  if (pattern.test(message)) {
+                    labelsToAdd.add(label);
+                    typeFound = true;
+                    break;
+                  }
+                }
+                if (typeFound) break;
+              }
+            }
+
+            // Remove old type labels
+            for (const label of labelCategories.type) {
+              if (currentLabels.includes(label) && !labelsToAdd.has(label)) {
+                labelsToRemove.add(label);
+              }
+            }
+
+            // 2. AREA LABELS - Analyze changed files
+            const files = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number
+            });
+
+            const changedFiles = files.data.map(f => f.filename);
+            
+            if (changedFiles.some(f => f.startsWith('client/'))) {
+              labelsToAdd.add('area: frontend');
+            }
+            if (changedFiles.some(f => f.startsWith('server/'))) {
+              labelsToAdd.add('area: backend');
+            }
+            if (changedFiles.some(f => f.includes('shared/schema.ts') || f.startsWith('migrations/'))) {
+              labelsToAdd.add('area: database');
+            }
+            if (changedFiles.some(f => f.startsWith('.github/workflows/') || f.startsWith('scripts/'))) {
+              labelsToAdd.add('area: ci/cd');
+            }
+            if (changedFiles.some(f => f.startsWith('docs/') || f.endsWith('.md'))) {
+              labelsToAdd.add('area: docs');
+            }
+            if (changedFiles.some(f => {
+              const configFiles = ['package.json', 'tsconfig.json', 'vite.config.ts', 'tailwind.config.ts', '.eslintrc', 'drizzle.config.ts'];
+              return configFiles.some(cf => f.includes(cf));
+            })) {
+              labelsToAdd.add('area: config');
+            }
+
+            // Remove old area labels
+            for (const label of labelCategories.area) {
+              if (currentLabels.includes(label) && !labelsToAdd.has(label)) {
+                labelsToRemove.add(label);
+              }
+            }
+
+            // 3. SIZE LABELS - Calculate total changes
+            const totalChanges = files.data.reduce((sum, file) => sum + file.additions + file.deletions, 0);
+            
+            let sizeLabel = '';
+            if (totalChanges < 10) {
+              sizeLabel = 'size: xs';
+            } else if (totalChanges < 100) {
+              sizeLabel = 'size: s';
+            } else if (totalChanges < 500) {
+              sizeLabel = 'size: m';
+            } else if (totalChanges < 1000) {
+              sizeLabel = 'size: l';
+            } else {
+              sizeLabel = 'size: xl';
+            }
+            
+            labelsToAdd.add(sizeLabel);
+
+            // Remove old size labels
+            for (const label of labelCategories.size) {
+              if (currentLabels.includes(label) && label !== sizeLabel) {
+                labelsToRemove.add(label);
+              }
+            }
+
+            // 4. PRIORITY LABELS - Pattern matching
+            if (branch.includes('hotfix') || branch.includes('security') || 
+                prTitle.includes('hotfix') || prTitle.includes('security')) {
+              labelsToAdd.add('priority: critical');
+            } else if (branch.includes('urgent') || branch.includes('blocking') ||
+                       prTitle.includes('urgent') || prTitle.includes('blocking')) {
+              labelsToAdd.add('priority: high');
+            }
+
+            // Remove old priority labels if new one is added
+            const priorityLabelsToAdd = Array.from(labelsToAdd).filter(l => l.startsWith('priority:'));
+            if (priorityLabelsToAdd.length > 0) {
+              for (const label of labelCategories.priority) {
+                if (currentLabels.includes(label) && !labelsToAdd.has(label)) {
+                  labelsToRemove.add(label);
+                }
+              }
+            }
+
+            // 5. STATUS LABELS - Add "needs: review" for new PRs
+            if (pr.state === 'open' && context.payload.action === 'opened') {
+              labelsToAdd.add('needs: review');
+            }
+
+            // Remove labels first
+            if (labelsToRemove.size > 0) {
+              for (const label of labelsToRemove) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: pr.number,
+                    name: label
+                  });
+                  console.log(`Removed label: ${label}`);
+                } catch (error) {
+                  console.log(`Could not remove label ${label}: ${error.message}`);
+                }
+              }
+            }
+
+            // Add new labels
+            if (labelsToAdd.size > 0) {
+              const labelsArray = Array.from(labelsToAdd).filter(l => !currentLabels.includes(l));
+              if (labelsArray.length > 0) {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  labels: labelsArray
+                });
+                console.log(`Added labels: ${labelsArray.join(', ')}`);
+              }
+            }
+
+            // Log summary
+            console.log('\n=== PR Labeling Summary ===');
+            console.log(`PR #${pr.number}: ${pr.title}`);
+            console.log(`Total changes: ${totalChanges} lines`);
+            console.log(`Labels added: ${Array.from(labelsToAdd).join(', ') || 'none'}`);
+            console.log(`Labels removed: ${Array.from(labelsToRemove).join(', ') || 'none'}`);
+            console.log('===========================\n');
+
+      - name: Comment on PR
+        if: github.event.action == 'opened'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            const labels = pr.labels.map(l => l.name);
+            
+            const comment = `## 🏷️ PR Auto-Labeling Complete
+
+This PR has been automatically labeled based on:
+- **Type**: Detected from PR title, branch name, or commits
+- **Area**: Detected from changed files
+- **Size**: Based on total line changes
+- **Priority**: Detected from branch/title keywords
+- **Status**: Automatically set to "needs: review"
+
+**Current Labels**: ${labels.join(', ') || 'None yet'}
+
+---
+*This is an automated message. Labels will be updated automatically when the PR is synchronized.*`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: comment
+            });

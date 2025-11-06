@@ -1,0 +1,3 @@
+OK: coverage -> /home/runner/workspace/Fixes/reports/coverage_report.csv
+OK: binding map -> /home/runner/workspace/Fixes/reports/binding_map_v1.json
+GAPS: NONE

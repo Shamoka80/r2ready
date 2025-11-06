@@ -1,0 +1,27 @@
+{
+  "total_questions": 400,
+  "requirements": {
+    "CR1": 10,
+    "CR2": 10,
+    "CR3": 15,
+    "CR4": 15,
+    "CR5": 15,
+    "CR6": 15,
+    "CR7": 20,
+    "CR8": 15,
+    "CR9": 15,
+    "CR10": 10,
+    "A": 37,
+    "B": 25,
+    "C": 21,
+    "D": 20,
+    "E": 21,
+    "F": 16,
+    "G": 15
+  },
+  "missing_evidence_count": 0,
+  "artifacts": {
+    "coverage_csv": "Fixes/reports/phase2_coverage.csv",
+    "missing_evidence_csv": "Fixes/reports/phase2_missing_evidence.csv"
+  }
+}

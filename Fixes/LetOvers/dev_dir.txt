@@ -1,0 +1,27 @@
+OK: source files exist
+OK: deps installed
+OK: generator written
+OK: wrote ./Fixes/reports/coverage_report.csv and ./Fixes/reports/binding_map_v1.json
+GAPS: CR1, CR2, CR3, CR4, CR5, CR6, CR7, CR8, CR9, CR10, A, B, C, D, E, F, G
+==> coverage head
+Requirement,Covered,Count,QuestionIDs,ProposedAddIfGap
+CR1,N,0,,ADD_CR1_QUESTION
+CR2,N,0,,ADD_CR2_QUESTION
+CR3,N,0,,ADD_CR3_QUESTION
+CR4,N,0,,ADD_CR4_QUESTION
+CR5,N,0,,ADD_CR5_QUESTION
+CR6,N,0,,ADD_CR6_QUESTION
+CR7,N,0,,ADD_CR7_QUESTION
+CR8,N,0,,ADD_CR8_QUESTION
+CR9,N,0,,ADD_CR9_QUESTION
+CR10,N,0,,ADD_CR10_QUESTION
+A,N,0,,ADD_A_QUESTION
+B,N,0,,ADD_B_QUESTION
+C,N,0,,ADD_C_QUESTION
+D,N,0,,ADD_D_QUESTION
+E,N,0,,ADD_E_QUESTION
+F,N,0,,ADD_F_QUESTION
+G,N,0,,ADD_G_QUESTION
+==> binding map field count
+fields: 0
+DONE

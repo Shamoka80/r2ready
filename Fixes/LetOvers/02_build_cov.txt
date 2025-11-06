@@ -1,0 +1,4 @@
+== coverage ==
+GAPS: None
+OK: wrote ./Fixes/reports/coverage_report.csv and ./Fixes/reports/binding_map_v1.json
+OK

@@ -1,0 +1,66 @@
+
+*~
+._*
+*.backup
+*.bak
+/build
+# Build artifacts
+.cache/
+# Cache directories
+client/dist/
+/coverage
+# Database files
+*.db
+*.db-journal
+# Dependencies
+/dist
+.DS_Store
+.DS_Store?
+ehthumbs.db
+.env
+.env.development.local
+# Environment files (keep examples)
+.env.local
+.env.production.local
+.env.test.local
+.idea/
+# IDE files
+# Ignore backup artifacts
+*.lock
+*.log
+logs/
+.next/
+node_modules/
+.npm/
+npm-debug.log*
+# OS files
+*.pid
+*.pid.lock
+pids
+/playwright-report
+playwright-report/
+.pnp
+.pnp.js
+# Production builds
+releases/*.tar.gz*
+.replit_pid*
+# Runtime data
+# Runtime files
+*.seed
+server/.env
+server/uploads/*
+!server/uploads/.gitkeep
+.Spotlight-V100
+*.sqlite
+*.swo
+*.swp
+# Temporary uploads
+# Testing
+/test-results
+Thumbs.db
+*.tmp
+.Trashes
+.vscode/
+yarn-debug.log*
+yarn-error.log*
+.yarn-integrity

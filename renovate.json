@@ -1,0 +1,72 @@
+
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:base"
+  ],
+  "schedule": ["before 4am on Monday"],
+  "timezone": "UTC",
+  "automerge": true,
+  "automergeType": "pr",
+  "automergeStrategy": "merge",
+  "platformAutomerge": true,
+  "ignoreDeps": [],
+  "grouping": {
+    "monorepoGrouping": true
+  },
+  "packageRules": [
+    {
+      "groupName": "patch updates",
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "schedule": ["before 4am on Monday"]
+    },
+    {
+      "groupName": "minor updates",
+      "matchUpdateTypes": ["minor"],
+      "automerge": false,
+      "reviewersFromCodeOwners": true,
+      "schedule": ["before 4am on Monday"]
+    },
+    {
+      "groupName": "major updates",
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "reviewersFromCodeOwners": true,
+      "schedule": ["before 4am on the first day of the month"]
+    },
+    {
+      "groupName": "security updates",
+      "matchPackagePatterns": ["*"],
+      "matchDepTypes": ["dependencies", "devDependencies"],
+      "vulnerabilityAlert": true,
+      "automerge": true,
+      "schedule": ["at any time"]
+    },
+    {
+      "groupName": "typescript ecosystem",
+      "matchPackagePatterns": ["typescript", "@types/*"],
+      "schedule": ["before 4am on Monday"]
+    },
+    {
+      "groupName": "testing ecosystem",
+      "matchPackagePatterns": ["jest", "playwright", "vitest", "@testing-library/*"],
+      "schedule": ["before 4am on Monday"]
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "schedule": ["at any time"]
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 4am on Monday"]
+  },
+  "rebaseWhen": "conflicted",
+  "labels": ["dependencies"],
+  "commitMessagePrefix": "chore(deps):",
+  "prTitle": "{{commitMessagePrefix}} {{prettyNewMajor}}{{prettyNewMinor}}{{prettyNewPatch}}{{prettyNewValue}} {{depName}}",
+  "prBodyTemplate": "This PR contains dependency updates.\n\n{{{notes}}}\n\n{{{changelogs}}}",
+  "assignAutomerge": true,
+  "enabledManagers": ["npm", "dockerfile", "github-actions"]
+}

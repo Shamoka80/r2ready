@@ -1,0 +1,141 @@
+Below is a complete framework for **R2v3 document management** — covering all required document categories, access levels, and suggested template types used in certification readiness systems like *R2Ready*.
+
+---
+
+## **1. Document Categories for R2v3 Compliance**
+
+### **A. Governance & Management System Documents**
+
+| **Document**                                                    | **Purpose**                                                             | **Template Type** | **Typical Owner / Access**                     |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------- | ----------------- | ---------------------------------------------- |
+| Environmental, Health & Safety Management System (EHSMS) Manual | Defines how facility meets ISO 14001/45001 or RIOS and integrates R2v3. | Word / PDF        | Admin only (read/write); All staff (read-only) |
+| R2 Scope Statement                                              | Lists covered activities, processes, and facilities.                    | Word / PDF        | Admin, Compliance Manager                      |
+| Legal Compliance Register                                       | Tracks applicable laws, permits, and updates.                           | Excel             | Compliance Officer (edit); Auditors (read)     |
+| Management Review Records                                       | Summarizes periodic reviews of system performance.                      | Word / PDF        | Top Management                                 |
+| Corrective Action Log                                           | Records nonconformities and resolutions.                                | Excel             | QA/EHS staff (edit); All staff (read)          |
+
+---
+
+### **B. Operational Control Documents**
+
+| **Document**                                       | **Purpose**                                                                   | **Template Type** | **Access Level**                    |
+| -------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------- | ----------------------------------- |
+| Process Flow Map                                   | High-level diagram showing material flow, hierarchy of management strategies. | Visio / PDF       | Admin + Supervisors                 |
+| Work Instructions (per process)                    | Defines procedures for collection, testing, dismantling, etc.                 | Word              | Team Leads (edit), Operators (read) |
+| Inspection & Testing Procedures                    | Specifies criteria for equipment evaluation.                                  | Word / PDF        | QA/Repair Technicians               |
+| Equipment Calibration Log                          | Tracks calibration for test and measurement devices.                          | Excel             | QA Lead                             |
+| Supplier & Downstream Vendor Qualification Records | Ensures compliance with Appendix A.                                           | Excel / Word      | Procurement / Compliance            |
+
+---
+
+### **C. Data Security Documents (Core 7 & Appendix B)**
+
+| **Document**                       | **Purpose**                                                                 | **Template Type** | **Access Level**                             |
+| ---------------------------------- | --------------------------------------------------------------------------- | ----------------- | -------------------------------------------- |
+| Data Sanitization Plan             | Defines logical/physical wiping procedures, controls, and responsibilities. | Word              | Data Protection Rep (edit); All staff (read) |
+| Data Security Policy               | Establishes security rules and authorization levels.                        | Word              | Management (edit); All staff (read)          |
+| Data Destruction Log               | Records all sanitization or destruction events.                             | Excel             | Authorized Technicians                       |
+| Incident Response Log              | Tracks data breaches or security incidents.                                 | Excel             | Data Protection Rep                          |
+| Security Access Authorization List | Defines access levels by user role.                                         | Excel / PDF       | Admin only                                   |
+
+---
+
+### **D. Focus Materials & Environmental Control Documents (Core 8, Appendix E, G)**
+
+| **Document**                                 | **Purpose**                                                                      | **Template Type** | **Access Level**                     |
+| -------------------------------------------- | -------------------------------------------------------------------------------- | ----------------- | ------------------------------------ |
+| Focus Materials Management Plan (FMMP)       | Details handling of mercury, batteries, PCBs, CRTs, circuit boards, solar cells. | Word              | EHS Officer (edit); All staff (read) |
+| FM Flowchart / Downstream Map                | Shows complete recycling chain to final disposition.                             | Visio / PDF       | Compliance / Auditors                |
+| EHS Risk Assessments                         | Identifies and mitigates hazards.                                                | Excel             | EHS Officer                          |
+| Industrial Hygiene Sampling Records          | Tracks air/noise/chemical exposure tests.                                        | Excel / PDF       | EHS Staff                            |
+| Pollution Liability Insurance & Closure Plan | Financial assurance and environmental protection plan.                           | PDF               | Admin / Management                   |
+
+---
+
+### **E. Tracking, Inventory, and Throughput Control (Core 5)**
+
+| **Document**              | **Purpose**                                               | **Template Type** | **Access Level** |
+| ------------------------- | --------------------------------------------------------- | ----------------- | ---------------- |
+| Material Tracking Log     | Tracks inbound/outbound shipments and controlled streams. | Excel             | Warehouse / QA   |
+| Bills of Lading           | Legal shipping documentation.                             | PDF               | Logistics        |
+| Chain of Custody Record   | Ensures traceability of controlled streams.               | Excel             | QA / Compliance  |
+| Inventory Summary Reports | Summarizes storage quantities and durations.              | Excel             | QA / EHS         |
+
+---
+
+### **F. Quality Management & Testing (Appendix C, D)**
+
+| **Document**                       | **Purpose**                                                 | **Template Type** | **Access Level**              |
+| ---------------------------------- | ----------------------------------------------------------- | ----------------- | ----------------------------- |
+| R2 Reuse Plan                      | Testing, repair, grading, and functional verification plan. | Word              | QA Lead / Technicians         |
+| Test Records & Results             | Logs of device testing and grading.                         | Excel             | Technicians                   |
+| Return/Recall Policy               | Defines warranty, returns, and safety recall procedures.    | Word              | Customer Service / Management |
+| Verified Specialty Electronics Log | Records Appendix D reuse verifications.                     | Excel             | QA / Compliance               |
+
+---
+
+### **G. Brokering & Logistics (Appendix F)**
+
+| **Document**             | **Purpose**                                                    | **Template Type** | **Access Level**   |
+| ------------------------ | -------------------------------------------------------------- | ----------------- | ------------------ |
+| Brokering Policy         | Defines how non-physical material transactions are controlled. | Word              | Compliance         |
+| Brokered Shipment Record | Tracks brokered transactions.                                  | Excel             | Broker Admin       |
+| Vendor Contracts         | Proof of compliance and data security terms.                   | PDF               | Legal / Compliance |
+
+---
+
+### **H. Training & Competency Records (Core 3, Core 7)**
+
+| **Document**                          | **Purpose**                                            | **Template Type** | **Access Level** |
+| ------------------------------------- | ------------------------------------------------------ | ----------------- | ---------------- |
+| Training Matrix                       | Lists staff training by role, date, and renewal cycle. | Excel             | HR / EHS         |
+| Competency Assessments                | Evaluates technical and safety training outcomes.      | Word              | Supervisors      |
+| Confidentiality & Security Agreements | Signed by all staff handling data.                     | PDF               | HR               |
+
+---
+
+### **I. Audit & Certification Management**
+
+| **Document**                | **Purpose**                                                   | **Template Type** | **Access Level**      |
+| --------------------------- | ------------------------------------------------------------- | ----------------- | --------------------- |
+| Internal Audit Checklist    | Facility self-assessment aligned with R2v3 Core + Appendices. | Excel             | Compliance / Auditors |
+| Nonconformance Report (NCR) | Records findings and corrective actions.                      | Word              | QA / Compliance       |
+| Audit Schedule              | Annual and surveillance audit planning.                       | Excel             | Management            |
+| Certification Records       | Audit reports, certificates, scope statement.                 | PDF               | Admin / Compliance    |
+
+---
+
+## **2. Access Levels and Roles**
+
+| **Role**                             | **Access Level Description**                                              | **Example Permissions**                      |
+| ------------------------------------ | ------------------------------------------------------------------------- | -------------------------------------------- |
+| **Administrator**                    | Full system control, document creation, deletion, user access management. | Edit all templates, approve revisions.       |
+| **Compliance Manager / EHS Officer** | Write access to governance, EHS, FM, audit, and training docs.            | Create/review R2v3 compliance documentation. |
+| **Data Protection Representative**   | Full access to data security policies and logs.                           | Manage data sanitization and incidents.      |
+| **QA / Repair Technicians**          | Write access to testing logs and operational procedures.                  | Record inspection/test data.                 |
+| **Supervisors / Team Leads**         | Approve operational records, read higher-level documents.                 | Verify throughput and shift reports.         |
+| **Operators / Line Staff**           | Read-only access to relevant SOPs and EHS instructions.                   | View safety and process documents.           |
+| **External Auditor / CB**            | Restricted read-only access for audit evidence.                           | View compliance and audit folders.           |
+| **Consultant / Trainer**             | Temporary access to onboarding materials and readiness reports.           | View-only or co-edit training documents.     |
+
+---
+
+## **3. Recommended Template File List**
+
+| **File Name**                       | **Format** | **Purpose**                                                    |
+| ----------------------------------- | ---------- | -------------------------------------------------------------- |
+| R2v3_EHSMS_Manual_Template.docx     | Word       | Full framework for integrating EHSMS and R2 requirements.      |
+| R2v3_Legal_Compliance_Register.xlsx | Excel      | Tracks all permits and regulatory requirements.                |
+| R2v3_Data_Sanitization_Plan.docx    | Word       | Logical and physical sanitization plan with verification logs. |
+| R2v3_FM_Management_Plan.docx        | Word       | Template for managing Focus Materials and downstream flow.     |
+| R2v3_Internal_Audit_Checklist.xlsx  | Excel      | Checklist aligned with R2v3 Core + Appendices.                 |
+| R2v3_Training_Matrix.xlsx           | Excel      | Tracks employee training and competency.                       |
+| R2v3_Closure_Plan_Template.docx     | Word       | Defines closure actions and financial assurance.               |
+| R2v3_Downstream_Vendor_Form.xlsx    | Excel      | Captures vendor compliance data and certifications.            |
+| R2v3_Incident_Response_Log.xlsx     | Excel      | Data and EHS incident tracking tool.                           |
+| R2v3_Nonconformance_Report.docx     | Word       | For documenting audit findings and corrective actions.         |
+
+---
+
+Would you like me to **generate editable templates (in Word and Excel format)** for each of the key R2v3 compliance categories above (e.g., EHSMS Manual, Data Sanitization Plan, FM Management Plan, and Internal Audit Checklist)?
+I can bundle them into a downloadable ZIP package for immediate use.

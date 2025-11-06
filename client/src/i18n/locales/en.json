@@ -1,0 +1,115 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "continue": "Continue",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "close": "Close",
+    "open": "Open",
+    "search": "Search",
+    "filter": "Filter",
+    "clear": "Clear",
+    "admin": "ADMIN"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "assessments": "Assessments",
+    "clientOrganizations": "Client Organizations",
+    "clientFacilities": "Client Facilities",
+    "organizations": "Organizations",
+    "facilities": "Facilities",
+    "settings": "Settings",
+    "security": "Security",
+    "licenses": "Licenses",
+    "help": "Help",
+    "about": "About",
+    "logout": "Logout",
+    "openNavigationMenu": "Open navigation menu",
+    "mobileNavigationMenu": "Mobile navigation menu",
+    "navigationMenuClosed": "Navigation menu closed",
+    "notifications": "Notifications",
+    "notificationsAriaLabel": "Notifications (no new notifications)"
+  },
+  "branding": {
+    "appName": "RuR2",
+    "appSubtitle": "R2v3 Pre-Certification",
+    "logoAlt": "RuR2 Logo"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "description": "Manage your R2v3 compliance assessments",
+    "consultantDescription": "Manage client assessments and organizations",
+    "loadingData": "Loading dashboard data...",
+    "failedToLoad": "Failed to load dashboard",
+    "retryMessage": "Please try again later.",
+    "newAssessment": "New Assessment",
+    "new": "New",
+    "stats": {
+      "totalAssessments": "Total Assessments",
+      "inProgress": "In Progress",
+      "completed": "Completed",
+      "requiresReview": "Requires Review"
+    },
+    "recentAssessments": "Recent Assessments",
+    "noAssessments": "No assessments created yet. Complete your intake to generate one.",
+    "scopeBasedQuestions": "🎯 Scope-Based Questions",
+    "scopeBased": "🎯 Scope-Based"
+  },
+  "workflow": {
+    "title": "Streamlined Assessment Workflow",
+    "description": "Complete your business intake to automatically generate intelligent assessments with pre-populated data",
+    "setupOrganization": "Complete Organization Setup",
+    "setupDescription": "Set up your organization and facility information to begin assessments",
+    "startSetup": "Start Setup",
+    "continueSetup": "Continue Setup",
+    "activateAccount": "Activate Your Account",
+    "activateDescription": "Complete your payment to unlock assessment tools and features",
+    "choosePlan": "Choose Plan",
+    "completeIntake": "Complete Intake Form",
+    "startIntake": "Start R2v3 Intake Process",
+    "intakeDescription": "Complete the intake form to determine your assessment scope and applicable requirements",
+    "continueIntake": "Continue Intake",
+    "startIntakeForm": "Start Intake Form",
+    "completeIntakeDescription": "Continue your intake form ({{percent}}% complete) to unlock assessment creation",
+    "businessIntake": "Start Business Intake",
+    "businessIntakeDescription": "Provide your company details once",
+    "beginIntake": "Begin Intake",
+    "generateAssessment": "Generate Assessment",
+    "generating": "Generating...",
+    "createAssessment": "Create Assessment",
+    "intakeComplete": "Intake Complete",
+    "completeIntakeText": "Complete Intake",
+    "benefits": {
+      "noDuplicate": "No Duplicate Entry",
+      "noDuplicateDescription": "Data inherited from intake",
+      "smartFiltering": "Smart Filtering",
+      "smartFilteringDescription": "Relevant questions only",
+      "fasterCompletion": "Faster Completion",
+      "fasterCompletionDescription": "Save time and effort"
+    }
+  },
+  "assessment": {
+    "created": "Assessment Created",
+    "createdDescription": "Your assessment has been generated from intake data successfully.",
+    "failedToCreate": "Failed to create assessment from intake",
+    "status": {
+      "notStarted": "NOT_STARTED",
+      "inProgress": "IN_PROGRESS",
+      "completed": "COMPLETED",
+      "needsReview": "NEEDS_REVIEW"
+    }
+  },
+  "language": {
+    "switchLanguage": "Switch Language",
+    "english": "English",
+    "spanish": "Español",
+    "currentLanguage": "Current Language"
+  }
+}

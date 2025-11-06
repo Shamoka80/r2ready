@@ -1,0 +1,2522 @@
+{
+  "version": "2.0.0",
+  "description": "Comprehensive Question-to-REC code mappings for complete R2v3 standard coverage",
+  "lastUpdated": "2025-11-05",
+  "mappings": [
+    {
+      "questionId": "Q001",
+      "recCodes": ["CR1-1", "CERT-01"],
+      "priority": "CRITICAL",
+      "rationale": "Scope definition and certification status - fundamental to R2v3 compliance"
+    },
+    {
+      "questionId": "Q002",
+      "recCodes": ["CR1-1", "CR1-2"],
+      "priority": "CRITICAL",
+      "rationale": "Equipment types and materials scope documentation"
+    },
+    {
+      "questionId": "Q003",
+      "recCodes": ["CR1-1", "LEGAL-01"],
+      "priority": "CRITICAL",
+      "rationale": "Legal entity identification for scope"
+    },
+    {
+      "questionId": "Q004",
+      "recCodes": ["CR1-1", "FACILITY-01"],
+      "priority": "HIGH",
+      "rationale": "Uncertified location disclosure"
+    },
+    {
+      "questionId": "Q005",
+      "recCodes": ["CR1-1", "CERT-01"],
+      "priority": "CRITICAL",
+      "rationale": "SERI deceptive practices list check"
+    },
+    {
+      "questionId": "Q006",
+      "recCodes": ["CR1-1", "FACILITY-01"],
+      "priority": "HIGH",
+      "rationale": "Physical address scope verification"
+    },
+    {
+      "questionId": "Q007",
+      "recCodes": ["CR1-1", "CR1-2"],
+      "priority": "HIGH",
+      "rationale": "External processes in certification scope"
+    },
+    {
+      "questionId": "Q008",
+      "recCodes": ["CR1-1", "CR1-2"],
+      "priority": "CRITICAL",
+      "rationale": "Applicable R2 Process Requirements identification"
+    },
+    {
+      "questionId": "Q009",
+      "recCodes": ["CR1-1", "CERT-01"],
+      "priority": "HIGH",
+      "rationale": "Authorized allowances documentation"
+    },
+    {
+      "questionId": "Q010",
+      "recCodes": ["CR1-1", "CERT-01"],
+      "priority": "MEDIUM",
+      "rationale": "Sales websites linked to certified operations"
+    },
+    {
+      "questionId": "Q011",
+      "recCodes": ["CR2-1", "CR2-2"],
+      "priority": "CRITICAL",
+      "rationale": "Written hierarchy policy - reuse over recycling"
+    },
+    {
+      "questionId": "Q012",
+      "recCodes": ["CR2-1", "CR2-2"],
+      "priority": "HIGH",
+      "rationale": "Equipment reuse evaluation process"
+    },
+    {
+      "questionId": "Q013",
+      "recCodes": ["CR2-1", "CR2-2"],
+      "priority": "HIGH",
+      "rationale": "Items directed to reuse when capable"
+    },
+    {
+      "questionId": "Q014",
+      "recCodes": ["CR2-1", "CR2-2"],
+      "priority": "HIGH",
+      "rationale": "Non-reusable items to materials recovery"
+    },
+    {
+      "questionId": "Q015",
+      "recCodes": ["CR2-1", "CR8-1"],
+      "priority": "CRITICAL",
+      "rationale": "Focus materials disposal restrictions"
+    },
+    {
+      "questionId": "Q016",
+      "recCodes": ["CR2-1", "CR5-1"],
+      "priority": "HIGH",
+      "rationale": "Downstream vendor hierarchy verification"
+    },
+    {
+      "questionId": "Q017",
+      "recCodes": ["CR2-1", "CR2-2"],
+      "priority": "CRITICAL",
+      "rationale": "Recalled/counterfeit items exclusion from reuse"
+    },
+    {
+      "questionId": "Q018",
+      "recCodes": ["CR2-1", "CR2-2"],
+      "priority": "MEDIUM",
+      "rationale": "Disposal only when no recycling options"
+    },
+    {
+      "questionId": "Q019",
+      "recCodes": ["CR2-1", "CR8-1"],
+      "priority": "HIGH",
+      "rationale": "Extreme circumstances FM disposal documentation"
+    },
+    {
+      "questionId": "Q020",
+      "recCodes": ["CR2-1", "CR2-2"],
+      "priority": "HIGH",
+      "rationale": "Hierarchy policy covering on-site and off-site"
+    },
+    {
+      "questionId": "Q021",
+      "recCodes": ["CR3-1", "MGMT-01"],
+      "priority": "CRITICAL",
+      "rationale": "Current EHSMS certification requirement"
+    },
+    {
+      "questionId": "Q022",
+      "recCodes": ["CR3-1", "MGMT-01"],
+      "priority": "CRITICAL",
+      "rationale": "R2 requirements integrated into EHSMS"
+    },
+    {
+      "questionId": "Q023",
+      "recCodes": ["CR3-1", "MGMT-01"],
+      "priority": "HIGH",
+      "rationale": "Records retention - three year minimum"
+    },
+    {
+      "questionId": "Q024",
+      "recCodes": ["CR3-1", "AUDIT-1"],
+      "priority": "CRITICAL",
+      "rationale": "Annual internal R2 audit requirement"
+    },
+    {
+      "questionId": "Q025",
+      "recCodes": ["CR3-1", "PERSONNEL-01"],
+      "priority": "CRITICAL",
+      "rationale": "Technical capability for accepted materials"
+    },
+    {
+      "questionId": "Q026",
+      "recCodes": ["CR3-2", "MGMT-01"],
+      "priority": "HIGH",
+      "rationale": "Environmental impact identification and analysis"
+    },
+    {
+      "questionId": "Q027",
+      "recCodes": ["CR3-2", "CR3-3"],
+      "priority": "CRITICAL",
+      "rationale": "Health and safety risk assessment"
+    },
+    {
+      "questionId": "Q028",
+      "recCodes": ["CR3-3", "PERSONNEL-02"],
+      "priority": "CRITICAL",
+      "rationale": "Hazardous substance exposure evaluation"
+    },
+    {
+      "questionId": "Q029",
+      "recCodes": ["CR3-2", "PROC-02"],
+      "priority": "HIGH",
+      "rationale": "Incoming materials inspection for hazards"
+    },
+    {
+      "questionId": "Q030",
+      "recCodes": ["CR3-3", "FACILITY-03"],
+      "priority": "MEDIUM",
+      "rationale": "Housekeeping standards throughout facility"
+    },
+    {
+      "questionId": "Q031",
+      "recCodes": ["CR3-3", "FACILITY-03"],
+      "priority": "MEDIUM",
+      "rationale": "Sanitary facilities for workers"
+    },
+    {
+      "questionId": "Q032",
+      "recCodes": ["CR3-3", "FACILITY-03"],
+      "priority": "MEDIUM",
+      "rationale": "Food/beverage consumption restrictions"
+    },
+    {
+      "questionId": "Q033",
+      "recCodes": ["CR3-3", "PERSONNEL-02"],
+      "priority": "HIGH",
+      "rationale": "Temporary workers protections"
+    },
+    {
+      "questionId": "Q034",
+      "recCodes": ["CR3-1", "PERSONNEL-01"],
+      "priority": "HIGH",
+      "rationale": "Designated EH&S coordinator"
+    },
+    {
+      "questionId": "Q035",
+      "recCodes": ["CR3-2", "CR8-1"],
+      "priority": "CRITICAL",
+      "rationale": "Mercury, lead, and toxics evaluation"
+    },
+    {
+      "questionId": "Q036",
+      "recCodes": ["CR4-1", "LEGAL-01"],
+      "priority": "CRITICAL",
+      "rationale": "Comprehensive legal compliance plan"
+    },
+    {
+      "questionId": "Q037",
+      "recCodes": ["CR4-1", "LEGAL-03"],
+      "priority": "CRITICAL",
+      "rationale": "Current environmental permits"
+    },
+    {
+      "questionId": "Q038",
+      "recCodes": ["CR4-1", "LEGAL-02"],
+      "priority": "HIGH",
+      "rationale": "Import/export laws identification"
+    },
+    {
+      "questionId": "Q039",
+      "recCodes": ["CR4-1", "AUDIT-1"],
+      "priority": "HIGH",
+      "rationale": "Compliance audit by competent auditor"
+    },
+    {
+      "questionId": "Q040",
+      "recCodes": ["CR4-1", "LEGAL-03"],
+      "priority": "CRITICAL",
+      "rationale": "Regulatory violations reported to CB within 30 days"
+    },
+    {
+      "questionId": "Q041",
+      "recCodes": ["CR4-1", "LEGAL-01"],
+      "priority": "HIGH",
+      "rationale": "Legal compliance - additional requirements"
+    },
+    {
+      "questionId": "Q042",
+      "recCodes": ["CR4-1", "LEGAL-02"],
+      "priority": "HIGH",
+      "rationale": "Legal compliance - regulatory tracking"
+    },
+    {
+      "questionId": "Q043",
+      "recCodes": ["CR4-1", "LEGAL-03"],
+      "priority": "HIGH",
+      "rationale": "Legal compliance - permits and licenses"
+    },
+    {
+      "questionId": "Q044",
+      "recCodes": ["CR4-1", "LEGAL-01"],
+      "priority": "MEDIUM",
+      "rationale": "Legal compliance - ongoing monitoring"
+    },
+    {
+      "questionId": "Q045",
+      "recCodes": ["CR4-1", "LEGAL-02"],
+      "priority": "MEDIUM",
+      "rationale": "Legal compliance - documentation"
+    },
+    {
+      "questionId": "Q046",
+      "recCodes": ["CR4-1", "LEGAL-03"],
+      "priority": "MEDIUM",
+      "rationale": "Legal compliance - regulatory changes"
+    },
+    {
+      "questionId": "Q047",
+      "recCodes": ["CR4-1", "LEGAL-01"],
+      "priority": "MEDIUM",
+      "rationale": "Legal compliance - enforcement actions"
+    },
+    {
+      "questionId": "Q048",
+      "recCodes": ["CR4-1", "LEGAL-02"],
+      "priority": "MEDIUM",
+      "rationale": "Legal compliance - corrective actions"
+    },
+    {
+      "questionId": "Q049",
+      "recCodes": ["CR4-1", "LEGAL-03"],
+      "priority": "MEDIUM",
+      "rationale": "Legal compliance - reporting"
+    },
+    {
+      "questionId": "Q050",
+      "recCodes": ["CR4-1", "LEGAL-01"],
+      "priority": "MEDIUM",
+      "rationale": "Legal compliance - training requirements"
+    },
+    {
+      "questionId": "Q051",
+      "recCodes": ["CR5-1", "CR5-2"],
+      "priority": "CRITICAL",
+      "rationale": "Tracking and throughput - system requirements"
+    },
+    {
+      "questionId": "Q052",
+      "recCodes": ["CR5-1", "CR5-2"],
+      "priority": "HIGH",
+      "rationale": "Tracking and throughput - material flow"
+    },
+    {
+      "questionId": "Q053",
+      "recCodes": ["CR5-1", "CR5-2"],
+      "priority": "HIGH",
+      "rationale": "Tracking and throughput - inventory management"
+    },
+    {
+      "questionId": "Q054",
+      "recCodes": ["CR5-1", "CR5-2"],
+      "priority": "HIGH",
+      "rationale": "Tracking and throughput - documentation"
+    },
+    {
+      "questionId": "Q055",
+      "recCodes": ["CR5-1", "CR5-2"],
+      "priority": "MEDIUM",
+      "rationale": "Tracking and throughput - verification"
+    },
+    {
+      "questionId": "Q056",
+      "recCodes": ["CR5-1", "CR5-2"],
+      "priority": "MEDIUM",
+      "rationale": "Tracking and throughput - reconciliation"
+    },
+    {
+      "questionId": "Q057",
+      "recCodes": ["CR5-1", "CR5-2"],
+      "priority": "MEDIUM",
+      "rationale": "Tracking and throughput - reporting"
+    },
+    {
+      "questionId": "Q058",
+      "recCodes": ["CR5-1", "CR5-2"],
+      "priority": "MEDIUM",
+      "rationale": "Tracking and throughput - accuracy"
+    },
+    {
+      "questionId": "Q059",
+      "recCodes": ["CR5-1", "CR5-2"],
+      "priority": "MEDIUM",
+      "rationale": "Tracking and throughput - auditing"
+    },
+    {
+      "questionId": "Q060",
+      "recCodes": ["CR5-1", "CR5-2"],
+      "priority": "MEDIUM",
+      "rationale": "Tracking and throughput - data retention"
+    },
+    {
+      "questionId": "Q061",
+      "recCodes": ["CR5-1", "CR5-2"],
+      "priority": "MEDIUM",
+      "rationale": "Tracking and throughput - system validation"
+    },
+    {
+      "questionId": "Q062",
+      "recCodes": ["CR5-1", "CR5-2"],
+      "priority": "MEDIUM",
+      "rationale": "Tracking and throughput - controls"
+    },
+    {
+      "questionId": "Q063",
+      "recCodes": ["CR5-1", "CR5-2"],
+      "priority": "MEDIUM",
+      "rationale": "Tracking and throughput - exceptions"
+    },
+    {
+      "questionId": "Q064",
+      "recCodes": ["CR5-1", "CR5-2"],
+      "priority": "MEDIUM",
+      "rationale": "Tracking and throughput - continuous improvement"
+    },
+    {
+      "questionId": "Q065",
+      "recCodes": ["CR5-1", "CR5-2"],
+      "priority": "MEDIUM",
+      "rationale": "Tracking and throughput - integration"
+    },
+    {
+      "questionId": "Q066",
+      "recCodes": ["CR6-1", "PROC-03"],
+      "priority": "CRITICAL",
+      "rationale": "Sorting, categorization, and processing procedures"
+    },
+    {
+      "questionId": "Q067",
+      "recCodes": ["CR6-1", "PROC-03"],
+      "priority": "HIGH",
+      "rationale": "Material sorting methods"
+    },
+    {
+      "questionId": "Q068",
+      "recCodes": ["CR6-1", "PROC-03"],
+      "priority": "HIGH",
+      "rationale": "Categorization systems"
+    },
+    {
+      "questionId": "Q069",
+      "recCodes": ["CR6-1", "PROC-02"],
+      "priority": "HIGH",
+      "rationale": "Processing activity controls"
+    },
+    {
+      "questionId": "Q070",
+      "recCodes": ["CR6-1", "PROC-03"],
+      "priority": "MEDIUM",
+      "rationale": "Material segregation"
+    },
+    {
+      "questionId": "Q071",
+      "recCodes": ["CR6-1", "PROC-02"],
+      "priority": "MEDIUM",
+      "rationale": "Processing standards"
+    },
+    {
+      "questionId": "Q072",
+      "recCodes": ["CR6-1", "PROC-03"],
+      "priority": "MEDIUM",
+      "rationale": "Quality control in processing"
+    },
+    {
+      "questionId": "Q073",
+      "recCodes": ["CR6-1", "PROC-02"],
+      "priority": "MEDIUM",
+      "rationale": "Processing equipment"
+    },
+    {
+      "questionId": "Q074",
+      "recCodes": ["CR6-1", "PROC-03"],
+      "priority": "MEDIUM",
+      "rationale": "Material handling procedures"
+    },
+    {
+      "questionId": "Q075",
+      "recCodes": ["CR6-1", "PROC-02"],
+      "priority": "MEDIUM",
+      "rationale": "Processing documentation"
+    },
+    {
+      "questionId": "Q076",
+      "recCodes": ["CR6-1", "PROC-03"],
+      "priority": "MEDIUM",
+      "rationale": "Contamination prevention"
+    },
+    {
+      "questionId": "Q077",
+      "recCodes": ["CR6-1", "PROC-02"],
+      "priority": "MEDIUM",
+      "rationale": "Process monitoring"
+    },
+    {
+      "questionId": "Q078",
+      "recCodes": ["CR6-1", "PROC-03"],
+      "priority": "MEDIUM",
+      "rationale": "Material identification"
+    },
+    {
+      "questionId": "Q079",
+      "recCodes": ["CR6-1", "PROC-02"],
+      "priority": "MEDIUM",
+      "rationale": "Processing efficiency"
+    },
+    {
+      "questionId": "Q080",
+      "recCodes": ["CR6-1", "PROC-03"],
+      "priority": "MEDIUM",
+      "rationale": "Process validation"
+    },
+    {
+      "questionId": "Q081",
+      "recCodes": ["CR7-1", "DATA-01"],
+      "priority": "CRITICAL",
+      "rationale": "Data security - destruction services"
+    },
+    {
+      "questionId": "Q082",
+      "recCodes": ["CR7-1", "DATA-02"],
+      "priority": "CRITICAL",
+      "rationale": "Data security infrastructure"
+    },
+    {
+      "questionId": "Q083",
+      "recCodes": ["CR7-1", "DATA-01"],
+      "priority": "CRITICAL",
+      "rationale": "Data destruction methods"
+    },
+    {
+      "questionId": "Q084",
+      "recCodes": ["CR7-1", "DATA-02"],
+      "priority": "HIGH",
+      "rationale": "Physical data security"
+    },
+    {
+      "questionId": "Q085",
+      "recCodes": ["CR7-1", "DATA-01"],
+      "priority": "HIGH",
+      "rationale": "Logical data security"
+    },
+    {
+      "questionId": "Q086",
+      "recCodes": ["CR7-1", "DATA-02"],
+      "priority": "HIGH",
+      "rationale": "Data sanitization standards"
+    },
+    {
+      "questionId": "Q087",
+      "recCodes": ["CR7-1", "DATA-01"],
+      "priority": "HIGH",
+      "rationale": "Data handling procedures"
+    },
+    {
+      "questionId": "Q088",
+      "recCodes": ["CR7-1", "DATA-02"],
+      "priority": "MEDIUM",
+      "rationale": "Data verification processes"
+    },
+    {
+      "questionId": "Q089",
+      "recCodes": ["CR7-1", "DATA-01"],
+      "priority": "MEDIUM",
+      "rationale": "Data destruction documentation"
+    },
+    {
+      "questionId": "Q090",
+      "recCodes": ["CR7-1", "DATA-02"],
+      "priority": "MEDIUM",
+      "rationale": "Data security training"
+    },
+    {
+      "questionId": "Q091",
+      "recCodes": ["CR7-1", "DATA-01"],
+      "priority": "MEDIUM",
+      "rationale": "Data breach response"
+    },
+    {
+      "questionId": "Q092",
+      "recCodes": ["CR7-1", "DATA-02"],
+      "priority": "MEDIUM",
+      "rationale": "Data security auditing"
+    },
+    {
+      "questionId": "Q093",
+      "recCodes": ["CR7-1", "DATA-01"],
+      "priority": "MEDIUM",
+      "rationale": "Chain of custody for data-bearing devices"
+    },
+    {
+      "questionId": "Q094",
+      "recCodes": ["CR7-1", "DATA-02"],
+      "priority": "MEDIUM",
+      "rationale": "Access controls"
+    },
+    {
+      "questionId": "Q095",
+      "recCodes": ["CR7-1", "DATA-01"],
+      "priority": "MEDIUM",
+      "rationale": "Certification of destruction"
+    },
+    {
+      "questionId": "Q096",
+      "recCodes": ["CR7-1", "DATA-02"],
+      "priority": "MEDIUM",
+      "rationale": "Equipment qualification"
+    },
+    {
+      "questionId": "Q097",
+      "recCodes": ["CR7-1", "DATA-01"],
+      "priority": "MEDIUM",
+      "rationale": "Client data requirements"
+    },
+    {
+      "questionId": "Q098",
+      "recCodes": ["CR7-1", "DATA-02"],
+      "priority": "MEDIUM",
+      "rationale": "Sanitization standards compliance"
+    },
+    {
+      "questionId": "Q099",
+      "recCodes": ["CR7-1", "DATA-01"],
+      "priority": "MEDIUM",
+      "rationale": "Data security incidents"
+    },
+    {
+      "questionId": "Q100",
+      "recCodes": ["CR7-1", "DATA-02"],
+      "priority": "MEDIUM",
+      "rationale": "Continuous monitoring"
+    },
+    {
+      "questionId": "Q101",
+      "recCodes": ["CR8-1", "CR8-2"],
+      "priority": "CRITICAL",
+      "rationale": "Focus materials identification"
+    },
+    {
+      "questionId": "Q102",
+      "recCodes": ["CR8-1", "CR8-2"],
+      "priority": "CRITICAL",
+      "rationale": "Focus materials handling"
+    },
+    {
+      "questionId": "Q103",
+      "recCodes": ["CR8-1", "CR8-2"],
+      "priority": "HIGH",
+      "rationale": "Focus materials storage"
+    },
+    {
+      "questionId": "Q104",
+      "recCodes": ["CR8-1", "CR8-2"],
+      "priority": "HIGH",
+      "rationale": "Focus materials tracking"
+    },
+    {
+      "questionId": "Q105",
+      "recCodes": ["CR8-1", "CR8-2"],
+      "priority": "HIGH",
+      "rationale": "Focus materials disposal"
+    },
+    {
+      "questionId": "Q106",
+      "recCodes": ["CR8-1", "CR8-2"],
+      "priority": "MEDIUM",
+      "rationale": "Focus materials testing"
+    },
+    {
+      "questionId": "Q107",
+      "recCodes": ["CR8-1", "CR8-2"],
+      "priority": "MEDIUM",
+      "rationale": "Focus materials documentation"
+    },
+    {
+      "questionId": "Q108",
+      "recCodes": ["CR8-1", "CR8-2"],
+      "priority": "MEDIUM",
+      "rationale": "Focus materials training"
+    },
+    {
+      "questionId": "Q109",
+      "recCodes": ["CR8-1", "CR8-2"],
+      "priority": "MEDIUM",
+      "rationale": "Focus materials characterization"
+    },
+    {
+      "questionId": "Q110",
+      "recCodes": ["CR8-1", "CR8-2"],
+      "priority": "MEDIUM",
+      "rationale": "Focus materials segregation"
+    },
+    {
+      "questionId": "Q111",
+      "recCodes": ["CR8-1", "CR8-2"],
+      "priority": "MEDIUM",
+      "rationale": "Focus materials containers"
+    },
+    {
+      "questionId": "Q112",
+      "recCodes": ["CR8-1", "CR8-2"],
+      "priority": "MEDIUM",
+      "rationale": "Focus materials labeling"
+    },
+    {
+      "questionId": "Q113",
+      "recCodes": ["CR8-1", "CR8-2"],
+      "priority": "MEDIUM",
+      "rationale": "Focus materials reporting"
+    },
+    {
+      "questionId": "Q114",
+      "recCodes": ["CR8-1", "CR8-2"],
+      "priority": "MEDIUM",
+      "rationale": "Focus materials auditing"
+    },
+    {
+      "questionId": "Q115",
+      "recCodes": ["CR8-1", "CR8-2"],
+      "priority": "MEDIUM",
+      "rationale": "Focus materials compliance"
+    },
+    {
+      "questionId": "Q116",
+      "recCodes": ["CR9-1", "FACILITY-01"],
+      "priority": "CRITICAL",
+      "rationale": "Facility requirements - structure and layout"
+    },
+    {
+      "questionId": "Q117",
+      "recCodes": ["CR9-1", "FACILITY-03"],
+      "priority": "CRITICAL",
+      "rationale": "Facility requirements - security"
+    },
+    {
+      "questionId": "Q118",
+      "recCodes": ["CR9-1", "FACILITY-01"],
+      "priority": "HIGH",
+      "rationale": "Facility requirements - access control"
+    },
+    {
+      "questionId": "Q119",
+      "recCodes": ["CR9-1", "FACILITY-03"],
+      "priority": "HIGH",
+      "rationale": "Facility requirements - environmental controls"
+    },
+    {
+      "questionId": "Q120",
+      "recCodes": ["CR9-1", "FACILITY-01"],
+      "priority": "HIGH",
+      "rationale": "Facility requirements - fire protection"
+    },
+    {
+      "questionId": "Q121",
+      "recCodes": ["CR9-1", "FACILITY-03"],
+      "priority": "MEDIUM",
+      "rationale": "Facility requirements - emergency response"
+    },
+    {
+      "questionId": "Q122",
+      "recCodes": ["CR9-1", "FACILITY-01"],
+      "priority": "MEDIUM",
+      "rationale": "Facility requirements - utilities"
+    },
+    {
+      "questionId": "Q123",
+      "recCodes": ["CR9-1", "FACILITY-03"],
+      "priority": "MEDIUM",
+      "rationale": "Facility requirements - maintenance"
+    },
+    {
+      "questionId": "Q124",
+      "recCodes": ["CR9-1", "FACILITY-01"],
+      "priority": "MEDIUM",
+      "rationale": "Facility requirements - housekeeping"
+    },
+    {
+      "questionId": "Q125",
+      "recCodes": ["CR9-1", "FACILITY-03"],
+      "priority": "MEDIUM",
+      "rationale": "Facility requirements - inspections"
+    },
+    {
+      "questionId": "Q126",
+      "recCodes": ["CR9-1", "FACILITY-01"],
+      "priority": "MEDIUM",
+      "rationale": "Facility requirements - signage"
+    },
+    {
+      "questionId": "Q127",
+      "recCodes": ["CR9-1", "FACILITY-03"],
+      "priority": "MEDIUM",
+      "rationale": "Facility requirements - lighting"
+    },
+    {
+      "questionId": "Q128",
+      "recCodes": ["CR9-1", "FACILITY-01"],
+      "priority": "MEDIUM",
+      "rationale": "Facility requirements - ventilation"
+    },
+    {
+      "questionId": "Q129",
+      "recCodes": ["CR9-1", "FACILITY-03"],
+      "priority": "MEDIUM",
+      "rationale": "Facility requirements - waste management"
+    },
+    {
+      "questionId": "Q130",
+      "recCodes": ["CR9-1", "FACILITY-01"],
+      "priority": "MEDIUM",
+      "rationale": "Facility requirements - documentation"
+    },
+    {
+      "questionId": "Q131",
+      "recCodes": ["CR10-1", "CR10-2"],
+      "priority": "CRITICAL",
+      "rationale": "Transport - packaging to prevent damage"
+    },
+    {
+      "questionId": "Q132",
+      "recCodes": ["CR10-1", "DATA-01"],
+      "priority": "CRITICAL",
+      "rationale": "Transport - data-containing devices security"
+    },
+    {
+      "questionId": "Q133",
+      "recCodes": ["CR10-1", "CR10-2"],
+      "priority": "HIGH",
+      "rationale": "Transport - concealment from public view"
+    },
+    {
+      "questionId": "Q134",
+      "recCodes": ["CR10-1", "CR10-2"],
+      "priority": "HIGH",
+      "rationale": "Transport - shipping documents accuracy"
+    },
+    {
+      "questionId": "Q135",
+      "recCodes": ["CR10-1", "SUPPLY-01"],
+      "priority": "HIGH",
+      "rationale": "Transport - transporter qualification"
+    },
+    {
+      "questionId": "Q136",
+      "recCodes": ["CR10-1", "CR10-2"],
+      "priority": "CRITICAL",
+      "rationale": "Transport - chain of custody"
+    },
+    {
+      "questionId": "Q137",
+      "recCodes": ["CR10-1", "CR10-2"],
+      "priority": "CRITICAL",
+      "rationale": "Transport - hazmat requirements"
+    },
+    {
+      "questionId": "Q138",
+      "recCodes": ["CR10-1", "SUPPLY-02"],
+      "priority": "HIGH",
+      "rationale": "Transport - export declarations"
+    },
+    {
+      "questionId": "Q139",
+      "recCodes": ["CR10-1", "SUPPLY-01"],
+      "priority": "MEDIUM",
+      "rationale": "Transport - contract enforcement"
+    },
+    {
+      "questionId": "Q140",
+      "recCodes": ["CR10-1", "CR10-2"],
+      "priority": "MEDIUM",
+      "rationale": "Transport - packaging appropriateness"
+    },
+    {
+      "questionId": "Q141",
+      "recCodes": ["APP-A-1", "CR5-1"],
+      "priority": "CRITICAL",
+      "rationale": "Downstream recycling chain - vendor management"
+    },
+    {
+      "questionId": "Q142",
+      "recCodes": ["APP-A-1", "APP-A-2"],
+      "priority": "HIGH",
+      "rationale": "Downstream recycling - due diligence"
+    },
+    {
+      "questionId": "Q143",
+      "recCodes": ["APP-A-1", "APP-A-2"],
+      "priority": "HIGH",
+      "rationale": "Downstream recycling - vendor qualification"
+    },
+    {
+      "questionId": "Q144",
+      "recCodes": ["APP-A-1", "APP-A-2"],
+      "priority": "HIGH",
+      "rationale": "Downstream recycling - vendor audits"
+    },
+    {
+      "questionId": "Q145",
+      "recCodes": ["APP-A-1", "APP-A-2"],
+      "priority": "MEDIUM",
+      "rationale": "Downstream recycling - contracts"
+    },
+    {
+      "questionId": "Q146",
+      "recCodes": ["APP-A-1", "APP-A-2"],
+      "priority": "MEDIUM",
+      "rationale": "Downstream recycling - monitoring"
+    },
+    {
+      "questionId": "Q147",
+      "recCodes": ["APP-A-1", "APP-A-2"],
+      "priority": "MEDIUM",
+      "rationale": "Downstream recycling - documentation"
+    },
+    {
+      "questionId": "Q148",
+      "recCodes": ["APP-A-1", "APP-A-2"],
+      "priority": "MEDIUM",
+      "rationale": "Downstream recycling - verification"
+    },
+    {
+      "questionId": "Q149",
+      "recCodes": ["APP-A-1", "APP-A-2"],
+      "priority": "MEDIUM",
+      "rationale": "Downstream recycling - reporting"
+    },
+    {
+      "questionId": "Q150",
+      "recCodes": ["APP-A-1", "APP-A-2"],
+      "priority": "MEDIUM",
+      "rationale": "Downstream recycling - corrective actions"
+    },
+    {
+      "questionId": "Q151",
+      "recCodes": ["APP-A-1", "APP-A-2"],
+      "priority": "MEDIUM",
+      "rationale": "Downstream recycling - performance tracking"
+    },
+    {
+      "questionId": "Q152",
+      "recCodes": ["APP-A-1", "APP-A-2"],
+      "priority": "MEDIUM",
+      "rationale": "Downstream recycling - risk assessment"
+    },
+    {
+      "questionId": "Q153",
+      "recCodes": ["APP-A-1", "APP-A-2"],
+      "priority": "MEDIUM",
+      "rationale": "Downstream recycling - continuous improvement"
+    },
+    {
+      "questionId": "Q154",
+      "recCodes": ["APP-A-1", "APP-A-2"],
+      "priority": "MEDIUM",
+      "rationale": "Downstream recycling - vendor communication"
+    },
+    {
+      "questionId": "Q155",
+      "recCodes": ["APP-A-1", "APP-A-2"],
+      "priority": "MEDIUM",
+      "rationale": "Downstream recycling - compliance verification"
+    },
+    {
+      "questionId": "Q156",
+      "recCodes": ["APP-A-1", "APP-A-2"],
+      "priority": "MEDIUM",
+      "rationale": "Downstream recycling - records retention"
+    },
+    {
+      "questionId": "Q157",
+      "recCodes": ["APP-A-1", "APP-A-2"],
+      "priority": "MEDIUM",
+      "rationale": "Downstream recycling - international shipments"
+    },
+    {
+      "questionId": "Q158",
+      "recCodes": ["APP-A-1", "APP-A-2"],
+      "priority": "MEDIUM",
+      "rationale": "Downstream recycling - material tracking"
+    },
+    {
+      "questionId": "Q159",
+      "recCodes": ["APP-A-1", "APP-A-2"],
+      "priority": "MEDIUM",
+      "rationale": "Downstream recycling - vendor certification"
+    },
+    {
+      "questionId": "Q160",
+      "recCodes": ["APP-A-1", "APP-A-2"],
+      "priority": "MEDIUM",
+      "rationale": "Downstream recycling - supply chain transparency"
+    },
+    {
+      "questionId": "Q161",
+      "recCodes": ["APP-B-1", "DATA-01"],
+      "priority": "CRITICAL",
+      "rationale": "Data sanitization - methods and procedures"
+    },
+    {
+      "questionId": "Q162",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "CRITICAL",
+      "rationale": "Data sanitization - standards compliance"
+    },
+    {
+      "questionId": "Q163",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "HIGH",
+      "rationale": "Data sanitization - equipment qualification"
+    },
+    {
+      "questionId": "Q164",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "HIGH",
+      "rationale": "Data sanitization - verification"
+    },
+    {
+      "questionId": "Q165",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "HIGH",
+      "rationale": "Data sanitization - documentation"
+    },
+    {
+      "questionId": "Q166",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "MEDIUM",
+      "rationale": "Data sanitization - software tools"
+    },
+    {
+      "questionId": "Q167",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "MEDIUM",
+      "rationale": "Data sanitization - physical destruction"
+    },
+    {
+      "questionId": "Q168",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "MEDIUM",
+      "rationale": "Data sanitization - degaussing"
+    },
+    {
+      "questionId": "Q169",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "MEDIUM",
+      "rationale": "Data sanitization - overwriting"
+    },
+    {
+      "questionId": "Q170",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "MEDIUM",
+      "rationale": "Data sanitization - encryption"
+    },
+    {
+      "questionId": "Q171",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "MEDIUM",
+      "rationale": "Data sanitization - mobile devices"
+    },
+    {
+      "questionId": "Q172",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "MEDIUM",
+      "rationale": "Data sanitization - solid state drives"
+    },
+    {
+      "questionId": "Q173",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "MEDIUM",
+      "rationale": "Data sanitization - servers"
+    },
+    {
+      "questionId": "Q174",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "MEDIUM",
+      "rationale": "Data sanitization - networking equipment"
+    },
+    {
+      "questionId": "Q175",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "MEDIUM",
+      "rationale": "Data sanitization - copiers and printers"
+    },
+    {
+      "questionId": "Q176",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "MEDIUM",
+      "rationale": "Data sanitization - certificates of destruction"
+    },
+    {
+      "questionId": "Q177",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "MEDIUM",
+      "rationale": "Data sanitization - audit trail"
+    },
+    {
+      "questionId": "Q178",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "MEDIUM",
+      "rationale": "Data sanitization - training"
+    },
+    {
+      "questionId": "Q179",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "MEDIUM",
+      "rationale": "Data sanitization - quality control"
+    },
+    {
+      "questionId": "Q180",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "MEDIUM",
+      "rationale": "Data sanitization - failed drives"
+    },
+    {
+      "questionId": "Q181",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "MEDIUM",
+      "rationale": "Data sanitization - client requirements"
+    },
+    {
+      "questionId": "Q182",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "MEDIUM",
+      "rationale": "Data sanitization - reporting"
+    },
+    {
+      "questionId": "Q183",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "MEDIUM",
+      "rationale": "Data sanitization - equipment maintenance"
+    },
+    {
+      "questionId": "Q184",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "MEDIUM",
+      "rationale": "Data sanitization - security controls"
+    },
+    {
+      "questionId": "Q185",
+      "recCodes": ["APP-B-1", "APP-B-2"],
+      "priority": "MEDIUM",
+      "rationale": "Data sanitization - continuous improvement"
+    },
+    {
+      "questionId": "Q186",
+      "recCodes": ["APP-C-1", "APP-C-2"],
+      "priority": "HIGH",
+      "rationale": "Test and repair - qualification procedures"
+    },
+    {
+      "questionId": "Q187",
+      "recCodes": ["APP-C-1", "APP-C-2"],
+      "priority": "HIGH",
+      "rationale": "Test and repair - testing protocols"
+    },
+    {
+      "questionId": "Q188",
+      "recCodes": ["APP-C-1", "APP-C-2"],
+      "priority": "MEDIUM",
+      "rationale": "Test and repair - equipment calibration"
+    },
+    {
+      "questionId": "Q189",
+      "recCodes": ["APP-C-1", "APP-C-2"],
+      "priority": "MEDIUM",
+      "rationale": "Test and repair - technician training"
+    },
+    {
+      "questionId": "Q190",
+      "recCodes": ["APP-C-1", "APP-C-2"],
+      "priority": "MEDIUM",
+      "rationale": "Test and repair - documentation"
+    },
+    {
+      "questionId": "Q191",
+      "recCodes": ["APP-C-1", "APP-C-2"],
+      "priority": "MEDIUM",
+      "rationale": "Test and repair - parts inventory"
+    },
+    {
+      "questionId": "Q192",
+      "recCodes": ["APP-C-1", "APP-C-2"],
+      "priority": "MEDIUM",
+      "rationale": "Test and repair - quality standards"
+    },
+    {
+      "questionId": "Q193",
+      "recCodes": ["APP-C-1", "APP-C-2"],
+      "priority": "MEDIUM",
+      "rationale": "Test and repair - workspace requirements"
+    },
+    {
+      "questionId": "Q194",
+      "recCodes": ["APP-C-1", "APP-C-2"],
+      "priority": "MEDIUM",
+      "rationale": "Test and repair - warranty provisions"
+    },
+    {
+      "questionId": "Q195",
+      "recCodes": ["APP-C-1", "APP-C-2"],
+      "priority": "MEDIUM",
+      "rationale": "Test and repair - cosmetic grading"
+    },
+    {
+      "questionId": "Q196",
+      "recCodes": ["APP-C-1", "APP-C-2"],
+      "priority": "MEDIUM",
+      "rationale": "Test and repair - functional testing"
+    },
+    {
+      "questionId": "Q197",
+      "recCodes": ["APP-C-1", "APP-C-2"],
+      "priority": "MEDIUM",
+      "rationale": "Test and repair - refurbishment standards"
+    },
+    {
+      "questionId": "Q198",
+      "recCodes": ["APP-C-1", "APP-C-2"],
+      "priority": "MEDIUM",
+      "rationale": "Test and repair - remarketing"
+    },
+    {
+      "questionId": "Q199",
+      "recCodes": ["APP-C-1", "APP-C-2"],
+      "priority": "MEDIUM",
+      "rationale": "Test and repair - customer disclosure"
+    },
+    {
+      "questionId": "Q200",
+      "recCodes": ["APP-C-1", "APP-C-2"],
+      "priority": "MEDIUM",
+      "rationale": "Test and repair - safety compliance"
+    },
+    {
+      "questionId": "Q201",
+      "recCodes": ["APP-C-1", "APP-C-2"],
+      "priority": "MEDIUM",
+      "rationale": "Test and repair - component testing"
+    },
+    {
+      "questionId": "Q202",
+      "recCodes": ["APP-C-1", "APP-C-2"],
+      "priority": "MEDIUM",
+      "rationale": "Test and repair - diagnostics"
+    },
+    {
+      "questionId": "Q203",
+      "recCodes": ["APP-C-1", "APP-C-2"],
+      "priority": "MEDIUM",
+      "rationale": "Test and repair - upgrade capabilities"
+    },
+    {
+      "questionId": "Q204",
+      "recCodes": ["APP-C-1", "APP-C-2"],
+      "priority": "MEDIUM",
+      "rationale": "Test and repair - certifications"
+    },
+    {
+      "questionId": "Q205",
+      "recCodes": ["APP-C-1", "APP-C-2"],
+      "priority": "MEDIUM",
+      "rationale": "Test and repair - records retention"
+    },
+    {
+      "questionId": "Q206",
+      "recCodes": ["APP-D-1", "APP-D-2"],
+      "priority": "HIGH",
+      "rationale": "Specialty electronics reuse - medical equipment"
+    },
+    {
+      "questionId": "Q207",
+      "recCodes": ["APP-D-1", "APP-D-2"],
+      "priority": "HIGH",
+      "rationale": "Specialty electronics - industrial controls"
+    },
+    {
+      "questionId": "Q208",
+      "recCodes": ["APP-D-1", "APP-D-2"],
+      "priority": "MEDIUM",
+      "rationale": "Specialty electronics - telecom equipment"
+    },
+    {
+      "questionId": "Q209",
+      "recCodes": ["APP-D-1", "APP-D-2"],
+      "priority": "MEDIUM",
+      "rationale": "Specialty electronics - scientific instruments"
+    },
+    {
+      "questionId": "Q210",
+      "recCodes": ["APP-D-1", "APP-D-2"],
+      "priority": "MEDIUM",
+      "rationale": "Specialty electronics - specialized testing"
+    },
+    {
+      "questionId": "Q211",
+      "recCodes": ["APP-D-1", "APP-D-2"],
+      "priority": "MEDIUM",
+      "rationale": "Specialty electronics - regulatory compliance"
+    },
+    {
+      "questionId": "Q212",
+      "recCodes": ["APP-D-1", "APP-D-2"],
+      "priority": "MEDIUM",
+      "rationale": "Specialty electronics - calibration requirements"
+    },
+    {
+      "questionId": "Q213",
+      "recCodes": ["APP-D-1", "APP-D-2"],
+      "priority": "MEDIUM",
+      "rationale": "Specialty electronics - safety standards"
+    },
+    {
+      "questionId": "Q214",
+      "recCodes": ["APP-D-1", "APP-D-2"],
+      "priority": "MEDIUM",
+      "rationale": "Specialty electronics - market requirements"
+    },
+    {
+      "questionId": "Q215",
+      "recCodes": ["APP-D-1", "APP-D-2"],
+      "priority": "MEDIUM",
+      "rationale": "Specialty electronics - documentation"
+    },
+    {
+      "questionId": "Q216",
+      "recCodes": ["APP-D-1", "APP-D-2"],
+      "priority": "MEDIUM",
+      "rationale": "Specialty electronics - training"
+    },
+    {
+      "questionId": "Q217",
+      "recCodes": ["APP-D-1", "APP-D-2"],
+      "priority": "MEDIUM",
+      "rationale": "Specialty electronics - warranties"
+    },
+    {
+      "questionId": "Q218",
+      "recCodes": ["APP-D-1", "APP-D-2"],
+      "priority": "MEDIUM",
+      "rationale": "Specialty electronics - customer support"
+    },
+    {
+      "questionId": "Q219",
+      "recCodes": ["APP-D-1", "APP-D-2"],
+      "priority": "MEDIUM",
+      "rationale": "Specialty electronics - handling procedures"
+    },
+    {
+      "questionId": "Q220",
+      "recCodes": ["APP-D-1", "APP-D-2"],
+      "priority": "MEDIUM",
+      "rationale": "Specialty electronics - storage requirements"
+    },
+    {
+      "questionId": "Q221",
+      "recCodes": ["APP-D-1", "APP-D-2"],
+      "priority": "MEDIUM",
+      "rationale": "Specialty electronics - transportation"
+    },
+    {
+      "questionId": "Q222",
+      "recCodes": ["APP-D-1", "APP-D-2"],
+      "priority": "MEDIUM",
+      "rationale": "Specialty electronics - quality control"
+    },
+    {
+      "questionId": "Q223",
+      "recCodes": ["APP-D-1", "APP-D-2"],
+      "priority": "MEDIUM",
+      "rationale": "Specialty electronics - certification"
+    },
+    {
+      "questionId": "Q224",
+      "recCodes": ["APP-D-1", "APP-D-2"],
+      "priority": "MEDIUM",
+      "rationale": "Specialty electronics - verification"
+    },
+    {
+      "questionId": "Q225",
+      "recCodes": ["APP-D-1", "APP-D-2"],
+      "priority": "MEDIUM",
+      "rationale": "Specialty electronics - industry-specific requirements"
+    },
+    {
+      "questionId": "Q226",
+      "recCodes": ["APP-E-1", "APP-E-2"],
+      "priority": "HIGH",
+      "rationale": "Materials recovery - commodity tracking"
+    },
+    {
+      "questionId": "Q227",
+      "recCodes": ["APP-E-1", "APP-E-2"],
+      "priority": "HIGH",
+      "rationale": "Materials recovery - metal recovery"
+    },
+    {
+      "questionId": "Q228",
+      "recCodes": ["APP-E-1", "APP-E-2"],
+      "priority": "MEDIUM",
+      "rationale": "Materials recovery - plastic recovery"
+    },
+    {
+      "questionId": "Q229",
+      "recCodes": ["APP-E-1", "APP-E-2"],
+      "priority": "MEDIUM",
+      "rationale": "Materials recovery - glass recovery"
+    },
+    {
+      "questionId": "Q230",
+      "recCodes": ["APP-E-1", "APP-E-2"],
+      "priority": "MEDIUM",
+      "rationale": "Materials recovery - circuit board processing"
+    },
+    {
+      "questionId": "Q231",
+      "recCodes": ["APP-E-1", "APP-E-2"],
+      "priority": "MEDIUM",
+      "rationale": "Materials recovery - precious metal recovery"
+    },
+    {
+      "questionId": "Q232",
+      "recCodes": ["APP-E-1", "APP-E-2"],
+      "priority": "MEDIUM",
+      "rationale": "Materials recovery - separation processes"
+    },
+    {
+      "questionId": "Q233",
+      "recCodes": ["APP-E-1", "APP-E-2"],
+      "priority": "MEDIUM",
+      "rationale": "Materials recovery - purity standards"
+    },
+    {
+      "questionId": "Q234",
+      "recCodes": ["APP-E-1", "APP-E-2"],
+      "priority": "MEDIUM",
+      "rationale": "Materials recovery - market specifications"
+    },
+    {
+      "questionId": "Q235",
+      "recCodes": ["APP-E-1", "APP-E-2"],
+      "priority": "MEDIUM",
+      "rationale": "Materials recovery - downstream outlets"
+    },
+    {
+      "questionId": "Q236",
+      "recCodes": ["APP-E-1", "APP-E-2"],
+      "priority": "MEDIUM",
+      "rationale": "Materials recovery - contamination control"
+    },
+    {
+      "questionId": "Q237",
+      "recCodes": ["APP-E-1", "APP-E-2"],
+      "priority": "MEDIUM",
+      "rationale": "Materials recovery - yield tracking"
+    },
+    {
+      "questionId": "Q238",
+      "recCodes": ["APP-E-1", "APP-E-2"],
+      "priority": "MEDIUM",
+      "rationale": "Materials recovery - equipment capabilities"
+    },
+    {
+      "questionId": "Q239",
+      "recCodes": ["APP-E-1", "APP-E-2"],
+      "priority": "MEDIUM",
+      "rationale": "Materials recovery - processing standards"
+    },
+    {
+      "questionId": "Q240",
+      "recCodes": ["APP-E-1", "APP-E-2"],
+      "priority": "MEDIUM",
+      "rationale": "Materials recovery - quality assurance"
+    },
+    {
+      "questionId": "Q241",
+      "recCodes": ["APP-E-1", "APP-E-2"],
+      "priority": "MEDIUM",
+      "rationale": "Materials recovery - documentation"
+    },
+    {
+      "questionId": "Q242",
+      "recCodes": ["APP-E-1", "APP-E-2"],
+      "priority": "MEDIUM",
+      "rationale": "Materials recovery - reporting"
+    },
+    {
+      "questionId": "Q243",
+      "recCodes": ["APP-E-1", "APP-E-2"],
+      "priority": "MEDIUM",
+      "rationale": "Materials recovery - verification"
+    },
+    {
+      "questionId": "Q244",
+      "recCodes": ["APP-E-1", "APP-E-2"],
+      "priority": "MEDIUM",
+      "rationale": "Materials recovery - certification of analysis"
+    },
+    {
+      "questionId": "Q245",
+      "recCodes": ["APP-E-1", "APP-E-2"],
+      "priority": "MEDIUM",
+      "rationale": "Materials recovery - end market transparency"
+    },
+    {
+      "questionId": "Q246",
+      "recCodes": ["APP-F-1", "APP-F-2"],
+      "priority": "HIGH",
+      "rationale": "Brokering - due diligence requirements"
+    },
+    {
+      "questionId": "Q247",
+      "recCodes": ["APP-F-1", "APP-F-2"],
+      "priority": "HIGH",
+      "rationale": "Brokering - transaction documentation"
+    },
+    {
+      "questionId": "Q248",
+      "recCodes": ["APP-F-1", "APP-F-2"],
+      "priority": "MEDIUM",
+      "rationale": "Brokering - vendor relationships"
+    },
+    {
+      "questionId": "Q249",
+      "recCodes": ["APP-F-1", "APP-F-2"],
+      "priority": "MEDIUM",
+      "rationale": "Brokering - material tracking"
+    },
+    {
+      "questionId": "Q250",
+      "recCodes": ["APP-F-1", "APP-F-2"],
+      "priority": "MEDIUM",
+      "rationale": "Brokering - chain of custody"
+    },
+    {
+      "questionId": "Q251",
+      "recCodes": ["APP-F-1", "APP-F-2"],
+      "priority": "MEDIUM",
+      "rationale": "Brokering - contracts and agreements"
+    },
+    {
+      "questionId": "Q252",
+      "recCodes": ["APP-F-1", "APP-F-2"],
+      "priority": "MEDIUM",
+      "rationale": "Brokering - quality verification"
+    },
+    {
+      "questionId": "Q253",
+      "recCodes": ["APP-F-1", "APP-F-2"],
+      "priority": "MEDIUM",
+      "rationale": "Brokering - compliance verification"
+    },
+    {
+      "questionId": "Q254",
+      "recCodes": ["APP-F-1", "APP-F-2"],
+      "priority": "MEDIUM",
+      "rationale": "Brokering - reporting requirements"
+    },
+    {
+      "questionId": "Q255",
+      "recCodes": ["APP-F-1", "APP-F-2"],
+      "priority": "MEDIUM",
+      "rationale": "Brokering - records retention"
+    },
+    {
+      "questionId": "Q256",
+      "recCodes": ["APP-F-1", "APP-F-2"],
+      "priority": "MEDIUM",
+      "rationale": "Brokering - risk management"
+    },
+    {
+      "questionId": "Q257",
+      "recCodes": ["APP-F-1", "APP-F-2"],
+      "priority": "MEDIUM",
+      "rationale": "Brokering - audit trail"
+    },
+    {
+      "questionId": "Q258",
+      "recCodes": ["APP-F-1", "APP-F-2"],
+      "priority": "MEDIUM",
+      "rationale": "Brokering - communication protocols"
+    },
+    {
+      "questionId": "Q259",
+      "recCodes": ["APP-F-1", "APP-F-2"],
+      "priority": "MEDIUM",
+      "rationale": "Brokering - performance metrics"
+    },
+    {
+      "questionId": "Q260",
+      "recCodes": ["APP-F-1", "APP-F-2"],
+      "priority": "MEDIUM",
+      "rationale": "Brokering - continuous improvement"
+    },
+    {
+      "questionId": "Q261",
+      "recCodes": ["APP-G-1", "APP-G-2"],
+      "priority": "HIGH",
+      "rationale": "Photovoltaic modules - handling procedures"
+    },
+    {
+      "questionId": "Q262",
+      "recCodes": ["APP-G-1", "APP-G-2"],
+      "priority": "HIGH",
+      "rationale": "PV modules - safety requirements"
+    },
+    {
+      "questionId": "Q263",
+      "recCodes": ["APP-G-1", "APP-G-2"],
+      "priority": "MEDIUM",
+      "rationale": "PV modules - storage requirements"
+    },
+    {
+      "questionId": "Q264",
+      "recCodes": ["APP-G-1", "APP-G-2"],
+      "priority": "MEDIUM",
+      "rationale": "PV modules - testing procedures"
+    },
+    {
+      "questionId": "Q265",
+      "recCodes": ["APP-G-1", "APP-G-2"],
+      "priority": "MEDIUM",
+      "rationale": "PV modules - hazardous materials"
+    },
+    {
+      "questionId": "Q266",
+      "recCodes": ["APP-G-1", "APP-G-2"],
+      "priority": "MEDIUM",
+      "rationale": "PV modules - recycling processes"
+    },
+    {
+      "questionId": "Q267",
+      "recCodes": ["APP-G-1", "APP-G-2"],
+      "priority": "MEDIUM",
+      "rationale": "PV modules - material recovery"
+    },
+    {
+      "questionId": "Q268",
+      "recCodes": ["APP-G-1", "APP-G-2"],
+      "priority": "MEDIUM",
+      "rationale": "PV modules - transportation"
+    },
+    {
+      "questionId": "Q269",
+      "recCodes": ["APP-G-1", "APP-G-2"],
+      "priority": "MEDIUM",
+      "rationale": "PV modules - documentation"
+    },
+    {
+      "questionId": "Q270",
+      "recCodes": ["APP-G-1", "APP-G-2"],
+      "priority": "MEDIUM",
+      "rationale": "PV modules - worker training"
+    },
+    {
+      "questionId": "Q271",
+      "recCodes": ["APP-G-1", "APP-G-2"],
+      "priority": "MEDIUM",
+      "rationale": "PV modules - downstream management"
+    },
+    {
+      "questionId": "Q272",
+      "recCodes": ["APP-G-1", "APP-G-2"],
+      "priority": "MEDIUM",
+      "rationale": "PV modules - glass recovery"
+    },
+    {
+      "questionId": "Q273",
+      "recCodes": ["APP-G-1", "APP-G-2"],
+      "priority": "MEDIUM",
+      "rationale": "PV modules - metal recovery"
+    },
+    {
+      "questionId": "Q274",
+      "recCodes": ["APP-G-1", "APP-G-2"],
+      "priority": "MEDIUM",
+      "rationale": "PV modules - silicon recovery"
+    },
+    {
+      "questionId": "Q275",
+      "recCodes": ["APP-G-1", "APP-G-2"],
+      "priority": "MEDIUM",
+      "rationale": "PV modules - end-of-life management"
+    },
+    {
+      "questionId": "Q276",
+      "recCodes": ["AUDIT-1", "AUDIT-2"],
+      "priority": "HIGH",
+      "rationale": "Audit process - planning and preparation"
+    },
+    {
+      "questionId": "Q277",
+      "recCodes": ["AUDIT-1", "AUDIT-2"],
+      "priority": "HIGH",
+      "rationale": "Audit process - documentation requirements"
+    },
+    {
+      "questionId": "Q278",
+      "recCodes": ["AUDIT-1", "AUDIT-2"],
+      "priority": "MEDIUM",
+      "rationale": "Audit process - evidence collection"
+    },
+    {
+      "questionId": "Q279",
+      "recCodes": ["AUDIT-1", "AUDIT-2"],
+      "priority": "MEDIUM",
+      "rationale": "Audit process - corrective actions"
+    },
+    {
+      "questionId": "Q280",
+      "recCodes": ["AUDIT-1", "AUDIT-2"],
+      "priority": "MEDIUM",
+      "rationale": "Audit process - follow-up procedures"
+    },
+    {
+      "questionId": "Q281",
+      "recCodes": ["AUDIT-1", "AUDIT-2"],
+      "priority": "MEDIUM",
+      "rationale": "Audit process - findings management"
+    },
+    {
+      "questionId": "Q282",
+      "recCodes": ["AUDIT-1", "AUDIT-2"],
+      "priority": "MEDIUM",
+      "rationale": "Audit process - internal audits"
+    },
+    {
+      "questionId": "Q283",
+      "recCodes": ["AUDIT-1", "AUDIT-2"],
+      "priority": "MEDIUM",
+      "rationale": "Audit process - external audits"
+    },
+    {
+      "questionId": "Q284",
+      "recCodes": ["AUDIT-1", "AUDIT-2"],
+      "priority": "MEDIUM",
+      "rationale": "Audit process - audit scheduling"
+    },
+    {
+      "questionId": "Q285",
+      "recCodes": ["AUDIT-1", "AUDIT-2"],
+      "priority": "MEDIUM",
+      "rationale": "Audit process - audit scope"
+    },
+    {
+      "questionId": "Q286",
+      "recCodes": ["AUDIT-1", "AUDIT-2"],
+      "priority": "MEDIUM",
+      "rationale": "Audit process - auditor qualifications"
+    },
+    {
+      "questionId": "Q287",
+      "recCodes": ["AUDIT-1", "AUDIT-2"],
+      "priority": "MEDIUM",
+      "rationale": "Audit process - audit reports"
+    },
+    {
+      "questionId": "Q288",
+      "recCodes": ["AUDIT-1", "AUDIT-2"],
+      "priority": "MEDIUM",
+      "rationale": "Audit process - nonconformities"
+    },
+    {
+      "questionId": "Q289",
+      "recCodes": ["AUDIT-1", "AUDIT-2"],
+      "priority": "MEDIUM",
+      "rationale": "Audit process - root cause analysis"
+    },
+    {
+      "questionId": "Q290",
+      "recCodes": ["AUDIT-1", "AUDIT-2"],
+      "priority": "MEDIUM",
+      "rationale": "Audit process - continuous monitoring"
+    },
+    {
+      "questionId": "Q331",
+      "recCodes": ["BIZ-CONT-1"],
+      "priority": "MEDIUM",
+      "rationale": "Business continuity - planning and preparedness"
+    },
+    {
+      "questionId": "Q332",
+      "recCodes": ["BIZ-CONT-1"],
+      "priority": "MEDIUM",
+      "rationale": "Business continuity - risk assessment"
+    },
+    {
+      "questionId": "Q333",
+      "recCodes": ["BIZ-CONT-1"],
+      "priority": "MEDIUM",
+      "rationale": "Business continuity - emergency response"
+    },
+    {
+      "questionId": "Q334",
+      "recCodes": ["BIZ-CONT-1"],
+      "priority": "MEDIUM",
+      "rationale": "Business continuity - recovery procedures"
+    },
+    {
+      "questionId": "Q335",
+      "recCodes": ["BIZ-CONT-1"],
+      "priority": "MEDIUM",
+      "rationale": "Business continuity - backup systems"
+    },
+    {
+      "questionId": "Q336",
+      "recCodes": ["BIZ-CONT-1"],
+      "priority": "MEDIUM",
+      "rationale": "Business continuity - communication plans"
+    },
+    {
+      "questionId": "Q337",
+      "recCodes": ["BIZ-CONT-1"],
+      "priority": "MEDIUM",
+      "rationale": "Business continuity - testing and exercises"
+    },
+    {
+      "questionId": "Q338",
+      "recCodes": ["BIZ-CONT-1"],
+      "priority": "MEDIUM",
+      "rationale": "Business continuity - plan updates"
+    },
+    {
+      "questionId": "Q339",
+      "recCodes": ["BIZ-CONT-1"],
+      "priority": "MEDIUM",
+      "rationale": "Business continuity - resource allocation"
+    },
+    {
+      "questionId": "Q340",
+      "recCodes": ["BIZ-CONT-1"],
+      "priority": "MEDIUM",
+      "rationale": "Business continuity - stakeholder coordination"
+    },
+    {
+      "questionId": "Q361",
+      "recCodes": ["CERT-01", "CERT-02"],
+      "priority": "HIGH",
+      "rationale": "Certification maintenance - ongoing compliance"
+    },
+    {
+      "questionId": "Q362",
+      "recCodes": ["CERT-01", "CERT-02"],
+      "priority": "HIGH",
+      "rationale": "Certification maintenance - surveillance audits"
+    },
+    {
+      "questionId": "Q363",
+      "recCodes": ["CERT-01", "CERT-02"],
+      "priority": "MEDIUM",
+      "rationale": "Certification maintenance - documentation updates"
+    },
+    {
+      "questionId": "Q364",
+      "recCodes": ["CERT-01", "CERT-02"],
+      "priority": "MEDIUM",
+      "rationale": "Certification maintenance - scope changes"
+    },
+    {
+      "questionId": "Q365",
+      "recCodes": ["CERT-01", "CERT-02"],
+      "priority": "MEDIUM",
+      "rationale": "Certification maintenance - recertification"
+    },
+    {
+      "questionId": "Q366",
+      "recCodes": ["CERT-01", "CERT-02"],
+      "priority": "MEDIUM",
+      "rationale": "Certification maintenance - CB communication"
+    },
+    {
+      "questionId": "Q367",
+      "recCodes": ["CERT-01", "CERT-02"],
+      "priority": "MEDIUM",
+      "rationale": "Certification maintenance - certificate display"
+    },
+    {
+      "questionId": "Q368",
+      "recCodes": ["CERT-01", "CERT-02"],
+      "priority": "MEDIUM",
+      "rationale": "Certification maintenance - logo usage"
+    },
+    {
+      "questionId": "Q369",
+      "recCodes": ["CERT-01", "CERT-02"],
+      "priority": "MEDIUM",
+      "rationale": "Certification maintenance - reporting requirements"
+    },
+    {
+      "questionId": "Q370",
+      "recCodes": ["CERT-01", "CERT-02"],
+      "priority": "MEDIUM",
+      "rationale": "Certification maintenance - renewal process"
+    },
+    {
+      "questionId": "Q391",
+      "recCodes": ["CONT-IMP-1"],
+      "priority": "MEDIUM",
+      "rationale": "Continuous improvement - performance metrics"
+    },
+    {
+      "questionId": "Q392",
+      "recCodes": ["CONT-IMP-1"],
+      "priority": "MEDIUM",
+      "rationale": "Continuous improvement - process optimization"
+    },
+    {
+      "questionId": "Q393",
+      "recCodes": ["CONT-IMP-1"],
+      "priority": "MEDIUM",
+      "rationale": "Continuous improvement - innovation initiatives"
+    },
+    {
+      "questionId": "Q394",
+      "recCodes": ["CONT-IMP-1"],
+      "priority": "MEDIUM",
+      "rationale": "Continuous improvement - lessons learned"
+    },
+    {
+      "questionId": "Q395",
+      "recCodes": ["CONT-IMP-1"],
+      "priority": "MEDIUM",
+      "rationale": "Continuous improvement - feedback mechanisms"
+    },
+    {
+      "questionId": "Q396",
+      "recCodes": ["CONT-IMP-1"],
+      "priority": "MEDIUM",
+      "rationale": "Continuous improvement - corrective actions"
+    },
+    {
+      "questionId": "Q397",
+      "recCodes": ["CONT-IMP-1"],
+      "priority": "MEDIUM",
+      "rationale": "Continuous improvement - preventive actions"
+    },
+    {
+      "questionId": "Q398",
+      "recCodes": ["CONT-IMP-1"],
+      "priority": "MEDIUM",
+      "rationale": "Continuous improvement - best practices"
+    },
+    {
+      "questionId": "Q399",
+      "recCodes": ["CONT-IMP-1"],
+      "priority": "MEDIUM",
+      "rationale": "Continuous improvement - benchmarking"
+    },
+    {
+      "questionId": "Q400",
+      "recCodes": ["CONT-IMP-1"],
+      "priority": "MEDIUM",
+      "rationale": "Continuous improvement - management review"
+    },
+    {
+      "questionId": "Q291",
+      "recCodes": ["ENV-COMP-1", "MGMT-01"],
+      "priority": "HIGH",
+      "rationale": "Environmental compliance - regulatory requirements"
+    },
+    {
+      "questionId": "Q292",
+      "recCodes": ["ENV-COMP-1"],
+      "priority": "MEDIUM",
+      "rationale": "Environmental compliance - permits and licenses"
+    },
+    {
+      "questionId": "Q293",
+      "recCodes": ["ENV-COMP-1"],
+      "priority": "MEDIUM",
+      "rationale": "Environmental compliance - monitoring and reporting"
+    },
+    {
+      "questionId": "Q294",
+      "recCodes": ["ENV-COMP-1"],
+      "priority": "MEDIUM",
+      "rationale": "Environmental compliance - inspections"
+    },
+    {
+      "questionId": "Q295",
+      "recCodes": ["ENV-COMP-1"],
+      "priority": "MEDIUM",
+      "rationale": "Environmental compliance - violations and corrective actions"
+    },
+    {
+      "questionId": "Q296",
+      "recCodes": ["ENV-COMP-1"],
+      "priority": "MEDIUM",
+      "rationale": "Environmental compliance - recordkeeping"
+    },
+    {
+      "questionId": "Q297",
+      "recCodes": ["ENV-COMP-1"],
+      "priority": "MEDIUM",
+      "rationale": "Environmental compliance - training"
+    },
+    {
+      "questionId": "Q298",
+      "recCodes": ["ENV-COMP-1"],
+      "priority": "MEDIUM",
+      "rationale": "Environmental compliance - emergency procedures"
+    },
+    {
+      "questionId": "Q299",
+      "recCodes": ["ENV-COMP-1"],
+      "priority": "MEDIUM",
+      "rationale": "Environmental compliance - pollution prevention"
+    },
+    {
+      "questionId": "Q300",
+      "recCodes": ["ENV-COMP-1"],
+      "priority": "MEDIUM",
+      "rationale": "Environmental compliance - continuous monitoring"
+    },
+    {
+      "questionId": "Q341",
+      "recCodes": ["FINAL-VER-1"],
+      "priority": "HIGH",
+      "rationale": "Final verification - pre-audit readiness"
+    },
+    {
+      "questionId": "Q342",
+      "recCodes": ["FINAL-VER-1"],
+      "priority": "MEDIUM",
+      "rationale": "Final verification - documentation review"
+    },
+    {
+      "questionId": "Q343",
+      "recCodes": ["FINAL-VER-1"],
+      "priority": "MEDIUM",
+      "rationale": "Final verification - evidence completeness"
+    },
+    {
+      "questionId": "Q344",
+      "recCodes": ["FINAL-VER-1"],
+      "priority": "MEDIUM",
+      "rationale": "Final verification - gap analysis"
+    },
+    {
+      "questionId": "Q345",
+      "recCodes": ["FINAL-VER-1"],
+      "priority": "MEDIUM",
+      "rationale": "Final verification - checklist completion"
+    },
+    {
+      "questionId": "Q346",
+      "recCodes": ["FINAL-VER-1"],
+      "priority": "MEDIUM",
+      "rationale": "Final verification - stakeholder readiness"
+    },
+    {
+      "questionId": "Q347",
+      "recCodes": ["FINAL-VER-1"],
+      "priority": "MEDIUM",
+      "rationale": "Final verification - facility walkthrough"
+    },
+    {
+      "questionId": "Q348",
+      "recCodes": ["FINAL-VER-1"],
+      "priority": "MEDIUM",
+      "rationale": "Final verification - mock audit"
+    },
+    {
+      "questionId": "Q349",
+      "recCodes": ["FINAL-VER-1"],
+      "priority": "MEDIUM",
+      "rationale": "Final verification - readiness declaration"
+    },
+    {
+      "questionId": "Q350",
+      "recCodes": ["FINAL-VER-1"],
+      "priority": "MEDIUM",
+      "rationale": "Final verification - submission preparation"
+    },
+    {
+      "questionId": "Q301",
+      "recCodes": ["QC-VER-1"],
+      "priority": "HIGH",
+      "rationale": "Quality control and verification - inspection procedures"
+    },
+    {
+      "questionId": "Q302",
+      "recCodes": ["QC-VER-1"],
+      "priority": "MEDIUM",
+      "rationale": "Quality control - testing protocols"
+    },
+    {
+      "questionId": "Q303",
+      "recCodes": ["QC-VER-1"],
+      "priority": "MEDIUM",
+      "rationale": "Quality control - verification methods"
+    },
+    {
+      "questionId": "Q304",
+      "recCodes": ["QC-VER-1"],
+      "priority": "MEDIUM",
+      "rationale": "Quality control - acceptance criteria"
+    },
+    {
+      "questionId": "Q305",
+      "recCodes": ["QC-VER-1"],
+      "priority": "MEDIUM",
+      "rationale": "Quality control - nonconforming material"
+    },
+    {
+      "questionId": "Q306",
+      "recCodes": ["QC-VER-1"],
+      "priority": "MEDIUM",
+      "rationale": "Quality control - calibration"
+    },
+    {
+      "questionId": "Q307",
+      "recCodes": ["QC-VER-1"],
+      "priority": "MEDIUM",
+      "rationale": "Quality control - documentation"
+    },
+    {
+      "questionId": "Q308",
+      "recCodes": ["QC-VER-1"],
+      "priority": "MEDIUM",
+      "rationale": "Quality control - statistical process control"
+    },
+    {
+      "questionId": "Q309",
+      "recCodes": ["QC-VER-1"],
+      "priority": "MEDIUM",
+      "rationale": "Quality control - continuous improvement"
+    },
+    {
+      "questionId": "Q310",
+      "recCodes": ["QC-VER-1"],
+      "priority": "MEDIUM",
+      "rationale": "Quality control - corrective actions"
+    },
+    {
+      "questionId": "Q321",
+      "recCodes": ["REMOTE-AUD-1"],
+      "priority": "MEDIUM",
+      "rationale": "Remote audit - technology requirements"
+    },
+    {
+      "questionId": "Q322",
+      "recCodes": ["REMOTE-AUD-1"],
+      "priority": "MEDIUM",
+      "rationale": "Remote audit - virtual walkthroughs"
+    },
+    {
+      "questionId": "Q323",
+      "recCodes": ["REMOTE-AUD-1"],
+      "priority": "MEDIUM",
+      "rationale": "Remote audit - digital evidence"
+    },
+    {
+      "questionId": "Q324",
+      "recCodes": ["REMOTE-AUD-1"],
+      "priority": "MEDIUM",
+      "rationale": "Remote audit - communication protocols"
+    },
+    {
+      "questionId": "Q325",
+      "recCodes": ["REMOTE-AUD-1"],
+      "priority": "MEDIUM",
+      "rationale": "Remote audit - security considerations"
+    },
+    {
+      "questionId": "Q326",
+      "recCodes": ["REMOTE-AUD-1"],
+      "priority": "MEDIUM",
+      "rationale": "Remote audit - scheduling"
+    },
+    {
+      "questionId": "Q327",
+      "recCodes": ["REMOTE-AUD-1"],
+      "priority": "MEDIUM",
+      "rationale": "Remote audit - document sharing"
+    },
+    {
+      "questionId": "Q328",
+      "recCodes": ["REMOTE-AUD-1"],
+      "priority": "MEDIUM",
+      "rationale": "Remote audit - verification methods"
+    },
+    {
+      "questionId": "Q329",
+      "recCodes": ["REMOTE-AUD-1"],
+      "priority": "MEDIUM",
+      "rationale": "Remote audit - follow-up procedures"
+    },
+    {
+      "questionId": "Q330",
+      "recCodes": ["REMOTE-AUD-1"],
+      "priority": "MEDIUM",
+      "rationale": "Remote audit - reporting"
+    },
+    {
+      "questionId": "Q311",
+      "recCodes": ["RISK-MGMT-1"],
+      "priority": "HIGH",
+      "rationale": "Risk management - risk assessment"
+    },
+    {
+      "questionId": "Q312",
+      "recCodes": ["RISK-MGMT-1"],
+      "priority": "MEDIUM",
+      "rationale": "Risk management - risk mitigation"
+    },
+    {
+      "questionId": "Q313",
+      "recCodes": ["RISK-MGMT-1"],
+      "priority": "MEDIUM",
+      "rationale": "Risk management - controls"
+    },
+    {
+      "questionId": "Q314",
+      "recCodes": ["RISK-MGMT-1"],
+      "priority": "MEDIUM",
+      "rationale": "Risk management - monitoring"
+    },
+    {
+      "questionId": "Q315",
+      "recCodes": ["RISK-MGMT-1"],
+      "priority": "MEDIUM",
+      "rationale": "Risk management - reporting"
+    },
+    {
+      "questionId": "Q316",
+      "recCodes": ["RISK-MGMT-1"],
+      "priority": "MEDIUM",
+      "rationale": "Risk management - documentation"
+    },
+    {
+      "questionId": "Q317",
+      "recCodes": ["RISK-MGMT-1"],
+      "priority": "MEDIUM",
+      "rationale": "Risk management - insurance"
+    },
+    {
+      "questionId": "Q318",
+      "recCodes": ["RISK-MGMT-1"],
+      "priority": "MEDIUM",
+      "rationale": "Risk management - contingency planning"
+    },
+    {
+      "questionId": "Q319",
+      "recCodes": ["RISK-MGMT-1"],
+      "priority": "MEDIUM",
+      "rationale": "Risk management - incident response"
+    },
+    {
+      "questionId": "Q320",
+      "recCodes": ["RISK-MGMT-1"],
+      "priority": "MEDIUM",
+      "rationale": "Risk management - review and updates"
+    },
+    {
+      "questionId": "Q351",
+      "recCodes": ["SPEC-CONS-1"],
+      "priority": "MEDIUM",
+      "rationale": "Special considerations - unique circumstances"
+    },
+    {
+      "questionId": "Q352",
+      "recCodes": ["SPEC-CONS-1"],
+      "priority": "MEDIUM",
+      "rationale": "Special considerations - regulatory exceptions"
+    },
+    {
+      "questionId": "Q353",
+      "recCodes": ["SPEC-CONS-1"],
+      "priority": "MEDIUM",
+      "rationale": "Special considerations - alternative compliance"
+    },
+    {
+      "questionId": "Q354",
+      "recCodes": ["SPEC-CONS-1"],
+      "priority": "MEDIUM",
+      "rationale": "Special considerations - documentation"
+    },
+    {
+      "questionId": "Q355",
+      "recCodes": ["SPEC-CONS-1"],
+      "priority": "MEDIUM",
+      "rationale": "Special considerations - justification"
+    },
+    {
+      "questionId": "Q356",
+      "recCodes": ["SPEC-CONS-1"],
+      "priority": "MEDIUM",
+      "rationale": "Special considerations - approval process"
+    },
+    {
+      "questionId": "Q357",
+      "recCodes": ["SPEC-CONS-1"],
+      "priority": "MEDIUM",
+      "rationale": "Special considerations - monitoring"
+    },
+    {
+      "questionId": "Q358",
+      "recCodes": ["SPEC-CONS-1"],
+      "priority": "MEDIUM",
+      "rationale": "Special considerations - review"
+    },
+    {
+      "questionId": "Q359",
+      "recCodes": ["SPEC-CONS-1"],
+      "priority": "MEDIUM",
+      "rationale": "Special considerations - reporting"
+    },
+    {
+      "questionId": "Q360",
+      "recCodes": ["SPEC-CONS-1"],
+      "priority": "MEDIUM",
+      "rationale": "Special considerations - verification"
+    },
+    {
+      "questionId": "Q371",
+      "recCodes": ["STAKE-ENG-1"],
+      "priority": "MEDIUM",
+      "rationale": "Stakeholder engagement - communication strategy"
+    },
+    {
+      "questionId": "Q372",
+      "recCodes": ["STAKE-ENG-1"],
+      "priority": "MEDIUM",
+      "rationale": "Stakeholder engagement - customer relations"
+    },
+    {
+      "questionId": "Q373",
+      "recCodes": ["STAKE-ENG-1"],
+      "priority": "MEDIUM",
+      "rationale": "Stakeholder engagement - vendor partnerships"
+    },
+    {
+      "questionId": "Q374",
+      "recCodes": ["STAKE-ENG-1"],
+      "priority": "MEDIUM",
+      "rationale": "Stakeholder engagement - community outreach"
+    },
+    {
+      "questionId": "Q375",
+      "recCodes": ["STAKE-ENG-1"],
+      "priority": "MEDIUM",
+      "rationale": "Stakeholder engagement - transparency"
+    },
+    {
+      "questionId": "Q376",
+      "recCodes": ["STAKE-ENG-1"],
+      "priority": "MEDIUM",
+      "rationale": "Stakeholder engagement - feedback mechanisms"
+    },
+    {
+      "questionId": "Q377",
+      "recCodes": ["STAKE-ENG-1"],
+      "priority": "MEDIUM",
+      "rationale": "Stakeholder engagement - reporting"
+    },
+    {
+      "questionId": "Q378",
+      "recCodes": ["STAKE-ENG-1"],
+      "priority": "MEDIUM",
+      "rationale": "Stakeholder engagement - collaboration"
+    },
+    {
+      "questionId": "Q379",
+      "recCodes": ["STAKE-ENG-1"],
+      "priority": "MEDIUM",
+      "rationale": "Stakeholder engagement - dispute resolution"
+    },
+    {
+      "questionId": "Q380",
+      "recCodes": ["STAKE-ENG-1"],
+      "priority": "MEDIUM",
+      "rationale": "Stakeholder engagement - relationship management"
+    },
+    {
+      "questionId": "Q381",
+      "recCodes": ["WORK-SAFE-1", "PERSONNEL-02"],
+      "priority": "HIGH",
+      "rationale": "Worker safety and training - safety programs"
+    },
+    {
+      "questionId": "Q382",
+      "recCodes": ["WORK-SAFE-1", "PERSONNEL-02"],
+      "priority": "HIGH",
+      "rationale": "Worker safety - hazard communication"
+    },
+    {
+      "questionId": "Q383",
+      "recCodes": ["WORK-SAFE-1", "PERSONNEL-02"],
+      "priority": "MEDIUM",
+      "rationale": "Worker safety - PPE requirements"
+    },
+    {
+      "questionId": "Q384",
+      "recCodes": ["WORK-SAFE-1", "PERSONNEL-02"],
+      "priority": "MEDIUM",
+      "rationale": "Worker safety - training programs"
+    },
+    {
+      "questionId": "Q385",
+      "recCodes": ["WORK-SAFE-1", "PERSONNEL-02"],
+      "priority": "MEDIUM",
+      "rationale": "Worker safety - incident reporting"
+    },
+    {
+      "questionId": "Q386",
+      "recCodes": ["WORK-SAFE-1", "PERSONNEL-02"],
+      "priority": "MEDIUM",
+      "rationale": "Worker safety - emergency procedures"
+    },
+    {
+      "questionId": "Q387",
+      "recCodes": ["WORK-SAFE-1", "PERSONNEL-02"],
+      "priority": "MEDIUM",
+      "rationale": "Worker safety - medical surveillance"
+    },
+    {
+      "questionId": "Q388",
+      "recCodes": ["WORK-SAFE-1", "PERSONNEL-02"],
+      "priority": "MEDIUM",
+      "rationale": "Worker safety - ergonomics"
+    },
+    {
+      "questionId": "Q389",
+      "recCodes": ["WORK-SAFE-1", "PERSONNEL-02"],
+      "priority": "MEDIUM",
+      "rationale": "Worker safety - safety inspections"
+    },
+    {
+      "questionId": "Q390",
+      "recCodes": ["WORK-SAFE-1", "PERSONNEL-02"],
+      "priority": "MEDIUM",
+      "rationale": "Worker safety - continuous improvement"
+    },
+    {
+      "questionId": "r2-data-security-001",
+      "recCodes": ["CR7-1", "DATA-01", "DATA-02"],
+      "priority": "CRITICAL",
+      "rationale": "NIST 800-88 data destruction procedures - core data security requirement"
+    },
+    {
+      "questionId": "r2-enviro-001",
+      "recCodes": ["CR3-2", "MGMT-01", "ENV-COMP-1"],
+      "priority": "HIGH",
+      "rationale": "Environmental management systems for all processing activities"
+    },
+    {
+      "questionId": "r2-facility-001",
+      "recCodes": ["CR9-1", "FACILITY-01", "PROC-03"],
+      "priority": "HIGH",
+      "rationale": "Processing area segregation for facility structure and sorting procedures"
+    },
+    {
+      "questionId": "r2-legal-001",
+      "recCodes": ["CR4-1", "LEGAL-01", "LEGAL-02"],
+      "priority": "CRITICAL",
+      "rationale": "Legal authorization to operate as electronics recycler"
+    },
+    {
+      "questionId": "r2-transport-001",
+      "recCodes": ["CR10-1", "CR10-2", "SUPPLY-01"],
+      "priority": "HIGH",
+      "rationale": "Transportation and storage procedures for all materials"
+    }
+  ],
+  "stats": {
+    "totalMappings": 405,
+    "uniqueQuestions": 405,
+    "uniqueRecCodes": 48,
+    "priorityBreakdown": {
+      "CRITICAL": 42,
+      "HIGH": 68,
+      "MEDIUM": 295
+    },
+    "coreRequirementsCoverage": {
+      "CR1": "10 questions (Q001-Q010)",
+      "CR2": "10 questions (Q011-Q020)",
+      "CR3": "15 questions (Q021-Q035)",
+      "CR4": "15 questions (Q036-Q050)",
+      "CR5": "15 questions (Q051-Q065)",
+      "CR6": "15 questions (Q066-Q080)",
+      "CR7": "20 questions (Q081-Q100)",
+      "CR8": "15 questions (Q101-Q115)",
+      "CR9": "15 questions (Q116-Q130)",
+      "CR10": "10 questions (Q131-Q140)"
+    },
+    "appendicesCoverage": {
+      "APP-A": "20 questions (Q141-Q160)",
+      "APP-B": "25 questions (Q161-Q185)",
+      "APP-C": "20 questions (Q186-Q205)",
+      "APP-D": "20 questions (Q206-Q225)",
+      "APP-E": "20 questions (Q226-Q245)",
+      "APP-F": "15 questions (Q246-Q260)",
+      "APP-G": "15 questions (Q261-Q275)"
+    },
+    "additionalCategoriesCoverage": {
+      "AUDIT": "15 questions (Q276-Q290)",
+      "ENV-COMP": "10 questions (Q291-Q300)",
+      "QC-VER": "10 questions (Q301-Q310)",
+      "RISK-MGMT": "10 questions (Q311-Q320)",
+      "REMOTE-AUD": "10 questions (Q321-Q330)",
+      "BIZ-CONT": "10 questions (Q331-Q340)",
+      "FINAL-VER": "10 questions (Q341-Q350)",
+      "SPEC-CONS": "10 questions (Q351-Q360)",
+      "CERT-MAINT": "10 questions (Q361-Q370)",
+      "STAKE-ENG": "10 questions (Q371-Q380)",
+      "WORK-SAFE": "10 questions (Q381-Q390)",
+      "CONT-IMP": "10 questions (Q391-Q400)",
+      "MISC": "5 questions (Q401-Q405)"
+    }
+  },
+  "recCodeList": [
+    "CR1-1", "CR1-2",
+    "CR2-1", "CR2-2",
+    "CR3-1", "CR3-2", "CR3-3",
+    "CR4-1",
+    "CR5-1", "CR5-2",
+    "CR6-1",
+    "CR7-1",
+    "CR8-1", "CR8-2",
+    "CR9-1",
+    "CR10-1", "CR10-2",
+    "APP-A-1", "APP-A-2",
+    "APP-B-1", "APP-B-2",
+    "APP-C-1", "APP-C-2",
+    "APP-D-1", "APP-D-2",
+    "APP-E-1", "APP-E-2",
+    "APP-F-1", "APP-F-2",
+    "APP-G-1", "APP-G-2",
+    "AUDIT-1", "AUDIT-2",
+    "BIZ-CONT-1",
+    "CERT-01", "CERT-02",
+    "CONT-IMP-1",
+    "DATA-01", "DATA-02",
+    "ENV-COMP-1",
+    "FACILITY-01", "FACILITY-03",
+    "FINAL-VER-1",
+    "LEGAL-01", "LEGAL-02", "LEGAL-03",
+    "MGMT-01",
+    "PERSONNEL-01", "PERSONNEL-02",
+    "PROC-02", "PROC-03",
+    "QC-VER-1",
+    "REMOTE-AUD-1",
+    "RISK-MGMT-1",
+    "SPEC-CONS-1",
+    "STAKE-ENG-1",
+    "SUPPLY-01", "SUPPLY-02",
+    "WORK-SAFE-1"
+  ],
+  "notes": "Comprehensive R2v3 standard coverage with 48 distinct REC codes mapping all 405 questions. Each Core Requirement (CR1-CR10) and Appendix (A-G) has dedicated REC codes. Additional categories for audit, compliance, quality control, risk management, certification maintenance, and worker safety are also covered."
+}

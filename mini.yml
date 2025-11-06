@@ -1,0 +1,11 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cold verify
+        run: bash coldver.sh
+      - name: Phases 0–5 E2E
+        run: bash e2e_0_5.sh

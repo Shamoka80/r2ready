@@ -1,0 +1,164 @@
+openapi: 3.1.0
+info:
+  title: BYOC Evidence API
+  version: 1.0.0
+  description: |
+    Bring Your Own Cloud (BYOC) Evidence Management API for R2v3 Compliance Platform.
+    
+    **API Contract Version**: 1.0.0
+    **Last Updated**: 2025-01-15
+    **Breaking Changes Policy**: 6-month deprecation notice required
+    **Backward Compatibility**: Maintained within major version
+    
+    ### Changelog
+    - v1.0.0 (2025-01-15): Initial stable release with provider management, evidence collections, and integrity verification
+  contact:
+    name: RUR2 API Support
+    email: api-support@rur2.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: /api
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    UUID: { type: string, format: uuid }
+    Timestamp: { type: string, format: date-time }
+    ProviderType: { type: string, enum: [aws, gcp, azure, custom] }
+    TokenStatus: { type: string, enum: [active, revoked, expired] }
+    IntegrityMeta:
+      type: object
+      properties:
+        sha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+        size: { type: integer, minimum: 0 }
+        signature: { type: string, nullable: true }
+      required: [sha256, size]
+    Provider:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        name: { type: string }
+        type: { $ref: '#/components/schemas/ProviderType' }
+        createdAt: { $ref: '#/components/schemas/Timestamp' }
+      required: [id, name, type, createdAt]
+    ProviderToken:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        providerId: { $ref: '#/components/schemas/UUID' }
+        status: { $ref: '#/components/schemas/TokenStatus' }
+        createdAt: { $ref: '#/components/schemas/Timestamp' }
+        expiresAt: { $ref: '#/components/schemas/Timestamp' }
+        revokedAt: { $ref: '#/components/schemas/Timestamp' }
+      required: [id, providerId, status, createdAt]
+    EvidenceCollection:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        providerId: { $ref: '#/components/schemas/UUID' }
+        name: { type: string }
+        createdAt: { $ref: '#/components/schemas/Timestamp' }
+      required: [id, providerId, name, createdAt]
+    EvidenceReference:
+      type: object
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        collectionId: { $ref: '#/components/schemas/UUID' }
+        uri: { type: string }
+        hashSha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+        size: { type: integer, minimum: 0 }
+        addedAt: { $ref: '#/components/schemas/Timestamp' }
+        metadata: { type: object, additionalProperties: true }
+      required: [id, collectionId, uri, hashSha256, size, addedAt]
+
+paths:
+  /providers/connect:
+    post:
+      tags: [Providers]
+      summary: Register/connect a provider and mint a token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                providerType: { $ref: '#/components/schemas/ProviderType' }
+                credentials: { type: object, additionalProperties: true }
+              required: [name, providerType]
+      responses:
+        '201':
+          description: Connected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  provider: { $ref: '#/components/schemas/Provider' }
+                  token: { $ref: '#/components/schemas/ProviderToken' }
+                required: [provider, token]
+
+  /collections:
+    post:
+      tags: [Collections]
+      summary: Create an evidence collection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                providerId: { $ref: '#/components/schemas/UUID' }
+                name: { type: string }
+              required: [providerId, name]
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EvidenceCollection' }
+
+  /evidence:
+    post:
+      tags: [Evidence]
+      summary: Attach an evidence reference to a collection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                collectionId: { $ref: '#/components/schemas/UUID' }
+                uri: { type: string }
+                integrity: { $ref: '#/components/schemas/IntegrityMeta' }
+                metadata: { type: object, additionalProperties: true }
+              required: [collectionId, uri, integrity]
+      responses:
+        '201':
+          description: Attached
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EvidenceReference' }
+
+  /provider-tokens/{id}:
+    delete:
+      tags: [Providers]
+      summary: Revoke a provider token
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { $ref: '#/components/schemas/UUID' }
+      responses:
+        '204': { description: Revoked }

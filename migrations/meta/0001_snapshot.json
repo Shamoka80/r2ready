@@ -1,0 +1,1576 @@
+{
+  "id": "da356121-2801-44ea-9d6e-83eed586bb6b",
+  "prevId": "15281a91-4c78-46e3-9ee7-421fa4c85f31",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.Answer": {
+      "name": "Answer",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "assessmentId": {
+          "name": "assessmentId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "questionId": {
+          "name": "questionId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evidenceFiles": {
+          "name": "evidenceFiles",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "compliance": {
+          "name": "compliance",
+          "type": "ComplianceLevel",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'NOT_ASSESSED'"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Assessment": {
+      "name": "Assessment",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "stdId": {
+          "name": "stdId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "AssessmentStatus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DRAFT'"
+        },
+        "progress": {
+          "name": "progress",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "completedAt": {
+          "name": "completedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Clause": {
+      "name": "Clause",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "ref": {
+          "name": "ref",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stdId": {
+          "name": "stdId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "Clause_ref_unique": {
+          "name": "Clause_ref_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "ref"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.IntakeAnswer": {
+      "name": "IntakeAnswer",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "intakeFormId": {
+          "name": "intakeFormId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "assessmentId": {
+          "name": "assessmentId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "intakeQuestionId": {
+          "name": "intakeQuestionId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evidenceFiles": {
+          "name": "evidenceFiles",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "isVerified": {
+          "name": "isVerified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "verifiedBy": {
+          "name": "verifiedBy",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verifiedAt": {
+          "name": "verifiedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.IntakeFacility": {
+      "name": "IntakeFacility",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "intakeFormId": {
+          "name": "intakeFormId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "facilityNumber": {
+          "name": "facilityNumber",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nameIdentifier": {
+          "name": "nameIdentifier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "squareFootage": {
+          "name": "squareFootage",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "zoning": {
+          "name": "zoning",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "employeesAtLocation": {
+          "name": "employeesAtLocation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "shifts": {
+          "name": "shifts",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "primaryFunction": {
+          "name": "primaryFunction",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.IntakeForm": {
+      "name": "IntakeForm",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "userId": {
+          "name": "userId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "assessmentId": {
+          "name": "assessmentId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "IntakeStatus",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DRAFT'"
+        },
+        "dateOfIntake": {
+          "name": "dateOfIntake",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "intakeConductedBy": {
+          "name": "intakeConductedBy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "legalCompanyName": {
+          "name": "legalCompanyName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dbaTradeNames": {
+          "name": "dbaTradeNames",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "businessEntityType": {
+          "name": "businessEntityType",
+          "type": "BusinessEntityType",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "taxIdEin": {
+          "name": "taxIdEin",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "yearEstablished": {
+          "name": "yearEstablished",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "primaryBusinessLicense": {
+          "name": "primaryBusinessLicense",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hqStreet": {
+          "name": "hqStreet",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hqCity": {
+          "name": "hqCity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hqStateProvince": {
+          "name": "hqStateProvince",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hqCountry": {
+          "name": "hqCountry",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hqPostalCode": {
+          "name": "hqPostalCode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mainPhone": {
+          "name": "mainPhone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "website": {
+          "name": "website",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "primaryR2ContactName": {
+          "name": "primaryR2ContactName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "primaryR2ContactTitle": {
+          "name": "primaryR2ContactTitle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "primaryR2ContactEmail": {
+          "name": "primaryR2ContactEmail",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "primaryR2ContactPhone": {
+          "name": "primaryR2ContactPhone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "topMgmtRepName": {
+          "name": "topMgmtRepName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "topMgmtRepTitle": {
+          "name": "topMgmtRepTitle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "topMgmtRepEmail": {
+          "name": "topMgmtRepEmail",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "topMgmtRepPhone": {
+          "name": "topMgmtRepPhone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dataProtectionRepName": {
+          "name": "dataProtectionRepName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dataProtectionRepTitle": {
+          "name": "dataProtectionRepTitle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "totalFacilities": {
+          "name": "totalFacilities",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "certificationStructureType": {
+          "name": "certificationStructureType",
+          "type": "FacilityType",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "totalEmployees": {
+          "name": "totalEmployees",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "seasonalWorkforceVariations": {
+          "name": "seasonalWorkforceVariations",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "seasonalRangeFrom": {
+          "name": "seasonalRangeFrom",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "seasonalRangeTo": {
+          "name": "seasonalRangeTo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "operatingSchedule": {
+          "name": "operatingSchedule",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "languagesSpokenByMgmt": {
+          "name": "languagesSpokenByMgmt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ehsmsType": {
+          "name": "ehsmsType",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ehsmsYear": {
+          "name": "ehsmsYear",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "qmsType": {
+          "name": "qmsType",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "qmsYear": {
+          "name": "qmsYear",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "otherCertifications": {
+          "name": "otherCertifications",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "processingActivities": {
+          "name": "processingActivities",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "electronicsTypes": {
+          "name": "electronicsTypes",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "monthlyTonnage": {
+          "name": "monthlyTonnage",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "annualVolume": {
+          "name": "annualVolume",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "focusMaterials": {
+          "name": "focusMaterials",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "totalDownstreamVendors": {
+          "name": "totalDownstreamVendors",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "numR2CertifiedDsv": {
+          "name": "numR2CertifiedDsv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "numNonR2Dsv": {
+          "name": "numNonR2Dsv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "internationalShipments": {
+          "name": "internationalShipments",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "primaryCountries": {
+          "name": "primaryCountries",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "applicableAppendices": {
+          "name": "applicableAppendices",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "certificationType": {
+          "name": "certificationType",
+          "type": "CertificationType",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "previousR2CertHistory": {
+          "name": "previousR2CertHistory",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "targetTimeline": {
+          "name": "targetTimeline",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "businessDrivers": {
+          "name": "businessDrivers",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "legalComplianceStatus": {
+          "name": "legalComplianceStatus",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recentViolations": {
+          "name": "recentViolations",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "seriDeceptivePracticesCheck": {
+          "name": "seriDeceptivePracticesCheck",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dataSecurityReadiness": {
+          "name": "dataSecurityReadiness",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "estimatedAuditTimeCategory": {
+          "name": "estimatedAuditTimeCategory",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "complexityFactors": {
+          "name": "complexityFactors",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "integrationOpportunities": {
+          "name": "integrationOpportunities",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fileClientId": {
+          "name": "fileClientId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cbReference": {
+          "name": "cbReference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "leadAuditor": {
+          "name": "leadAuditor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "teamMember": {
+          "name": "teamMember",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "technicalSpecialist": {
+          "name": "technicalSpecialist",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nextStepsRequired": {
+          "name": "nextStepsRequired",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "specialConsiderations": {
+          "name": "specialConsiderations",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "formCompletedBy": {
+          "name": "formCompletedBy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "signature": {
+          "name": "signature",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "eligibilityStatus": {
+          "name": "eligibilityStatus",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "followupRequired": {
+          "name": "followupRequired",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "priorityLevel": {
+          "name": "priorityLevel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "submittedAt": {
+          "name": "submittedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.IntakeQuestion": {
+      "name": "IntakeQuestion",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "questionId": {
+          "name": "questionId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "phase": {
+          "name": "phase",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "section": {
+          "name": "section",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "text": {
+          "name": "text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "questionType": {
+          "name": "questionType",
+          "type": "QuestionType",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "required": {
+          "name": "required",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "options": {
+          "name": "options",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "helpText": {
+          "name": "helpText",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recMapping": {
+          "name": "recMapping",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dependsOnQuestion": {
+          "name": "dependsOnQuestion",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dependsOnValue": {
+          "name": "dependsOnValue",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "weight": {
+          "name": "weight",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "isActive": {
+          "name": "isActive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "IntakeQuestion_questionId_unique": {
+          "name": "IntakeQuestion_questionId_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "questionId"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.QuestionMapping": {
+      "name": "QuestionMapping",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "intakeQuestionId": {
+          "name": "intakeQuestionId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "assessmentQuestionId": {
+          "name": "assessmentQuestionId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recCode": {
+          "name": "recCode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mappingLogic": {
+          "name": "mappingLogic",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "isActive": {
+          "name": "isActive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "QuestionMapping_intakeQuestionId_IntakeQuestion_id_fk": {
+          "name": "QuestionMapping_intakeQuestionId_IntakeQuestion_id_fk",
+          "tableFrom": "QuestionMapping",
+          "tableTo": "IntakeQuestion",
+          "columnsFrom": [
+            "intakeQuestionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "QuestionMapping_assessmentQuestionId_Question_id_fk": {
+          "name": "QuestionMapping_assessmentQuestionId_Question_id_fk",
+          "tableFrom": "QuestionMapping",
+          "tableTo": "Question",
+          "columnsFrom": [
+            "assessmentQuestionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "QuestionMapping_recCode_RecMapping_recCode_fk": {
+          "name": "QuestionMapping_recCode_RecMapping_recCode_fk",
+          "tableFrom": "QuestionMapping",
+          "tableTo": "RecMapping",
+          "columnsFrom": [
+            "recCode"
+          ],
+          "columnsTo": [
+            "recCode"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.Question": {
+      "name": "Question",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "questionId": {
+          "name": "questionId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "clauseId": {
+          "name": "clauseId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "text": {
+          "name": "text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "responseType": {
+          "name": "responseType",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "required": {
+          "name": "required",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "evidenceRequired": {
+          "name": "evidenceRequired",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "appendix": {
+          "name": "appendix",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "weight": {
+          "name": "weight",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "helpText": {
+          "name": "helpText",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category_code": {
+          "name": "category_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category_name": {
+          "name": "category_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tags": {
+          "name": "tags",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "Question_questionId_unique": {
+          "name": "Question_questionId_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "questionId"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.RecMapping": {
+      "name": "RecMapping",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "recCode": {
+          "name": "recCode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recName": {
+          "name": "recName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "parentRecCode": {
+          "name": "parentRecCode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "relatedAppendices": {
+          "name": "relatedAppendices",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "processingRequirements": {
+          "name": "processingRequirements",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "isActive": {
+          "name": "isActive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "RecMapping_recCode_unique": {
+          "name": "RecMapping_recCode_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "recCode"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.SmartLogicCondition": {
+      "name": "SmartLogicCondition",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "ruleId": {
+          "name": "ruleId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "questionMappingId": {
+          "name": "questionMappingId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "triggerQuestionId": {
+          "name": "triggerQuestionId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dependentQuestionId": {
+          "name": "dependentQuestionId",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "conditionType": {
+          "name": "conditionType",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expectedValue": {
+          "name": "expectedValue",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "logicalOperator": {
+          "name": "logicalOperator",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'AND'"
+        },
+        "isActive": {
+          "name": "isActive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "SmartLogicCondition_questionMappingId_QuestionMapping_id_fk": {
+          "name": "SmartLogicCondition_questionMappingId_QuestionMapping_id_fk",
+          "tableFrom": "SmartLogicCondition",
+          "tableTo": "QuestionMapping",
+          "columnsFrom": [
+            "questionMappingId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "SmartLogicCondition_triggerQuestionId_IntakeQuestion_id_fk": {
+          "name": "SmartLogicCondition_triggerQuestionId_IntakeQuestion_id_fk",
+          "tableFrom": "SmartLogicCondition",
+          "tableTo": "IntakeQuestion",
+          "columnsFrom": [
+            "triggerQuestionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "SmartLogicCondition_dependentQuestionId_IntakeQuestion_id_fk": {
+          "name": "SmartLogicCondition_dependentQuestionId_IntakeQuestion_id_fk",
+          "tableFrom": "SmartLogicCondition",
+          "tableTo": "IntakeQuestion",
+          "columnsFrom": [
+            "dependentQuestionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.StandardVersion": {
+      "name": "StandardVersion",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "isActive": {
+          "name": "isActive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "StandardVersion_code_unique": {
+          "name": "StandardVersion_code_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "code"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_username_unique": {
+          "name": "users_username_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "username"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.AssessmentStatus": {
+      "name": "AssessmentStatus",
+      "schema": "public",
+      "values": [
+        "DRAFT",
+        "IN_PROGRESS",
+        "UNDER_REVIEW",
+        "COMPLETED"
+      ]
+    },
+    "public.BusinessEntityType": {
+      "name": "BusinessEntityType",
+      "schema": "public",
+      "values": [
+        "CORPORATION",
+        "LLC",
+        "PARTNERSHIP",
+        "OTHER"
+      ]
+    },
+    "public.CertificationType": {
+      "name": "CertificationType",
+      "schema": "public",
+      "values": [
+        "INITIAL",
+        "RECERTIFICATION",
+        "TRANSFER",
+        "SCOPE_EXTENSION",
+        "OTHER"
+      ]
+    },
+    "public.ComplianceLevel": {
+      "name": "ComplianceLevel",
+      "schema": "public",
+      "values": [
+        "NOT_ASSESSED",
+        "COMPLIANT",
+        "PARTIALLY_COMPLIANT",
+        "NON_COMPLIANT",
+        "NOT_APPLICABLE"
+      ]
+    },
+    "public.FacilityType": {
+      "name": "FacilityType",
+      "schema": "public",
+      "values": [
+        "SINGLE",
+        "CAMPUS",
+        "SHARED",
+        "COMMON_PARENT",
+        "GROUP",
+        "UNSURE"
+      ]
+    },
+    "public.IntakeStatus": {
+      "name": "IntakeStatus",
+      "schema": "public",
+      "values": [
+        "DRAFT",
+        "IN_PROGRESS",
+        "SUBMITTED",
+        "UNDER_REVIEW",
+        "APPROVED",
+        "REJECTED"
+      ]
+    },
+    "public.QuestionType": {
+      "name": "QuestionType",
+      "schema": "public",
+      "values": [
+        "TEXT",
+        "NUMBER",
+        "DATE",
+        "BOOLEAN",
+        "SELECT",
+        "MULTI_SELECT",
+        "CHECKBOX",
+        "FILE_UPLOAD",
+        "JSON"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

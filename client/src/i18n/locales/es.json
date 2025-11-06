@@ -1,0 +1,115 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "retry": "Reintentar",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "continue": "Continuar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "submit": "Enviar",
+    "close": "Cerrar",
+    "open": "Abrir",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "clear": "Limpiar",
+    "admin": "ADMIN"
+  },
+  "navigation": {
+    "dashboard": "Panel de Control",
+    "assessments": "Evaluaciones",
+    "clientOrganizations": "Organizaciones de Clientes",
+    "clientFacilities": "Instalaciones de Clientes",
+    "organizations": "Organizaciones",
+    "facilities": "Instalaciones",
+    "settings": "Configuración",
+    "security": "Seguridad",
+    "licenses": "Licencias",
+    "help": "Ayuda",
+    "about": "Acerca de",
+    "logout": "Cerrar Sesión",
+    "openNavigationMenu": "Abrir menú de navegación",
+    "mobileNavigationMenu": "Menú de navegación móvil",
+    "navigationMenuClosed": "Menú de navegación cerrado",
+    "notifications": "Notificaciones",
+    "notificationsAriaLabel": "Notificaciones (sin notificaciones nuevas)"
+  },
+  "branding": {
+    "appName": "RuR2",
+    "appSubtitle": "Precertificación R2v3",
+    "logoAlt": "Logo de RuR2"
+  },
+  "dashboard": {
+    "title": "Panel de Control",
+    "description": "Gestiona tus evaluaciones de cumplimiento R2v3",
+    "consultantDescription": "Gestiona evaluaciones y organizaciones de clientes",
+    "loadingData": "Cargando datos del panel...",
+    "failedToLoad": "Error al cargar el panel de control",
+    "retryMessage": "Por favor, inténtalo de nuevo más tarde.",
+    "newAssessment": "Nueva Evaluación",
+    "new": "Nuevo",
+    "stats": {
+      "totalAssessments": "Evaluaciones Totales",
+      "inProgress": "En Progreso",
+      "completed": "Completadas",
+      "requiresReview": "Requieren Revisión"
+    },
+    "recentAssessments": "Evaluaciones Recientes",
+    "noAssessments": "Aún no se han creado evaluaciones. Completa tu formulario de admisión para generar una.",
+    "scopeBasedQuestions": "🎯 Preguntas Basadas en Alcance",
+    "scopeBased": "🎯 Basadas en Alcance"
+  },
+  "workflow": {
+    "title": "Flujo de Trabajo de Evaluación Optimizado",
+    "description": "Completa tu formulario de admisión empresarial para generar automáticamente evaluaciones inteligentes con datos prellenados",
+    "setupOrganization": "Completar Configuración de Organización",
+    "setupDescription": "Configura la información de tu organización e instalación para comenzar las evaluaciones",
+    "startSetup": "Iniciar Configuración",
+    "continueSetup": "Continuar Configuración",
+    "activateAccount": "Activar Tu Cuenta",
+    "activateDescription": "Completa tu pago para desbloquear herramientas y funciones de evaluación",
+    "choosePlan": "Elegir Plan",
+    "completeIntake": "Completar Formulario de Admisión",
+    "startIntake": "Iniciar Proceso de Admisión R2v3",
+    "intakeDescription": "Completa el formulario de admisión para determinar el alcance de tu evaluación y los requisitos aplicables",
+    "continueIntake": "Continuar Admisión",
+    "startIntakeForm": "Iniciar Formulario de Admisión",
+    "completeIntakeDescription": "Continúa tu formulario de admisión ({{percent}}% completo) para desbloquear la creación de evaluaciones",
+    "businessIntake": "Iniciar Admisión Empresarial",
+    "businessIntakeDescription": "Proporciona los detalles de tu empresa una vez",
+    "beginIntake": "Comenzar Admisión",
+    "generateAssessment": "Generar Evaluación",
+    "generating": "Generando...",
+    "createAssessment": "Crear Evaluación",
+    "intakeComplete": "Admisión Completa",
+    "completeIntakeText": "Completar Admisión",
+    "benefits": {
+      "noDuplicate": "Sin Entrada Duplicada",
+      "noDuplicateDescription": "Datos heredados de la admisión",
+      "smartFiltering": "Filtrado Inteligente",
+      "smartFilteringDescription": "Solo preguntas relevantes",
+      "fasterCompletion": "Finalización Más Rápida",
+      "fasterCompletionDescription": "Ahorra tiempo y esfuerzo"
+    }
+  },
+  "assessment": {
+    "created": "Evaluación Creada",
+    "createdDescription": "Tu evaluación ha sido generada exitosamente a partir de los datos de admisión.",
+    "failedToCreate": "Error al crear evaluación a partir de la admisión",
+    "status": {
+      "notStarted": "NO_INICIADO",
+      "inProgress": "EN_PROGRESO",
+      "completed": "COMPLETADO",
+      "needsReview": "NECESITA_REVISION"
+    }
+  },
+  "language": {
+    "switchLanguage": "Cambiar Idioma",
+    "english": "English",
+    "spanish": "Español",
+    "currentLanguage": "Idioma Actual"
+  }
+}

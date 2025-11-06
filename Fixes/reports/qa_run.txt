@@ -1,0 +1,17 @@
+{
+  "coverage_issues": [],
+  "pdf": {
+    "skipped": false,
+    "pages": 11,
+    "sha256": "357a258d208b2172c66ff4670080b4670444db933d3a95e60b0e76675b772b94"
+  },
+  "xlsx": {
+    "skipped": false,
+    "sheets": [
+      "RUR2_COVERAGE"
+    ],
+    "has_coverage": true,
+    "cov_colB_listDV": true,
+    "sha256": "788749209ed498f86acd765a0dff9433ad8bf7ac5bacae48af6c1af565f5b9b3"
+  }
+}

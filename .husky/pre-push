@@ -1,0 +1,14 @@
+
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# TypeScript compilation check
+echo "🔍 TypeScript compilation check..."
+cd client && npx tsc --noEmit --skipLibCheck
+cd ../server && npx tsc --noEmit --skipLibCheck
+
+# Run tests if they exist
+echo "🧪 Running tests..."
+npm test --if-present
+
+echo "✅ Pre-push checks passed"

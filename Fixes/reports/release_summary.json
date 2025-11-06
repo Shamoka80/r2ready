@@ -1,0 +1,102 @@
+{
+  "ok": true,
+  "generated_at": "2025-09-21 19:46:38",
+  "artifacts": [
+    {
+      "path": "Fixes/reports/coverage_report.csv",
+      "exists": true,
+      "size": 1271,
+      "sha256": "51d51fb640f45cf47da07b08693eeda15b3a649c1b9ebb1007d140d2a2d82eea"
+    },
+    {
+      "path": "Fixes/reports/coverage_report.xlsx",
+      "exists": true,
+      "size": 6637,
+      "sha256": "788749209ed498f86acd765a0dff9433ad8bf7ac5bacae48af6c1af565f5b9b3"
+    },
+    {
+      "path": "Fixes/pdf_temp_export.pdf",
+      "exists": true,
+      "size": 194022,
+      "sha256": "a8f9f650b56f0d27024938e822738e24ea07e6d55bf598f95232727d9b0fd393"
+    },
+    {
+      "path": "Fixes/email_temp_export.pdf",
+      "exists": true,
+      "size": 140133,
+      "sha256": "357a258d208b2172c66ff4670080b4670444db933d3a95e60b0e76675b772b94"
+    },
+    {
+      "path": "Fixes/reports/rur2_auditor_draft.eml",
+      "exists": true,
+      "size": 1588,
+      "sha256": "803a97b12f064b057124dfb80ee4db1a33d9a232eea71283dd9bbc7f94ff66a7"
+    },
+    {
+      "path": "Fixes/reports/rur2_internal_draft.eml",
+      "exists": true,
+      "size": 1588,
+      "sha256": "7cf986839e3302839a0015494d5691049fd3f0572de4f79ef2ad7fdba5477e38"
+    },
+    {
+      "path": "Fixes/reports/exec_summary.docx",
+      "exists": true,
+      "size": 1390,
+      "sha256": "632885764ae241b2c3c6f92466fdd6f935d7d8bbb509ba86def3b88d3214eb68"
+    },
+    {
+      "path": "Fixes/reports/credits_ledger.json",
+      "exists": true,
+      "size": 1530,
+      "sha256": "79d91d71503a6cc5edd2d8f6a8f4ba91a816c87865b12f20be12880f19073b3d"
+    },
+    {
+      "path": "Fixes/reports/security_e2e.json",
+      "exists": true,
+      "size": 1328,
+      "sha256": "f7ade8712a689369e258b9dd40adf1b480be47294f2b18402f207e97e8d0beaa"
+    },
+    {
+      "path": "Fixes/reports/qa_run.txt",
+      "exists": true,
+      "size": 383,
+      "sha256": "1c31944ceb48b1bd1eace579cd1a411e81c5a15f72073d7d3b8ca82ce535bcca"
+    },
+    {
+      "path": "Fixes/api/openapi_byoc.yaml",
+      "exists": true,
+      "size": 4841,
+      "sha256": "a64f04f046657916f57e90f78ef4de3f6a65422a34aa211ecdda829ead7c1a57"
+    },
+    {
+      "path": "Fixes/api/openapi_credits.yaml",
+      "exists": true,
+      "size": 468,
+      "sha256": "ed10a0332c0fc642085f6eef20c71f58494019553de0d5003963c22c34be7f5f"
+    },
+    {
+      "path": "Fixes/contracts/byoc_contracts.ts",
+      "exists": true,
+      "size": 1991,
+      "sha256": "845c2d86f77312adffcfd367815ef040eed4ce056217f6c6537da691790039b9"
+    },
+    {
+      "path": "Fixes/contracts/stripe_credits.ts",
+      "exists": true,
+      "size": 751,
+      "sha256": "fed97214ff85d2370e2a6e31ee69dff87a7d7d9d0045d8a7545eef2f6f5a63c6"
+    },
+    {
+      "path": "Fixes/migrations/001_byoc.sql",
+      "exists": true,
+      "size": 1508,
+      "sha256": "8809922bd047ef24900cb8e4e50157f8c54d345a3a7db61532216718a8fe79a7"
+    },
+    {
+      "path": "Fixes/migrations/002_credits.sql",
+      "exists": true,
+      "size": 498,
+      "sha256": "ad0297a9d40debaf379201dc23e0dccfb9b8c1bdb628d434aaaafd3a568e8035"
+    }
+  ]
+}

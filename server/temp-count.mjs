@@ -1,0 +1,1 @@
+import { db } from './db.js'; import { questions } from '../shared/schema.js'; db.select().from(questions).then(q => { console.log('Questions in DB:', q.length); process.exit(0); }).catch(err => { console.log('Error:', err.message); process.exit(1); });

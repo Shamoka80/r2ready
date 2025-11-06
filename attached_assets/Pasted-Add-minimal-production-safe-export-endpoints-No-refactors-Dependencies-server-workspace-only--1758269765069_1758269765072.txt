@@ -1,0 +1,49 @@
+Add minimal, production-safe export endpoints. No refactors.
+
+Dependencies (server workspace only):
+- pdfkit
+- exceljs
+
+ROUTER
+- New file: server/routes/exports.ts
+- Mount in server/index.ts as: app.use("/api/exports", exportsRouter)
+
+Endpoints:
+1) GET /api/exports/:assessmentId/pdf
+   - Query DB:
+     - assessment (id, createdAt, standard.code)
+     - all questions for that standard (clause.ref/title, question fields)
+     - all answers for that assessment (map by questionId)
+   - Generate PDF with pdfkit:
+     - Header: RUR2 logo (if available in /assets/brand) + “RUR2 – R2v3.1 Pre-Certification Self-Assessment”
+     - Summary page: assessmentId, createdAt, standard, totals (questions, required)
+     - Content: by clause (APP-A..G, CR1..CR10, UNSPEC if any)
+       - For each question: “questionId — text”, “Answer: <value or blank>”, required/evidence flags, category_code (if present)
+     - Basic page numbers/footer
+   - Response headers:
+     - Content-Type: application/pdf
+     - Content-Disposition: attachment; filename="RUR2_Assessment_<assessmentId>.pdf"
+     - Stream directly (no temp files)
+
+2) GET /api/exports/:assessmentId/excel
+   - Build workbook with exceljs:
+     - Sheet “Summary”: assessment metadata and counts
+     - Sheet “Answers”: columns
+       [clauseRef, questionId, text, answer, required, evidenceRequired, appendix, category_code, category, category_name]
+     - Sheet “Coverage”: rows for CR1..CR10, APP-A..G, UNSPECIFIED with counts
+   - Response headers:
+     - Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+     - Content-Disposition: attachment; filename="RUR2_Assessment_<assessmentId>.xlsx"
+     - Stream workbook.xlsx.write(res) and end.
+
+Constraints:
+- Do NOT change existing routes.
+- Validate :assessmentId exists; return 404 JSON if not.
+- Handle empty answers gracefully.
+- Keep memory usage bounded (streaming, no giant buffers).
+- Only new files: server/routes/exports.ts; only modified file: server/index.ts (mount).
+
+Acceptance:
+- Hitting both endpoints returns 200 with correct Content-Type and downloads with nonzero size.
+- PDF starts with “%PDF-”, Excel opens in a viewer (xlsx).
+Return: list of changed files.

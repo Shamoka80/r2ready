@@ -1,0 +1,31 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="shieldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#C0C0C0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#808080;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="rGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4A90E2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2E5C8A;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="arrowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7ED321;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#5BA517;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Shield Background -->
+  <path d="M15 25 Q15 15, 25 15 L75 15 Q85 15, 85 25 L85 60 Q85 75, 50 85 Q15 75, 15 60 Z" fill="url(#shieldGradient)" stroke="none"/>
+  
+  <!-- Letter R -->
+  <path d="M25 30 L25 70 L30 70 L30 52 L45 52 Q55 52, 55 42 Q55 32, 45 32 L30 32 L30 37 L45 37 Q48 37, 48 42 Q48 47, 45 47 L30 47 L30 30 Z" fill="url(#rGradient)"/>
+  <path d="M48 52 L55 70 L50 70 L43 52 Z" fill="url(#rGradient)"/>
+  
+  <!-- Upward Arrow -->
+  <path d="M60 65 L70 45 L80 65 L75 65 L75 75 L65 75 L65 65 Z" fill="url(#arrowGradient)"/>
+  
+  <!-- Orange Accent Dots -->
+  <circle cx="82" cy="68" r="2" fill="#FF7E34"/>
+  <circle cx="86" cy="65" r="1.5" fill="#FF7E34"/>
+  <circle cx="88" cy="70" r="1" fill="#FF7E34"/>
+</svg>

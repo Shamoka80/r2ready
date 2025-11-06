@@ -1,0 +1,37 @@
+erDiagram
+  PROVIDERS ||--o{ PROVIDER_TOKENS : has
+  PROVIDERS ||--o{ EVIDENCE_COLLECTIONS : has
+  EVIDENCE_COLLECTIONS ||--o{ EVIDENCE_REFERENCES : has
+
+  PROVIDERS {
+    UUID id PK
+    TEXT name
+    TEXT type  "aws|gcp|azure|custom"
+    TIMESTAMPTZ created_at
+  }
+
+  PROVIDER_TOKENS {
+    UUID id PK
+    UUID provider_id FK
+    TEXT status "active|revoked|expired"
+    TIMESTAMPTZ created_at
+    TIMESTAMPTZ expires_at
+    TIMESTAMPTZ revoked_at
+  }
+
+  EVIDENCE_COLLECTIONS {
+    UUID id PK
+    UUID provider_id FK
+    TEXT name
+    TIMESTAMPTZ created_at
+  }
+
+  EVIDENCE_REFERENCES {
+    UUID id PK
+    UUID collection_id FK
+    TEXT uri
+    CHAR(64) hash_sha256
+    BIGINT size
+    TIMESTAMPTZ added_at
+    JSONB metadata
+  }

@@ -1,0 +1,362 @@
+name: PR Validation
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  pr-description-validation:
+    name: PR Description Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR Description
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prBody = context.payload.pull_request.body || '';
+            const prNumber = context.payload.pull_request.number;
+            
+            // Validation flags
+            let hasErrors = false;
+            const errors = [];
+            const warnings = [];
+            
+            // Check if PR body is empty
+            if (!prBody.trim()) {
+              hasErrors = true;
+              errors.push('❌ PR description is completely empty');
+            } else {
+              // Extract sections from PR body
+              const descriptionMatch = prBody.match(/## Description\s*\n(?:<!--.*?-->\s*)?\n([\s\S]*?)(?=\n##|$)/);
+              const typeOfChangeMatch = prBody.match(/## Type of Change\s*\n(?:<!--.*?-->\s*)?\n([\s\S]*?)(?=\n##|$)/);
+              const testingMatch = prBody.match(/## Testing\s*\n(?:<!--.*?-->\s*)?\n([\s\S]*?)(?=\n##|$)/);
+              const checklistMatch = prBody.match(/## Checklist\s*\n([\s\S]*?)(?=\n##|$)/);
+              
+              // Validate Description section
+              if (!descriptionMatch || !descriptionMatch[1]?.trim()) {
+                hasErrors = true;
+                errors.push('❌ **Description** section is empty or missing');
+              } else {
+                const descContent = descriptionMatch[1].trim();
+                if (descContent.length < 10) {
+                  warnings.push('⚠️  **Description** is very short (less than 10 characters). Please provide more detail.');
+                }
+              }
+              
+              // Validate Type of Change section
+              if (!typeOfChangeMatch || !typeOfChangeMatch[1]?.trim()) {
+                hasErrors = true;
+                errors.push('❌ **Type of Change** section is missing');
+              } else {
+                const typeContent = typeOfChangeMatch[1];
+                const checkedBoxes = (typeContent.match(/- \[x\]/gi) || []).length;
+                if (checkedBoxes === 0) {
+                  hasErrors = true;
+                  errors.push('❌ **Type of Change** has no checkboxes selected. Please select at least one type.');
+                }
+              }
+              
+              // Validate Testing section
+              if (!testingMatch || !testingMatch[1]?.trim()) {
+                hasErrors = true;
+                errors.push('❌ **Testing** section is empty or missing');
+              } else {
+                const testContent = testingMatch[1].trim();
+                const testStepsMatch = testContent.match(/### Testing Steps[\s\S]*?1\.\s+(.+)/);
+                if (!testStepsMatch || !testStepsMatch[1]?.trim()) {
+                  warnings.push('⚠️  **Testing Steps** appear to be incomplete. Please provide detailed testing instructions.');
+                }
+              }
+              
+              // Validate Checklist section
+              if (!checklistMatch) {
+                warnings.push('⚠️  **Checklist** section is missing or incomplete');
+              } else {
+                const checklistContent = checklistMatch[1];
+                const checkedItems = (checklistContent.match(/- \[x\]/gi) || []).length;
+                if (checkedItems === 0) {
+                  warnings.push('⚠️  **Checklist** has no items checked. Please review and check applicable items.');
+                }
+              }
+            }
+            
+            // Post comment if there are errors or warnings
+            if (hasErrors || warnings.length > 0) {
+              let commentBody = '## 📋 PR Template Validation\n\n';
+              
+              if (hasErrors) {
+                commentBody += '### ❌ Validation Failed\n\n';
+                commentBody += 'The following **required** sections are incomplete:\n\n';
+                commentBody += errors.map(e => `- ${e}`).join('\n');
+                commentBody += '\n\n';
+              }
+              
+              if (warnings.length > 0) {
+                commentBody += '### ⚠️  Warnings\n\n';
+                commentBody += warnings.map(w => `- ${w}`).join('\n');
+                commentBody += '\n\n';
+              }
+              
+              commentBody += '### 📝 How to Fix\n\n';
+              commentBody += '1. Edit your PR description using the "..." menu on the PR page\n';
+              commentBody += '2. Fill in all required sections:\n';
+              commentBody += '   - **Description**: Clear explanation of your changes\n';
+              commentBody += '   - **Type of Change**: Select at least one checkbox\n';
+              commentBody += '   - **Testing**: Describe how you tested your changes\n';
+              commentBody += '   - **Checklist**: Review and check applicable items\n';
+              commentBody += '3. Save your changes - this check will run automatically\n\n';
+              commentBody += '---\n';
+              commentBody += '*This validation ensures PRs follow our template for better code review quality.*';
+              
+              // Post the comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: commentBody
+              });
+            }
+            
+            // Fail the check if there are errors
+            if (hasErrors) {
+              core.setFailed('PR description validation failed. Please fill in all required sections of the PR template.');
+            } else if (warnings.length > 0) {
+              core.warning('PR description has warnings but passes validation.');
+            } else {
+              core.info('✅ PR description is complete and follows the template!');
+            }
+
+  pr-title-validation:
+    name: PR Title Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR Title Format
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prTitle = context.payload.pull_request.title;
+            const prNumber = context.payload.pull_request.number;
+            
+            // Conventional commit regex
+            // Pattern: type(scope): description
+            // - type: feat, fix, docs, style, refactor, perf, test, chore, ci, build
+            // - scope: optional, alphanumeric with hyphens/underscores
+            // - description: must start with lowercase letter
+            const conventionalCommitRegex = /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build)(\([a-zA-Z0-9_-]+\))?: [a-z].+$/;
+            
+            // Additional validation for non-meaningful descriptions
+            const nonMeaningfulPatterns = [
+              /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build)(\([a-zA-Z0-9_-]+\))?: (update|changes|fix|updates|changed|fixed)$/i,
+              /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build)(\([a-zA-Z0-9_-]+\))?: (wip|todo|test)$/i
+            ];
+            
+            let isValid = conventionalCommitRegex.test(prTitle);
+            let errorMessage = '';
+            
+            if (!isValid) {
+              errorMessage = `❌ **PR title does not follow conventional commit format**\n\n`;
+              errorMessage += `**Current title:** \`${prTitle}\`\n\n`;
+              errorMessage += `**Required format:** \`<type>(<scope>): <description>\`\n\n`;
+              errorMessage += `### Valid Types\n`;
+              errorMessage += `- \`feat\`: New feature\n`;
+              errorMessage += `- \`fix\`: Bug fix\n`;
+              errorMessage += `- \`docs\`: Documentation changes\n`;
+              errorMessage += `- \`style\`: Code style changes (formatting)\n`;
+              errorMessage += `- \`refactor\`: Code refactoring\n`;
+              errorMessage += `- \`perf\`: Performance improvements\n`;
+              errorMessage += `- \`test\`: Adding or updating tests\n`;
+              errorMessage += `- \`chore\`: Maintenance tasks\n`;
+              errorMessage += `- \`ci\`: CI/CD changes\n`;
+              errorMessage += `- \`build\`: Build system changes\n\n`;
+              errorMessage += `### Rules\n`;
+              errorMessage += `- **Scope** (optional): Alphanumeric, e.g., \`(auth)\`, \`(api)\`, \`(ui)\`\n`;
+              errorMessage += `- **Description**: Must start with lowercase letter and be meaningful\n\n`;
+              errorMessage += `### Examples\n`;
+              errorMessage += `✅ \`feat(auth): add two-factor authentication\`\n`;
+              errorMessage += `✅ \`fix: resolve login redirect issue\`\n`;
+              errorMessage += `✅ \`docs(api): update authentication endpoints\`\n`;
+              errorMessage += `✅ \`refactor(ui): simplify dashboard layout\`\n\n`;
+              errorMessage += `❌ \`Feature: Add auth\` (wrong format)\n`;
+              errorMessage += `❌ \`feat(auth): Add auth\` (description must be lowercase)\n`;
+              errorMessage += `❌ \`feat: update\` (description not meaningful)\n\n`;
+              errorMessage += `### How to Fix\n`;
+              errorMessage += `Edit your PR title to follow the format above. When this PR is squash-merged, the title becomes the commit message.\n\n`;
+              errorMessage += `---\n`;
+              errorMessage += `*This ensures consistent commit history and enables automatic changelog generation.*`;
+              
+              // Post comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: errorMessage
+              });
+              
+              core.setFailed('PR title does not follow conventional commit format');
+            } else {
+              // Check for non-meaningful descriptions
+              const hasNonMeaningful = nonMeaningfulPatterns.some(pattern => pattern.test(prTitle));
+              if (hasNonMeaningful) {
+                const warningMessage = `⚠️  **PR title could be more descriptive**\n\n`;
+                const message = warningMessage + 
+                  `**Current title:** \`${prTitle}\`\n\n` +
+                  `Your title follows the format, but the description is very generic. Consider being more specific:\n\n` +
+                  `### Examples\n` +
+                  `Instead of: \`feat: update\`\n` +
+                  `Try: \`feat(auth): add password reset functionality\`\n\n` +
+                  `Instead of: \`fix: changes\`\n` +
+                  `Try: \`fix(api): handle null user session correctly\`\n\n` +
+                  `A descriptive title helps reviewers and future developers understand the change at a glance.`;
+                
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  body: message
+                });
+                
+                core.warning('PR title could be more descriptive');
+              } else {
+                core.info('✅ PR title follows conventional commit format!');
+              }
+            }
+
+  commit-message-validation:
+    name: Commit Message Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      
+      - name: Validate Commit Messages
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const baseSha = context.payload.pull_request.base.sha;
+            const headSha = context.payload.pull_request.head.sha;
+            
+            // Get all commits in the PR
+            const { data: commits } = await github.rest.repos.compareCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              base: baseSha,
+              head: headSha
+            });
+            
+            // Conventional commit regex
+            const conventionalCommitRegex = /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build)(\([a-zA-Z0-9_-]+\))?: [a-z].+$/;
+            
+            // Non-meaningful patterns
+            const nonMeaningfulPatterns = [
+              /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build)(\([a-zA-Z0-9_-]+\))?: (update|changes|fix|updates|changed|fixed)$/i,
+              /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build)(\([a-zA-Z0-9_-]+\))?: (wip|todo|test)$/i
+            ];
+            
+            const invalidCommits = [];
+            const nonMeaningfulCommits = [];
+            
+            for (const commit of commits.commits) {
+              const message = commit.commit.message.split('\n')[0]; // Get first line only
+              const sha = commit.sha.substring(0, 7);
+              
+              if (!conventionalCommitRegex.test(message)) {
+                invalidCommits.push({
+                  sha,
+                  message,
+                  url: commit.html_url
+                });
+              } else {
+                const hasNonMeaningful = nonMeaningfulPatterns.some(pattern => pattern.test(message));
+                if (hasNonMeaningful) {
+                  nonMeaningfulCommits.push({
+                    sha,
+                    message,
+                    url: commit.html_url
+                  });
+                }
+              }
+            }
+            
+            // Post results
+            if (invalidCommits.length > 0 || nonMeaningfulCommits.length > 0) {
+              let commentBody = '## 🔍 Commit Message Validation\n\n';
+              
+              if (invalidCommits.length > 0) {
+                commentBody += '### ❌ Invalid Commit Messages\n\n';
+                commentBody += 'The following commits do not follow conventional commit format:\n\n';
+                
+                for (const commit of invalidCommits) {
+                  commentBody += `- [\`${commit.sha}\`](${commit.url}): \`${commit.message}\`\n`;
+                }
+                
+                commentBody += '\n### ✅ Conventional Commit Format\n\n';
+                commentBody += '**Pattern:** `<type>(<scope>): <description>`\n\n';
+                commentBody += '**Valid types:** feat, fix, docs, style, refactor, perf, test, chore, ci, build\n\n';
+                commentBody += '**Rules:**\n';
+                commentBody += '- Scope is optional but must be alphanumeric if present\n';
+                commentBody += '- Description must start with lowercase letter\n';
+                commentBody += '- Description should be meaningful and specific\n\n';
+                commentBody += '**Examples:**\n';
+                commentBody += '```\n';
+                commentBody += 'feat(auth): add two-factor authentication\n';
+                commentBody += 'fix: resolve login redirect issue\n';
+                commentBody += 'docs(api): update authentication endpoints\n';
+                commentBody += 'refactor(ui): simplify dashboard layout\n';
+                commentBody += 'test(api): add user registration tests\n';
+                commentBody += '```\n\n';
+              }
+              
+              if (nonMeaningfulCommits.length > 0) {
+                commentBody += '### ⚠️  Non-Descriptive Commit Messages\n\n';
+                commentBody += 'These commits follow the format but could be more descriptive:\n\n';
+                
+                for (const commit of nonMeaningfulCommits) {
+                  commentBody += `- [\`${commit.sha}\`](${commit.url}): \`${commit.message}\`\n`;
+                }
+                
+                commentBody += '\n**Tip:** Instead of generic words like "update", "changes", or "fix", describe what was actually updated or fixed.\n\n';
+              }
+              
+              commentBody += '### 🔧 How to Fix\n\n';
+              commentBody += '**Option 1: Squash and Merge** (Recommended)\n';
+              commentBody += '- Use "Squash and merge" when merging this PR\n';
+              commentBody += '- Ensure the PR title follows conventional commit format (it becomes the squash commit message)\n\n';
+              commentBody += '**Option 2: Amend Commits** (Advanced)\n';
+              commentBody += '```bash\n';
+              commentBody += 'git rebase -i HEAD~N  # N = number of commits to edit\n';
+              commentBody += '# Change "pick" to "reword" for commits to fix\n';
+              commentBody += '# Update commit messages following the format\n';
+              commentBody += 'git push --force-with-lease\n';
+              commentBody += '```\n\n';
+              commentBody += '---\n';
+              commentBody += `*Validated ${commits.commits.length} commit(s) in this PR*`;
+              
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: commentBody
+              });
+            }
+            
+            // Fail if there are invalid commits
+            if (invalidCommits.length > 0) {
+              core.setFailed(`${invalidCommits.length} commit(s) do not follow conventional commit format. Use squash merge or amend commits.`);
+            } else if (nonMeaningfulCommits.length > 0) {
+              core.warning(`${nonMeaningfulCommits.length} commit(s) could be more descriptive`);
+              core.info('✅ All commits follow conventional format (some could be more descriptive)');
+            } else {
+              core.info(`✅ All ${commits.commits.length} commit(s) follow conventional commit format!`);
+            }

@@ -1,0 +1,25 @@
+
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Check critical files are not empty
+echo "🔍 Checking critical files..."
+CRITICAL_FILES=("shared/schema.ts" "server/db.ts" "drizzle.config.ts")
+
+for file in "${CRITICAL_FILES[@]}"; do
+  if [ ! -s "$file" ]; then
+    echo "❌ CRITICAL: $file is empty or missing!"
+    echo "This file is critical and must contain content."
+    exit 1
+  fi
+done
+
+# Run lint-staged for code formatting and linting
+npx lint-staged
+
+# TypeScript compilation check
+echo "🔍 TypeScript compilation check..."
+cd client && npx tsc --noEmit --skipLibCheck
+cd ../server && npx tsc --noEmit --skipLibCheck
+
+echo "✅ Pre-commit checks passed"

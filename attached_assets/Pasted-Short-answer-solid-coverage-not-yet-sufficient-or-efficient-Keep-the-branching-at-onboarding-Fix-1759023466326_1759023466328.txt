@@ -1,0 +1,71 @@
+Short answer: solid coverage, not yet sufficient or efficient. Keep the branching-at-onboarding. Fix sequencing, remove subscription artifacts, add migration, tests, and cutover controls. Below is the minimum change set to make it production-grade.
+What to change immediately
+1.	Move payment after onboarding wizard. Gate dashboard and “Start Assessment” behind Org → Facilities → Scope completion. Your table shows Payment fully implemented before wizard. Change order.
+2.	Purge subscription/credits. Replace “Subscription Management” with “License & Add-ons.” Remove credits, renewals, usage monitors, and any CI tests that reference them.
+3.	Enforce role divergence up front. Keep Business vs Consultant selection at onboarding step 2. Business: Org→Facilities→Scope. Consultant: Client Org→Client Facilities→Scope. Block assessment creation until the relevant branch completes.
+4.	Make multi-facility first-class. Update routes, RBAC, and assessment creation to always select a facility. Add facility-scoped permissions and filters to dashboard.
+5.	Add a state machine. setup_pending → setup_complete → assessment_active → reporting_ready → closed. All screens respect state.
+Missing work the plan does not cover
+•	Data migrations:
+o	Add account_type (business|consultant), client_org_id for consultant tenancy.
+o	Normalize facility to 1-to-many; backfill existing data; write reversible migration scripts.
+•	Feature flags and cutover:
+o	Flag: onboarding_v2, license_model_perpetual, multi_facility.
+o	Dark-launch wizard v2; flip per tenant; rollback path defined.
+•	Validation + gating:
+o	Hard blocks on incomplete Org/Facility/Scope.
+o	Derive enabled CR/App sections from Scope; prevent orphaned questions.
+•	Reporting pipeline hardening:
+o	Template versioning, schema validation, and deterministic test fixtures.
+o	Fallback renderer when a template fails.
+•	Evidence integrity:
+o	Evidence object store with checksum, size, content-type, and immutable audit trail.
+o	Server-side virus scan and file-type allow-list.
+•	Observability and SLOs:
+o	Tracing on onboarding steps, assessment create, export.
+o	Error budget and alerting for export failures, auth errors, and DB timeouts.
+•	Security:
+o	Enforce 2FA for consultant accounts by policy.
+o	Session lifetime, device revocation, API rate limits on upload and export.
+•	Test coverage you will need:
+o	E2E happy paths for both branches.
+o	Migration tests against a snapshot of current prod data.
+o	Contract tests for PDF/Excel exporters.
+Leaner execution sequence (replace your Phases)
+Phase 0: Prep (1–2 days)
+•	Add feature flags. Ship no UI yet.
+•	Write DB migrations and backfills. Dry-run on a prod-like dump.
+Phase 1: Onboarding v2 (3–5 days)
+•	Role selection screen → branching wizard.
+•	Block dashboard until Org/Facility/Scope complete.
+•	Move payment to post-wizard. Hide subscription UI behind flag.
+•	Acceptance: both branches complete wizard and land on dashboard with correct nav.
+Phase 2: Multi-facility + assessment seeding (3–4 days)
+•	Facility CRUD, facility-scoped RBAC.
+•	Assessment creation requires facility and auto-seeds sections from Scope.
+•	Acceptance: facility switcher, no orphan questions, assessments tied to facility.
+Phase 3: License model swap (2–3 days)
+•	Remove credits. New “License & Add-ons” pages. Stripe one-time checkout.
+•	Migrate existing tenants to perpetual license rows.
+•	Acceptance: purchase flow issues license, seats, and add-ons without subscription objects.
+Phase 4: Reporting stability (2–3 days)
+•	Template versioning, schema validation, fallback renderer, branding for consultants.
+•	Acceptance: deterministic exports for two seeded fixtures.
+Phase 5: Hardening (parallel)
+•	Evidence integrity pipeline, audit logs, 2FA policy, rate limits, telemetry dashboards.
+Go/No-Go checklist (must pass)
+•	Cannot reach dashboard without completed wizard.
+•	Payment only possible after wizard.
+•	Business users cannot see client-management UI; consultants cannot create assessments without a client org and facility.
+•	Facility count >1 works across dashboard, assessment creation, exports.
+•	Export success rate ≥99% over seeded test runs; failures raise alerts.
+•	All old “subscription/credits” links dead, tests removed.
+Minimal acceptance tests (automate)
+•	Business path: register → business → org+facility+scope → pay → create assessment → export PDF/Excel.
+•	Consultant path: register → consultant → client org+facility+scope → pay → create client assessment → export with client branding.
+•	Migration idempotency: run up/down twice on sample dump.
+•	RBAC: consultant cannot access non-client orgs; business cannot access client tools.
+Verdict
+•	Sufficient? Not yet. You must change sequencing, remove subscription artifacts, add migrations, tests, flags, and cutover controls.
+•	Efficient? After the above adjustments, yes. The revised phases minimize rework and de-risk rollout.
+If you want, I will convert this into a Jira-ready ticket set with DoR/DoD, owners, and test cases.

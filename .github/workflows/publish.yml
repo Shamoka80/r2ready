@@ -1,0 +1,63 @@
+name: Publish Release
+on:
+  push:
+    tags: ['prelaunch-*']
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Build the package (phase7_release.sh already includes templates)
+      - name: Build package
+        id: build
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash phase7_release.sh | tee build.log
+          PKG=$(grep -oE 'releases/[A-Za-z0-9_/-]+\.tar\.gz' build.log | tail -1)
+          test -n "$PKG" && test -f "$PKG"
+          echo "pkg=$PKG" >> "$GITHUB_OUTPUT"
+          sha256sum "$PKG" | awk '{print $1}' > "${PKG}.sha256"
+          echo "sha=${PKG}.sha256" >> "$GITHUB_OUTPUT"
+
+      # If manually dispatched (not a tag push), create a tag first
+      - name: Create tag on manual dispatch
+        if: startsWith(github.ref, 'refs/heads/')
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="prelaunch-$(date +%Y%m%d%H%M%S)"
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git tag -a "$TAG" -m "Automated prelaunch"
+          git push origin "$TAG"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+
+      - name: Determine tag
+        id: detag
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.detag.outputs.tag }}
+          name: RUR2 ${{ steps.detag.outputs.tag }}
+          prerelease: true
+          body_path: Fixes/reports/release_summary.json
+          files: |
+            ${{ steps.build.outputs.pkg }}
+            ${{ steps.build.outputs.sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,26 @@
+{
+  "lockVersion": "1.0.0",
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "description": "Template integrity locks for R2v3 documentation system",
+  "templates": {},
+  "pdf_temp_export.pdf": {
+    "checksum": "8bef030e044a2b177f681f5dae997c7b79745bdd209144a46a1671e9fb28bff7",
+    "lockedAt": "2025-09-23T06:47:04.860Z",
+    "lastModified": "2025-09-23T04:39:25.417Z"
+  },
+  "excel_temp_export.pdf": {
+    "checksum": "ad0b2d15f7da11f77dbf64b8f4ccad24ee5718fbb6c1cc39048a0c5eec188c8f",
+    "lockedAt": "2025-09-23T06:47:04.862Z",
+    "lastModified": "2025-09-23T04:39:26.892Z"
+  },
+  "word_temp_export.pdf": {
+    "checksum": "45ea3409cc811b43cdd469a3435201cc2f3375f3133d0d4d43cd666b54b0a3c1",
+    "lockedAt": "2025-09-23T06:47:04.863Z",
+    "lastModified": "2025-09-23T04:39:27.066Z"
+  },
+  "email_temp_export.pdf": {
+    "checksum": "5f3475ac3e7073ff53a94341717006f60b76d23829c532b151ec4d03da2b2803",
+    "lockedAt": "2025-09-23T06:47:04.865Z",
+    "lastModified": "2025-09-23T04:39:27.256Z"
+  }
+}

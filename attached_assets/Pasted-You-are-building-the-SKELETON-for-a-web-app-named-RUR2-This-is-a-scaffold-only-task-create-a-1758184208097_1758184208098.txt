@@ -1,0 +1,59 @@
+You are building the SKELETON for a web app named **RUR2**. 
+This is a scaffold-only task: create a clean, typed, minimal project with a professional look-and-feel. 
+Do NOT add external integrations (no auth, no payments, no storage, no exports) yet. 
+Keep it small, fast, and easy to extend.
+
+## Purpose
+Provide a production-ready skeleton with:
+- Client: React (Vite + TypeScript) + Tailwind (brand variables only).
+- Server: Node 20 + Express (TypeScript) with a single health route.
+- Optional DB placeholder: Prisma + Postgres config stub only (no models yet).
+- Dev config so the Run button starts client and server concurrently on Replit.
+
+## Tech & Structure
+- Monorepo with npm workspaces:
+  - /client  (React + Vite + TS + Tailwind)
+  - /server  (Express + TS; Zod installed for future validation)
+  - /prisma  (schema.prisma with just datasource + generator; no models)
+  - /.replit  and /replit.nix so Run launches both client and server
+  - /assets/brand  for logo and colors
+  -- /logo file title = RuR2 Logo 1
+  -- /company name file title = RuR2 Name 1 
+
+## Visual Frame (simple and professional)
+- Global layout: top bar with left-aligned app name “RUR2”, space for a small logo, and a right-side placeholder user menu.
+- Left sidebar nav with these routes (all pages can be placeholders for now):
+  - /dashboard
+  - /assessments/new
+  - /assessments/:id  (tabs shown but non-functional: Overview, Questions, Evidence, Findings, Exports)
+  - /settings
+- Tailwind theme: define CSS variables (no aggressive styling)
+  --wt-dimgrey:#696B7F; --wt-jade:#37A874; --wt-pumpkin:#FF7E34; --wt-sunglow:#FFCC37; --wt-icterine:#FFFA41
+  Use jade for primary accents; dim grey for text accents; warm yellows/orange ONLY for status chips and callouts.
+- Accessibility baseline: readable font sizes, AA contrast, focus outlines.
+
+## Server
+- Express + TypeScript with a single GET `/api/health` returning `{"ok":true}`.
+- Zod installed (no usage yet). Nodemon + ts-node for dev.
+- No other routes, no auth, no external calls.
+
+## Prisma (placeholder only)
+- Create `prisma/schema.prisma` with datasource postgresql and generator client. 
+- Do NOT define models yet. Do NOT run migrations.
+
+## Dev/Run on Replit
+- `.replit` so the “Run” button executes: client dev server and server dev server concurrently.
+- `replit.nix` includes Node 20. (Chromium not needed yet.)
+- Root package.json uses npm workspaces (“client”, “server”) and a root script `dev` that runs both.
+
+## Acceptance (must pass)
+- Project tree includes: /client, /server, /prisma, /.replit, /replit.nix, /assets/brand.
+- Client boots on Vite; Server boots on Express; GET `/api/health` → `{"ok":true}`.
+- Clean TypeScript builds in both workspaces (no TS errors).
+- No auth, no Stripe, no storage, no PDF/XLSX code yet.
+- Keep code minimal and readable. Do not rename folders. Do not add extra libraries beyond React, React Router, Tailwind (client), Express + Zod (server).
+
+## Deliverables
+- File tree printed in the response.
+- Exact commands to run locally here on Replit (npm install, npm run dev).
+- Brief README section with “Next steps” placeholders for: Auth, Question Import, BYOC Evidence, Exports, Licensing.

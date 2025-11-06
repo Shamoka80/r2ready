@@ -1,0 +1,37 @@
+From: noreply@rur2.local
+To: recipient@example.com
+Subject: RUR2 =?utf-8?b?4oCT?= Internal Review (Draft)
+MIME-Version: 1.0
+Content-Type: multipart/alternative;
+ boundary="===============7247700588974492748=="
+
+--===============7247700588974492748==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+HTML preview attached.
+
+--===============7247700588974492748==
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<html><body>
+<h2>RUR2 Coverage Summary</h2>
+<p><b>Coverage:</b> 17/17 requirements marked Covered=3DY.</p>
+<table border=3D'1' cellpadding=3D'4' cellspacing=3D'0'><thead><tr><th>Requir=
+ement</th><th>Covered</th><th>Count</th></tr></thead><tbody><tr><td>CR1</td><=
+td>Y</td><td>10</td></tr><tr><td>CR2</td><td>Y</td><td>10</td></tr><tr><td>CR=
+3</td><td>Y</td><td>15</td></tr><tr><td>CR4</td><td>Y</td><td>15</td></tr><tr=
+><td>CR5</td><td>Y</td><td>15</td></tr><tr><td>CR6</td><td>Y</td><td>15</td><=
+/tr><tr><td>CR7</td><td>Y</td><td>20</td></tr><tr><td>CR8</td><td>Y</td><td>1=
+5</td></tr><tr><td>CR9</td><td>Y</td><td>15</td></tr><tr><td>CR10</td><td>Y</=
+td><td>10</td></tr><tr><td>A</td><td>Y</td><td>37</td></tr><tr><td>B</td><td>=
+Y</td><td>25</td></tr><tr><td>C</td><td>Y</td><td>21</td></tr><tr><td>D</td><=
+td>Y</td><td>20</td></tr><tr><td>E</td><td>Y</td><td>21</td></tr><tr><td>F</t=
+d><td>Y</td><td>16</td></tr><tr><td>G</td><td>Y</td><td>15</td></tr></tbody><=
+/table>
+<p>Format anchored to: Fixes/email_temp_export.pdf</p>
+</body></html>
+
+--===============7247700588974492748==--

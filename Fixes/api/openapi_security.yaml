@@ -1,0 +1,29 @@
+openapi: 3.0.3
+info:
+  title: RUR2 Security API
+  version: 1.0.0
+  description: |
+    Security and Access Control API for R2v3 Compliance Platform.
+    
+    **API Contract Version**: 1.0.0
+    **Last Updated**: 2025-01-15
+    **Breaking Changes Policy**: 6-month deprecation notice required
+    **Backward Compatibility**: Maintained within major version
+    
+    ### Changelog
+    - v1.0.0 (2025-01-15): Initial stable release with RBAC, token management, and audit logging
+  contact:
+    name: RUR2 Security Team
+    email: security@rur2.com
+paths:
+  /auth/rbac/roles:
+    get: {summary: List roles, responses: {200:{description: ok}}}
+    post: {summary: Create role, responses: {201:{description: created}}}
+  /auth/rbac/assign:
+    post: {summary: Assign role to user, responses: {204:{description: ok}}}
+  /auth/tokens/rotate:
+    post: {summary: Rotate provider token, responses: {200:{description: ok}}}
+  /auth/tokens/revoke:
+    post: {summary: Revoke provider token, responses: {204:{description: ok}}}
+  /audit/logs:
+    get: {summary: List audit logs, responses: {200:{description: ok}}}

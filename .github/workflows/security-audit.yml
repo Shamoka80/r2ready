@@ -1,0 +1,183 @@
+
+name: Security Audit
+
+on:
+  schedule:
+    - cron: '0 2 * * 1' # Weekly on Monday at 2 AM
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  dependency-audit:
+    runs-on: ubuntu-latest
+    name: Dependency Security Audit
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies (root)
+      run: npm ci
+
+    - name: Install dependencies (server)
+      run: cd server && npm ci
+
+    - name: Install dependencies (client)
+      run: cd client && npm ci
+
+    - name: Run npm audit (root)
+      run: npm audit --audit-level=high
+      continue-on-error: true
+      id: audit-root
+
+    - name: Run npm audit (server)
+      run: cd server && npm audit --audit-level=high
+      continue-on-error: true
+      id: audit-server
+
+    - name: Run npm audit (client)
+      run: cd client && npm audit --audit-level=high
+      continue-on-error: true
+      id: audit-client
+
+    - name: Install license checker
+      run: npm install -g license-checker
+
+    - name: Generate license report
+      run: npx tsx scripts/generate-license-report.ts
+      continue-on-error: true
+
+    - name: Generate SBOM
+      run: npx tsx scripts/generate-sbom.ts
+      continue-on-error: true
+
+    - name: Upload security reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-reports
+        path: |
+          reports/
+          releases/sbom-latest.*
+        retention-days: 30
+
+    - name: Check for critical vulnerabilities
+      run: |
+        if [ "${{ steps.audit-root.outcome }}" = "failure" ] || \
+           [ "${{ steps.audit-server.outcome }}" = "failure" ] || \
+           [ "${{ steps.audit-client.outcome }}" = "failure" ]; then
+          echo "Critical vulnerabilities found!"
+          exit 1
+        fi
+
+  snyk-scan:
+    runs-on: ubuntu-latest
+    name: Snyk Security Scan
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run Snyk to check for vulnerabilities
+      uses: snyk/actions/node@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --severity-threshold=high --file=package.json
+
+    - name: Run Snyk for server
+      uses: snyk/actions/node@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --severity-threshold=high --file=server/package.json
+
+    - name: Run Snyk for client
+      uses: snyk/actions/node@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --severity-threshold=high --file=client/package.json
+
+  codeql-analysis:
+    runs-on: ubuntu-latest
+    name: CodeQL Security Analysis
+    
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: javascript
+
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v3
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+
+  security-scorecard:
+    runs-on: ubuntu-latest
+    name: OSSF Security Scorecard
+    if: github.event_name != 'pull_request'
+    
+    permissions:
+      security-events: write
+      id-token: write
+      contents: read
+      actions: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+
+    - name: Run analysis
+      uses: ossf/scorecard-action@v2.3.1
+      with:
+        results_file: results.sarif
+        results_format: sarif
+        publish_results: true
+
+    - name: Upload SARIF results
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: results.sarif
+
+  notify-security-team:
+    runs-on: ubuntu-latest
+    name: Notify Security Team
+    needs: [dependency-audit, snyk-scan, codeql-analysis]
+    if: failure() && github.event_name != 'pull_request'
+    
+    steps:
+    - name: Send notification
+      run: |
+        echo "Security audit failed - notifying security team"
+        # Add actual notification logic here (email, Slack, etc.)

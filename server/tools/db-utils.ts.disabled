@@ -1,0 +1,125 @@
+
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+export class AssessmentManager {
+  
+  static async calculateProgress(assessmentId: string): Promise<number> {
+    const assessment = await prisma.assessment.findUnique({
+      where: { id: assessmentId },
+      include: {
+        standard: {
+          include: {
+            clauses: {
+              include: {
+                questions: true
+              }
+            }
+          }
+        },
+        answers: true
+      }
+    });
+
+    if (!assessment) return 0;
+
+    const totalQuestions = assessment.standard.clauses.reduce(
+      (sum, clause) => sum + clause.questions.length, 
+      0
+    );
+    
+    if (totalQuestions === 0) return 0;
+
+    const answeredQuestions = assessment.answers.length;
+    return Math.round((answeredQuestions / totalQuestions) * 100);
+  }
+
+  static async updateAssessmentProgress(assessmentId: string): Promise<void> {
+    const progress = await this.calculateProgress(assessmentId);
+    
+    await prisma.assessment.update({
+      where: { id: assessmentId },
+      data: { 
+        progress,
+        status: progress === 100 ? 'COMPLETED' : progress > 0 ? 'IN_PROGRESS' : 'DRAFT'
+      }
+    });
+  }
+
+  static async getAssessmentSummary(assessmentId: string) {
+    const assessment = await prisma.assessment.findUnique({
+      where: { id: assessmentId },
+      include: {
+        standard: true,
+        answers: {
+          include: {
+            question: {
+              include: {
+                clause: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!assessment) return null;
+
+    const complianceStats = assessment.answers.reduce((stats, answer) => {
+      stats[answer.compliance]++;
+      return stats;
+    }, {
+      COMPLIANT: 0,
+      PARTIALLY_COMPLIANT: 0,
+      NON_COMPLIANT: 0,
+      NOT_APPLICABLE: 0,
+      NOT_ASSESSED: 0
+    });
+
+    const clauseBreakdown = assessment.answers.reduce((breakdown, answer) => {
+      const clauseRef = answer.question.clause.ref;
+      if (!breakdown[clauseRef]) {
+        breakdown[clauseRef] = { total: 0, answered: 0 };
+      }
+      breakdown[clauseRef].total++;
+      if (answer.compliance !== 'NOT_ASSESSED') {
+        breakdown[clauseRef].answered++;
+      }
+      return breakdown;
+    }, {} as Record<string, { total: number; answered: number }>);
+
+    return {
+      assessment,
+      complianceStats,
+      clauseBreakdown,
+      progress: assessment.progress
+    };
+  }
+}
+
+// Utility for seeding data if needed
+export async function seedStandardsAndQuestions() {
+  const existingStandard = await prisma.standardVersion.findFirst({
+    where: { code: "R2V3_1" }
+  });
+
+  if (!existingStandard) {
+    console.log("No R2V3_1 standard found. Please run the question importer first.");
+    return;
+  }
+
+  console.log("✅ R2V3_1 standard exists with questions");
+  
+  const questionCount = await prisma.question.count();
+  console.log(`📊 Total questions in database: ${questionCount}`);
+  
+  const clauseCount = await prisma.clause.count();
+  console.log(`📋 Total clauses in database: ${clauseCount}`);
+}
+
+if (require.main === module) {
+  seedStandardsAndQuestions()
+    .then(() => console.log("Database utilities ready"))
+    .catch(console.error);
+}

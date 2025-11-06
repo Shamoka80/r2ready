@@ -1,0 +1,78 @@
+
+set -euo pipefail
+OUTD="${OUTD:-./Fixes/reports}"
+COV="${COV:-$OUTD/coverage_report.csv}"
+PDF="${PDF:-./Fixes/email_temp_export.pdf}"
+
+python3 -m venv .venv 2>/dev/null || true
+. .venv/bin/activate
+python - <<'PY'
+import os, pathlib, datetime
+from email.message import EmailMessage
+
+OUTD = pathlib.Path(os.environ.get("OUTD","Fixes/reports")); OUTD.mkdir(parents=True, exist_ok=True)
+CSV  = pathlib.Path(os.environ.get("COV", OUTD/"coverage_report.csv"))
+
+# load coverage (best effort)
+rows = []
+if CSV.exists():
+    import pandas as pd
+    rows = pd.read_csv(CSV).to_dict('records')
+covered = sum(1 for r in rows if str(r.get("Covered","")).upper()=="Y")
+total = len(rows)
+
+def table_html(rows):
+    if not rows: return "<p>No coverage rows found.</p>"
+    hdrs = ["Requirement","Covered","Count"]
+    head = "".join(f"<th>{h}</th>" for h in hdrs)
+    body = "".join("<tr>"+"".join(f"<td>{r.get(h,'')}</td>" for h in hdrs)+"</tr>" for r in rows[:17])
+    return f"<table border='1' cellpadding='4' cellspacing='0'><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>"
+
+html = f"""<html><body>
+<h2>RUR2 Coverage Summary</h2>
+<p><b>Coverage:</b> {covered}/{total} requirements marked Covered=Y.</p>
+{table_html(rows)}
+<p>Format anchored to: Fixes/email_temp_export.pdf</p>
+</body></html>"""
+
+def write_eml(path, subject):
+    m = EmailMessage()
+    m["From"] = "noreply@rur2.local"
+    m["To"] = "recipient@example.com"
+    m["Subject"] = subject
+    m.set_content("HTML preview attached.\n")
+    m.add_alternative(html, subtype="html")
+    path.write_text(m.as_string(), encoding="utf-8")
+
+write_eml(OUTD/"rur2_auditor_draft.eml",  "RUR2 – Auditor Package (Draft)")
+write_eml(OUTD/"rur2_internal_draft.eml", "RUR2 – Internal Review (Draft)")
+
+# exec_summary.docx
+try:
+    from docx import Document
+    from docx.shared import Pt
+except ImportError:
+    import sys, subprocess
+    subprocess.check_call([sys.executable,"-m","pip","-q","install","python-docx"])
+    from docx import Document
+    from docx.shared import Pt
+
+doc = Document()
+doc.add_heading("RUR2 Executive Summary (Draft)", 0)
+p = doc.add_paragraph(f"Generated: {datetime.datetime.utcnow().isoformat()}Z"); p.runs[0].font.size = Pt(10)
+
+if rows:
+    hdrs = ["Requirement","Covered","Count","ProposedAddIfGap"]
+    t = doc.add_table(rows=1, cols=len(hdrs)); t.style = "Light List"
+    for i,h in enumerate(hdrs): t.rows[0].cells[i].text = h
+    for r in rows:
+        cells = t.add_row().cells
+        for i,h in enumerate(hdrs): cells[i].text = str(r.get(h,""))
+else:
+    doc.add_paragraph("No coverage data found.")
+
+doc.save(str(OUTD/"exec_summary.docx"))
+print("WROTE", OUTD/"rur2_auditor_draft.eml")
+print("WROTE", OUTD/"rur2_internal_draft.eml")
+print("WROTE", OUTD/"exec_summary.docx")
+PY

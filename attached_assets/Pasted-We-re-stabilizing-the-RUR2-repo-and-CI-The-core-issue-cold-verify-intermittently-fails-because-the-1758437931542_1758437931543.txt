@@ -1,0 +1,84 @@
+We’re stabilizing the RUR2 repo and CI. The core issue: cold-verify intermittently fails because the two template PDFs aren’t consistently detected/included in releases and sometimes not found by the verifier in the working tree due to path/env/cwd drift.
+
+Repo: https://github.com/Shamoka80/R2v3APP
+ (branch: main)
+
+Non-negotiable facts
+
+Do not generate new templates. Required templates already exist and must be used as-is:
+
+./Fixes/pdf_temp_export.pdf
+
+./Fixes/email_temp_export.pdf
+
+All export formats follow existing templates under ./Fixes/. No blind regeneration.
+
+Our phased scripts and QA must remain intact.
+
+Symptoms we’ve seen
+
+coldver.sh sometimes reports:
+
+"Fixes/pdf_temp_export.pdf","exists":false and/or
+
+"Fixes/email_temp_export.pdf","exists":false
+even though the files are present locally and were uploaded/tracked.
+
+Release packages produced by Phase 7 occasionally omit the two template PDFs unless we manually run patchers (e.g., patch_pkg.sh). That’s brittle.
+
+CI (.github/workflows/ci.yml) fails on “Cold verify” when templates aren’t packaged or when the verifier runs from a different working directory than expected.
+
+What we already tried
+
+Added CI step to “Build release before Cold verify”.
+
+Forced-tracked the two PDFs and pushed.
+
+Created patch scripts (patch_pkg.sh, etc.) to inject templates into the tarball post-facto.
+
+Added multiple “stabilize/resync” scripts. It works sometimes, but not deterministic—still whack-a-mole.
+
+What we need from you (permanent fix)
+
+Make the release packaging deterministically include the entire Fixes/ tree, including both template PDFs, every time—no post-patching.
+
+Make coldver.sh deterministic for both:
+
+Working tree (no args),
+
+Given package (tar passed as arg).
+It must resolve repo root reliably (no cwd/env drift) and return COLD_VERIFY_OK True when templates are present.
+
+Ensure CI runs from repo root, builds the release, then cold-verifies both the package and working tree, and passes consistently.
+
+Remove the need for ad-hoc patch scripts; keep one stable path. Keep behavior idempotent and self-healing (sane defaults for FIX, OUTD, etc.).
+
+Do not change/replace the existing templates or their paths. Use exactly ./Fixes/pdf_temp_export.pdf and ./Fixes/email_temp_export.pdf.
+
+Acceptance criteria
+
+Running bash stabilize_and_release.sh locally ends with:
+
+Phase 0–6 checks PASS,
+
+Release built,
+
+coldver.sh on latest package → COLD_VERIFY_OK True,
+
+coldver.sh on working tree → COLD_VERIFY_OK True.
+
+CI (.github/workflows/ci.yml) on main:
+
+Builds release,
+
+Cold-verifies package and tree,
+
+Runs E2E Phase 0–5,
+
+Green without manual intervention.
+
+Latest release tar.gz contains both template PDFs under Fixes/.
+
+No more reliance on patchers; one coherent flow.
+
+Please implement the permanent fix and update scripts/CI accordingly.

@@ -1,0 +1,78 @@
+
+version: 2
+updates:
+  # Enable version updates for npm (root)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "shamoka80"
+    assignees:
+      - "shamoka80"
+    commit-message:
+      prefix: "chore(deps):"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "automerge"
+
+  # Enable version updates for npm (server)
+  - package-ecosystem: "npm"
+    directory: "/server"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "shamoka80"
+    assignees:
+      - "shamoka80"
+    commit-message:
+      prefix: "chore(deps/server):"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "server"
+
+  # Enable version updates for npm (client)
+  - package-ecosystem: "npm"
+    directory: "/client"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "shamoka80"
+    assignees:
+      - "shamoka80"
+    commit-message:
+      prefix: "chore(deps/client):"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "client"
+
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "shamoka80"
+    assignees:
+      - "shamoka80"
+    commit-message:
+      prefix: "chore(ci):"
+      include: "scope"
+    labels:
+      - "github-actions"
+      - "ci"
