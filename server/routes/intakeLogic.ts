@@ -572,7 +572,7 @@ export class IntakeProcessor {
     
     // Import db and schema here to avoid circular dependencies
     const { db } = await import('../db');
-    const { intakeForms, questions } = await import('@shared/schema');
+    const { intakeForms, questions, recMapping } = await import('@shared/schema');
     const { eq } = await import('drizzle-orm');
     
     // Fetch intake form data
@@ -584,8 +584,11 @@ export class IntakeProcessor {
       throw new Error(`Intake form ${intakeFormId} not found`);
     }
     
+    // Fetch REC mappings from database
+    const allRecMappings = await db.select().from(recMapping);
+    
     // Determine applicable REC codes based on intake data
-    const applicableRecCodes = this.determineApplicableRECs(intakeForm);
+    const applicableRecCodes = await this.determineApplicableRECs(intakeForm, allRecMappings);
     console.log(`📋 Applicable REC codes: ${applicableRecCodes.join(', ')}`);
     
     // Generate scope statement
