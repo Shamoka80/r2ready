@@ -727,7 +727,7 @@ class AdvancedScoringService {
     };
 
     let readinessScore = 0;
-    let blockers: string[] = [];
+    const blockers: string[] = [];
 
     // Overall compliance factor (40% weight)
     readinessScore += (readinessFactors.overallCompliance / 100) * 40;
