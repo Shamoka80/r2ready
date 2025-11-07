@@ -2084,6 +2084,159 @@ router.post('/test-get-verification-token', async (req, res) => {
 });
 
 /**
+ * POST /api/auth/forgot-password
+ * Send password reset email
+ */
+router.post('/forgot-password', strictRateLimit.passwordChange, async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ error: 'Valid email address is required' });
+    }
+
+    // Find user by email
+    const user = await db.query.users.findFirst({
+      where: eq(users.email, email.toLowerCase()),
+    });
+
+    // Always return success to prevent email enumeration
+    const successResponse = {
+      success: true,
+      message: 'If an account with that email exists, you will receive a password reset link.'
+    };
+
+    if (!user || !user.isActive) {
+      // Still return success but don't send email
+      return res.json(successResponse);
+    }
+
+    // Generate secure reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    // Update user with reset token
+    await db.update(users)
+      .set({
+        passwordResetToken: resetToken,
+        passwordResetTokenExpiry: resetTokenExpiry,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, user.id));
+
+    // Send password reset email
+    try {
+      const resetLink = `${process.env.CLIENT_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
+      
+      const emailSent = await emailService.sendPasswordResetEmail(
+        user.email,
+        resetToken,
+        resetLink,
+        user.firstName
+      );
+
+      if (!emailSent) {
+        console.error('Failed to send password reset email to:', user.email);
+      }
+    } catch (emailError) {
+      console.error('Error sending password reset email:', emailError);
+      // Don't expose email sending errors to prevent information leakage
+    }
+
+    // Log audit event
+    await AuthService.logAuditEvent(
+      user.tenantId,
+      user.id,
+      'PASSWORD_RESET_REQUESTED',
+      'user',
+      user.id,
+      { email: user.email }
+    );
+
+    console.log('🔑 Password reset requested for:', user.email);
+
+    res.json(successResponse);
+
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ error: 'Failed to process password reset request' });
+  }
+});
+
+/**
+ * POST /api/auth/reset-password
+ * Reset password with token
+ */
+router.post('/reset-password', strictRateLimit.passwordChange, async (req, res) => {
+  try {
+    const { token, password, confirmPassword } = req.body;
+
+    if (!token || !password || !confirmPassword) {
+      return res.status(400).json({ error: 'Token, password, and password confirmation are required' });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ error: 'Passwords do not match' });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters long' });
+    }
+
+    // Find user with valid reset token
+    const user = await db.query.users.findFirst({
+      where: and(
+        eq(users.passwordResetToken, token),
+        sql`${users.passwordResetTokenExpiry} > NOW()`
+      ),
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    // Hash new password
+    const passwordHash = await AuthService.hashPassword(password);
+
+    // Update user password and clear reset token
+    await db.update(users)
+      .set({
+        passwordHash,
+        passwordResetToken: null,
+        passwordResetTokenExpiry: null,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, user.id));
+
+    // Revoke all existing sessions for security
+    await db.update(userSessions)
+      .set({ status: 'REVOKED' })
+      .where(eq(userSessions.userId, user.id));
+
+    // Log audit event
+    await AuthService.logAuditEvent(
+      user.tenantId,
+      user.id,
+      'PASSWORD_RESET_COMPLETED',
+      'user',
+      user.id,
+      { email: user.email, sessionsRevoked: true }
+    );
+
+    console.log('✅ Password reset completed for:', user.email);
+
+    res.json({
+      success: true,
+      message: 'Password has been reset successfully. Please log in with your new password.'
+    });
+
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+/**
  * POST /api/auth/admin/reset-stuck-user
  * Admin endpoint to manually reset a stuck user account
  * DEVELOPMENT ONLY - Returns 404 in production
@@ -2198,6 +2351,8 @@ router.use('/verify-email', (req, res, next) => next());
 router.use('/verify-email-code', (req, res, next) => next());
 router.use('/register-tenant', (req, res, next) => next());
 router.use('/login', (req, res, next) => next());
+router.use('/forgot-password', (req, res, next) => next());
+router.use('/reset-password', (req, res, next) => next());
 
 // Export the router
 export default router;

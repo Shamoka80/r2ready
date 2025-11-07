@@ -104,6 +104,8 @@ export const users: any = pgTable("User", {
   emailVerificationToken: text("emailVerificationToken"),
   emailVerificationCode: varchar("emailVerificationCode", { length: 6 }),
   emailVerificationTokenExpiry: timestamp("emailVerificationTokenExpiry"),
+  passwordResetToken: text('passwordResetToken'),
+  passwordResetTokenExpiry: timestamp('passwordResetTokenExpiry'),
 
   // Profile fields
   firstName: text("firstName").notNull(),
@@ -459,7 +461,7 @@ export const licenseEvents = pgTable("LicenseEvent", {
 // Log levels enum for system logging
 export const logLevelEnum = pgEnum("LogLevel", [
   "debug",
-  "info", 
+  "info",
   "warn",
   "error",
   "critical"
@@ -526,7 +528,7 @@ export const errorLogs = pgTable("ErrorLog", {
 // Review workflow status enum
 export const reviewStatusEnum = pgEnum("ReviewStatus", [
   "PENDING_ASSIGNMENT",
-  "ASSIGNED", 
+  "ASSIGNED",
   "IN_REVIEW",
   "APPROVED",
   "REJECTED",
@@ -536,7 +538,7 @@ export const reviewStatusEnum = pgEnum("ReviewStatus", [
 // Decision types enum
 export const decisionTypeEnum = pgEnum("DecisionType", [
   "ASSIGNMENT",
-  "REVIEW_START", 
+  "REVIEW_START",
   "APPROVAL",
   "REJECTION",
   "REVISION_REQUEST",
@@ -649,7 +651,7 @@ export const decisionLog = pgTable("DecisionLog", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   reviewWorkflowId: varchar("reviewWorkflowId").notNull().references(() => reviewWorkflows.id, { onDelete: "cascade" }),
 
-  // Decision details  
+  // Decision details
   decisionType: decisionTypeEnum("decisionType").notNull(),
   decisionBy: varchar("decisionBy").notNull().references(() => users.id),
   decisionAt: timestamp("decisionAt").default(sql`now()`).notNull(),
@@ -785,7 +787,7 @@ export const assessments = pgTable("Assessment", {
   // Access control
   assignedUsers: varchar("assignedUsers").array(),
   facilityId: varchar("facilityId").references(() => facilityProfiles.id),
-  
+
   // Consultant-specific: Client organization and facility references
   clientOrganizationId: varchar("clientOrganizationId").references(() => clientOrganizations.id),
   clientFacilityId: varchar("clientFacilityId").references(() => clientFacilities.id),
@@ -968,12 +970,12 @@ export const intakeFacilities = pgTable("IntakeFacility", {
   employeesAtLocation: text("employeesAtLocation"),
   shifts: text("shifts"),
   primaryFunction: text("primaryFunction"),
-  
+
   // Processing data for facility-level REC mapping (inherited from intake-level data)
   processingActivities: text("processingActivities").array(),
   equipment: text("equipment").array(),
   electronicsTypes: text("electronicsTypes").array(),
-  
+
   createdAt: timestamp("createdAt").default(sql`now()`).notNull(),
 });
 

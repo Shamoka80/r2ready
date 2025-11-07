@@ -4,13 +4,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { FeatureFlagProvider } from "@/contexts/FeatureFlagContext";
-import { FacilityProvider } from "@/contexts/FacilityContext";
+import { FacilityProvider } from "@/contexts/FacilityProvider";
 import { ClientContextProvider } from "@/contexts/ClientContext";
 import { queryClient } from "@/lib/queryClient";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import SetupGate from "@/components/SetupGate";
 import AppLayout from "@/components/layout/AppLayout";
+import { lazy } from "react"; // Import lazy
 
 // Pages
 import Landing from "@/pages/Landing";
@@ -79,10 +80,8 @@ function App() {
             <Route path="/register/complete" component={RegisterComplete} />
             <Route path="/register/email-sent" component={RegisterEmailSent} />
             <Route path="/verify-email" component={VerifyEmail} />
-            <Route path="/account-type-selection" component={AccountTypeSelection} />
-            <Route path="/pricing" component={Pricing} />
-            <Route path="/about" component={About} />
-            <Route path="/help" component={Help} />
+            <Route path="/forgot-password" component={lazy(() => import("@/pages/ForgotPassword"))} />
+            <Route path="/reset-password" component={lazy(() => import("@/pages/ResetPassword"))} />
 
             {/* 2FA Routes */}
             <Route path="/setup-2fa" component={() => (
