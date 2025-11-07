@@ -385,13 +385,14 @@ export default function IntakeForm() {
       if (DEBUG_MODE) console.log('[IntakeForm Init] Existing forms response status:', existingFormsResponse.status);
 
       if (existingFormsResponse.ok) {
-        const existingForms = await existingFormsResponse.json();
-        if (DEBUG_MODE) console.log('[IntakeForm Init] Found existing forms:', existingForms.length);
+        const responseData = await existingFormsResponse.json();
+        const existingForms = responseData.forms || responseData; // Handle both {forms:[]} and [] response formats
+        if (DEBUG_MODE) console.log('[IntakeForm Init] Found existing forms:', Array.isArray(existingForms) ? existingForms.length : 0);
 
         // Find the most recent DRAFT or IN_PROGRESS form
-        const activeForm = existingForms.find((form: IntakeFormData) =>
+        const activeForm = Array.isArray(existingForms) ? existingForms.find((form: IntakeFormData) =>
           form.status === 'DRAFT' || form.status === 'IN_PROGRESS'
-        );
+        ) : null;
 
         if (activeForm) {
           if (DEBUG_MODE) console.log('[IntakeForm Init] Found existing active intake form:', activeForm.id);
@@ -1680,9 +1681,10 @@ export default function IntakeForm() {
   const renderSubmitButton = () => {
     return (
       <Button
-        type="submit"
+        onClick={handleSubmit}
         disabled={isSaving || !isValid}
         className="bg-jade text-white hover:bg-jade/90"
+        data-testid="button-complete-intake"
       >
         {isSaving ? 'Processing...' : 'Complete Intake & Start Assessment'}
       </Button>
