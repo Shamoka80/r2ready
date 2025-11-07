@@ -1,4 +1,3 @@
-import routes from './routes';
 import express, { type Request, Response, NextFunction } from "express";
 import cors from 'cors';
 import path from 'path';
@@ -387,9 +386,7 @@ async function startServer() {
 
   // Start server
   const port = parseInt(process.env.PORT || '5000', 10);
-  server = app.use('/api', routes);
-
-app.listen(port, "0.0.0.0", () => {
+  server = app.listen(port, "0.0.0.0", () => {
     console.log(`🚀 Server running on port ${port}`);
     console.log(`📊 API available at http://0.0.0.0:${port}/api`);
 
