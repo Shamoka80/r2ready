@@ -115,10 +115,17 @@ export default function VerifyEmail() {
     }
   });
 
-  // Auto-verify on mount if token exists
+  // Auto-verify on mount if token exists (only once, survives React Strict Mode remounts)
   useEffect(() => {
-    if (token && !verifyMutation.isPending && !verifyMutation.isSuccess && !verifyMutation.isError) {
+    if (!token) return;
+
+    // Check if we've already attempted verification for this token (survives remounts)
+    const verificationKey = `email_verification_attempted_${token}`;
+    const hasAttempted = sessionStorage.getItem(verificationKey);
+
+    if (!hasAttempted && !verifyMutation.isPending && !verifyMutation.isSuccess && !verifyMutation.isError) {
       console.log('🔄 Auto-verifying with token from URL:', token);
+      sessionStorage.setItem(verificationKey, 'true');
       verifyMutation.mutate(token);
     }
   }, [token]);
