@@ -89,6 +89,8 @@ export const users = pgTable("User", {
     emailVerificationToken: text("emailVerificationToken"),
     emailVerificationCode: varchar("emailVerificationCode", { length: 6 }),
     emailVerificationTokenExpiry: timestamp("emailVerificationTokenExpiry"),
+    passwordResetToken: text('passwordResetToken'),
+    passwordResetTokenExpiry: timestamp('passwordResetTokenExpiry'),
     // Profile fields
     firstName: text("firstName").notNull(),
     lastName: text("lastName").notNull(),
@@ -543,7 +545,7 @@ export const reviewWorkflows = pgTable("ReviewWorkflow", {
 export const decisionLog = pgTable("DecisionLog", {
     id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
     reviewWorkflowId: varchar("reviewWorkflowId").notNull().references(() => reviewWorkflows.id, { onDelete: "cascade" }),
-    // Decision details  
+    // Decision details
     decisionType: decisionTypeEnum("decisionType").notNull(),
     decisionBy: varchar("decisionBy").notNull().references(() => users.id),
     decisionAt: timestamp("decisionAt").default(sql `now()`).notNull(),

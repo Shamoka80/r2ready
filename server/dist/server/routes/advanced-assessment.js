@@ -65,9 +65,9 @@ router.post('/templates', AuthService.authMiddleware, async (req, res) => {
 // Advanced scoring
 router.post('/scoring/advanced', AuthService.authMiddleware, async (req, res) => {
     try {
-        const { answers } = req.body;
-        const scoring = advancedScoringService.calculateAdvancedScore(answers);
-        res.json(scoring);
+        const { assessmentId } = req.body;
+        const scoring = await advancedScoringService.calculateScore(assessmentId);
+        res.json({ score: scoring });
     }
     catch (error) {
         res.status(500).json({ error: 'Advanced scoring failed' });
@@ -76,8 +76,8 @@ router.post('/scoring/advanced', AuthService.authMiddleware, async (req, res) =>
 // Gap analysis
 router.post('/analysis/gaps', AuthService.authMiddleware, async (req, res) => {
     try {
-        const { clauseScores } = req.body;
-        const gapAnalysis = advancedScoringService.performGapAnalysis(clauseScores);
+        const { assessmentId } = req.body;
+        const gapAnalysis = await advancedScoringService.generateGapAnalysis(assessmentId);
         res.json({ gapAnalysis });
     }
     catch (error) {
@@ -87,8 +87,8 @@ router.post('/analysis/gaps', AuthService.authMiddleware, async (req, res) => {
 // Compliance metrics
 router.post('/metrics/compliance', AuthService.authMiddleware, async (req, res) => {
     try {
-        const { clauseScores } = req.body;
-        const metrics = advancedScoringService.generateComplianceMetrics(clauseScores);
+        const { assessmentId } = req.body;
+        const metrics = await advancedScoringService.getComplianceMetrics(assessmentId);
         res.json({ metrics });
     }
     catch (error) {
@@ -98,8 +98,8 @@ router.post('/metrics/compliance', AuthService.authMiddleware, async (req, res) 
 // Predictive insights
 router.post('/insights/predictive', AuthService.authMiddleware, async (req, res) => {
     try {
-        const { currentScores, historicalData } = req.body;
-        const insights = advancedScoringService.generatePredictiveInsights(currentScores, historicalData);
+        const { assessmentId } = req.body;
+        const insights = await advancedScoringService.generatePredictiveInsights(assessmentId);
         res.json({ insights });
     }
     catch (error) {

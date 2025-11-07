@@ -812,6 +812,5 @@ class ExportService {
   }
 }
 
-const exportService = new ExportService();
-export { exportService as ExportService };
-export default exportService;
+export { ExportService };
+export default ExportService;

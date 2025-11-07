@@ -41,6 +41,7 @@ export interface ValidationResult {
   missingFields: string[];
   completionPercentage: number;
   criticalFieldsMissing: boolean;
+  warnings?: string[];
 }
 
 export class IntakeProcessor {

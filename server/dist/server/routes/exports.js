@@ -225,7 +225,7 @@ router.get('/assessment/:assessmentId/summary', (async (req, res) => {
     }
 }));
 // Enhanced PDF export with multiple template options
-router.get("/:assessmentId/pdf/:templateType?", rateLimitMiddleware.pdfExport, async (req, res) => {
+router.get("/:assessmentId/pdf/:templateType?", rateLimitMiddleware.pdfExport, (async (req, res) => {
     try {
         const { assessmentId } = req.params;
         const { templateType } = req.params; // Extract templateType from params
@@ -264,5 +264,5 @@ router.get("/:assessmentId/pdf/:templateType?", rateLimitMiddleware.pdfExport, a
             details: error instanceof Error ? error.message : 'Unknown error'
         });
     }
-});
+}));
 export default router;

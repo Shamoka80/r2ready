@@ -85,7 +85,11 @@ router.post("/events", rateLimitMiddleware.general, async (req, res) => {
             ...eventData,
             startDate: new Date(eventData.startDate),
             endDate: eventData.endDate ? new Date(eventData.endDate) : undefined,
-            assignedUsers: eventData.assignedUsers.length > 0 ? eventData.assignedUsers : [req.user.id]
+            assignedUsers: eventData.assignedUsers.length > 0 ? eventData.assignedUsers : [req.user.id],
+            recurrence: eventData.recurrence ? {
+                ...eventData.recurrence,
+                endDate: eventData.recurrence.endDate ? new Date(eventData.recurrence.endDate) : undefined
+            } : undefined
         });
         // Log audit event
         await AuthService.logAuditEvent(req.tenant.id, req.user.id, 'CALENDAR_EVENT_CREATED', 'calendar_event', event.id, undefined, { title: event.title, type: event.type, startDate: event.startDate });

@@ -159,7 +159,7 @@ router.get('/compliance/predictive-insights', async (req, res) => {
             operation: 'predictive_insights',
             tenantId,
             tags: {
-                anomalies: insights.anomalies.length,
+                anomalies: insights.anomalies.length.toString(),
                 riskLevel: insights.riskAssessment.overallRisk > 70 ? 'high' : insights.riskAssessment.overallRisk > 40 ? 'medium' : 'low'
             }
         });
@@ -282,13 +282,13 @@ router.get('/user-activity', AuthService.authMiddleware, async (req, res) => {
         const dashboardData = await ObservabilityService.getAnalyticsDashboard(tenantId, timeRange);
         const userActivity = {
             current: {
-                activeUsers: dashboardData.userMetrics.activeUsers,
-                totalActions: dashboardData.userMetrics.totalActions
+                activeUsers: dashboardData.userActivity.activeUsers,
+                totalActions: dashboardData.userActivity.totalActions
             },
             insights: {
                 peakUsageTime: '2:00 PM - 4:00 PM',
-                engagementLevel: dashboardData.userMetrics.activeUsers > 10 ? 'high' :
-                    dashboardData.userMetrics.activeUsers > 5 ? 'medium' : 'low'
+                engagementLevel: dashboardData.userActivity.activeUsers > 10 ? 'high' :
+                    dashboardData.userActivity.activeUsers > 5 ? 'medium' : 'low'
             }
         };
         res.json(userActivity);

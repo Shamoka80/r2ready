@@ -20,14 +20,13 @@ router.get('/modules', async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, error: 'Authentication required' });
     }
 
-    const result = await TrainingCenterService.getTrainingModules(userId);
+    const modules = await TrainingCenterService.getTrainingModules(userId);
     
     res.json({
       success: true,
-      modules: result.modules,
-      userProgress: result.userProgress,
-      totalModules: result.modules.length,
-      completedModules: Object.values(result.userProgress).filter(p => p.status === 'completed' || p.status === 'certified').length
+      modules,
+      totalModules: modules.length,
+      completedModules: modules.filter(m => m.status === 'COMPLETED').length
     });
 
   } catch (error) {

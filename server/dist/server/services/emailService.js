@@ -175,6 +175,87 @@ class EmailService {
         });
         return false;
     }
+    /**
+     * Send password reset email
+     */
+    async sendPasswordResetEmail(email, token, resetLink, firstName) {
+        const subject = 'Reset Your RuR2 Password';
+        const displayName = firstName ? firstName : 'User';
+        const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">RuR2 Password Reset</h1>
+        </div>
+
+        <div style="padding: 30px; background-color: #f8f9fa;">
+          <h2 style="color: #333; margin-bottom: 20px;">Hello ${displayName},</h2>
+
+          <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">
+            We received a request to reset your password for your RuR2 account. Click the button below to reset your password:
+          </p>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetLink}" 
+               style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                      color: white; 
+                      padding: 15px 30px; 
+                      text-decoration: none; 
+                      border-radius: 5px; 
+                      font-weight: bold; 
+                      display: inline-block;">
+              Reset Password
+            </a>
+          </div>
+
+          <p style="color: #666; line-height: 1.6; margin-bottom: 10px;">
+            Or copy and paste this link into your browser:
+          </p>
+          <p style="word-break: break-all; color: #007bff; font-size: 14px;">
+            ${resetLink}
+          </p>
+
+          <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <p style="color: #856404; margin: 0; font-size: 14px;">
+              <strong>Important:</strong> This link will expire in 15 minutes. If you didn't request this password reset, please ignore this email.
+            </p>
+          </div>
+
+          <p style="color: #666; font-size: 12px; margin-top: 30px;">
+            If you're having trouble with the button above, copy and paste the URL into your web browser.
+          </p>
+        </div>
+
+        <div style="background-color: #e9ecef; padding: 20px; text-align: center;">
+          <p style="color: #666; font-size: 12px; margin: 0;">
+            © 2024 RuR2. All rights reserved.
+          </p>
+        </div>
+      </div>
+    `;
+        const textContent = `
+Reset Your RuR2 Password
+
+Hello ${displayName},
+
+We received a request to reset your password for your RuR2 account.
+
+To reset your password, copy and paste this link into your browser:
+${resetLink}
+
+This link will expire in 15 minutes.
+
+If you didn't request this password reset, please ignore this email.
+
+© 2024 RuR2. All rights reserved.
+    `;
+        return this.sendEmail({
+            to: email,
+            subject: subject,
+            html: htmlContent,
+            text: textContent,
+            from: 'no-reply@wrekdtech.com' // Use verified wrekdtech.com domain
+        });
+    }
     // Email verification
     async sendVerificationEmail(to, token, verificationCode, firstName) {
         const baseUrl = process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5173';

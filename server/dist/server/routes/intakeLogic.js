@@ -414,4 +414,51 @@ export class IntakeProcessor {
     static determineRequiredAppendicesFromIntake(intakeData) {
         return this.determineRequiredAppendices(intakeData);
     }
+    /**
+     * Filter assessment questions based on REC mapping and intake form data
+     * @param intakeFormId - ID of the intake form
+     * @param assessmentId - ID of the assessment being created
+     * @returns Filtered questions and REC mapping statistics
+     */
+    static async filterQuestionsForAssessment(intakeFormId, assessmentId) {
+        console.log(`🔍 Filtering questions for intake ${intakeFormId}, assessment ${assessmentId}`);
+        // Import db and schema here to avoid circular dependencies
+        const { db } = await import('../db');
+        const { intakeForms, questions, recMapping } = await import('@shared/schema');
+        const { eq } = await import('drizzle-orm');
+        // Fetch intake form data
+        const intakeForm = await db.query.intakeForms.findFirst({
+            where: eq(intakeForms.id, intakeFormId),
+        });
+        if (!intakeForm) {
+            throw new Error(`Intake form ${intakeFormId} not found`);
+        }
+        // Fetch REC mappings from database
+        const allRecMappings = await db.select().from(recMapping);
+        // Determine applicable REC codes based on intake data
+        const applicableRecCodes = await this.determineApplicableRECs(intakeForm, allRecMappings);
+        console.log(`📋 Applicable REC codes: ${applicableRecCodes.join(', ')}`);
+        // Generate scope statement
+        const scopeStatement = this.generateScopeStatement(intakeForm, applicableRecCodes);
+        // Fetch all active questions from the database
+        const allQuestions = await db.query.questions.findMany({
+            where: eq(questions.isActive, true),
+        });
+        console.log(`📊 Total questions in bank: ${allQuestions.length}`);
+        // For MVP: Return all questions (no filtering yet)
+        // TODO: Implement actual REC-based filtering when question-to-REC mapping is complete
+        const filteredQuestions = allQuestions;
+        const totalQuestions = allQuestions.length;
+        const relevantQuestions = filteredQuestions.length;
+        const filteringRatio = totalQuestions > 0 ? relevantQuestions / totalQuestions : 1;
+        console.log(`✅ Filtered ${relevantQuestions} of ${totalQuestions} questions (${(filteringRatio * 100).toFixed(1)}%)`);
+        return {
+            applicableRecCodes,
+            scopeStatement,
+            totalQuestions,
+            relevantQuestions,
+            filteringRatio,
+            filteredQuestions,
+        };
+    }
 }
