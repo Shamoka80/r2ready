@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { FeatureFlagProvider } from "@/contexts/FeatureFlagContext";
-import { FacilityProvider } from "@/contexts/FacilityProvider";
+import { FacilityProvider } from "@/contexts/FacilityContext";
 import { ClientContextProvider } from "@/contexts/ClientContext";
 import { queryClient } from "@/lib/queryClient";
 import ErrorBoundary from "@/components/ErrorBoundary";
