@@ -95,6 +95,21 @@ function App() {
               <Verify2FA />
             )} />
 
+            {/* Setup Flow Routes - Require auth but not full setup */}
+            <Route path="/account-type-selection" component={() => (
+              <ProtectedRoute>
+                <AccountTypeSelection />
+                <Toaster />
+              </ProtectedRoute>
+            )} />
+
+            <Route path="/pricing" component={() => (
+              <ProtectedRoute>
+                <Pricing />
+                <Toaster />
+              </ProtectedRoute>
+            )} />
+
             {/* Protected Routes */}
             <Route path="/dashboard" component={() => (
               <ProtectedRoute>
