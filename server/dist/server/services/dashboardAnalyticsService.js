@@ -53,7 +53,7 @@ export class DashboardAnalyticsService {
                 averageReadiness: Math.round(averageReadiness),
                 certificationReady,
                 criticalGaps: Math.max(0, criticalGapCount),
-                facilities: facilityCount[0] ? Number(facilityCount[0].count) : 0,
+                facilities: Number(facilityCount[0]?.count || 0),
             };
             console.log(`✅ Dashboard KPIs calculated for tenant ${tenantId}:`, kpis);
             return kpis;
@@ -537,7 +537,7 @@ export class DashboardAnalyticsService {
         const groupedResults = {};
         questionsAndAnswers.forEach(qa => {
             const { assessmentId, questionId, questionText, answerValue, clauseRef } = qa;
-            const facilityId = assessmentsQuery.find(a => a.id === assessmentId)?.facilityId;
+            const facilityId = assessmentsQuery.find((a) => a.id === assessmentId)?.facilityId;
             if (!groupedResults[assessmentId] && facilityId) {
                 groupedResults[assessmentId] = {
                     assessmentId,
