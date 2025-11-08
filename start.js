@@ -8,7 +8,7 @@ const __dirname = dirname(__filename);
 
 process.env.NODE_ENV = 'production';
 
-const serverDistPath = join(__dirname, 'server', 'dist', 'index.js');
+const serverDistPath = join(__dirname, 'server', 'dist', 'server', 'index.js');
 
 console.log('🚀 Starting RUR2 production server...');
 console.log('📁 Server entry point:', serverDistPath);
