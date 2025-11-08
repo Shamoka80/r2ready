@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@types/speakeasy": "^2.0.10",
-    "express-rate-limit": "^7.1.5",
+    "express-rate-limit": "^8.2.1",
     "qrcode": "^1.5.3",
     "sharp": "^0.33.2",
     "speakeasy": "^2.0.0"
