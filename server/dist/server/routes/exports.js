@@ -1,11 +1,11 @@
 import express from 'express';
-import { authenticateUser } from '../middleware/authMiddleware';
-import { ExportService } from '../services/exportService';
-import { db } from '../db';
-import { assessments, intakeForms, organizationProfiles, facilityProfiles } from '@shared/schema';
+import { authenticateUser } from '../middleware/authMiddleware.js';
+import { ExportService } from '../services/exportService.js';
+import { db } from '../db.js';
+import { assessments, intakeForms, organizationProfiles, facilityProfiles } from '../../shared/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { z } from 'zod'; // Import Zod for validation
-import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware'; // Assuming rateLimitMiddleware is available
+import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware.js'; // Assuming rateLimitMiddleware is available
 const router = express.Router();
 // Apply authentication middleware to all routes
 router.use(authenticateUser);

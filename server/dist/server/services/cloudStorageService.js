@@ -1,4 +1,4 @@
-import { ConsistentLogService } from './consistentLogService';
+import { ConsistentLogService } from './consistentLogService.js';
 import { PutObjectCommand, GetObjectCommand, ListObjectsV2Command, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';

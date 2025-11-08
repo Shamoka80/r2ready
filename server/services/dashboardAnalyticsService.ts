@@ -751,9 +751,10 @@ export class DashboardAnalyticsService {
       }>;
     }> = {};
 
+    const assessmentsList = await assessmentsQuery;
     questionsAndAnswers.forEach(qa => {
       const { assessmentId, questionId, questionText, answerValue, clauseRef } = qa;
-      const facilityId = (assessmentsQuery as any[]).find((a: any) => a.id === assessmentId)?.facilityId;
+      const facilityId = (assessmentsList as any[]).find((a: any) => a.id === assessmentId)?.facilityId;
 
       if (!groupedResults[assessmentId] && facilityId) {
         groupedResults[assessmentId] = {

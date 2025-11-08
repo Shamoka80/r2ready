@@ -1,7 +1,7 @@
 import { writeFile, readFile, mkdir, access } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
-import ObservabilityService from './observabilityService';
+import ObservabilityService from './observabilityService.js';
 /**
  * Professional Document Library Service
  * Manages downloadable templates, policies, and procedures for R2v3 compliance
@@ -1890,13 +1890,13 @@ Training or retraining required when:
 
 ## TRAINING BUDGET
 
-**Annual Budget:** ${{ trainingBudget }}
+**Annual Budget:** $\{{trainingBudget\}}
 
 **Allocation:**
-- External courses: ${{ externalCourseBudget }}
-- Certifications: ${{ certificationBudget }}
-- Materials/supplies: ${{ materialsBudget }}
-- Travel (if applicable): ${{ travelBudget }}
+- External courses: $\{{externalCourseBudget\}}
+- Certifications: $\{{certificationBudget\}}
+- Materials/supplies: $\{{materialsBudget\}}
+- Travel (if applicable): $\{{travelBudget\}}
 
 ---
 
@@ -2508,11 +2508,7 @@ Last Updated: ${template.lastUpdated}
             autoUpdateEnabled
         };
     }
-}
-import { db } from '../db';
-import { tenants } from '../../shared/schema';
-import { eq } from 'drizzle-orm';
-export class DocumentLibraryService {
+    // Additional methods from duplicate class - merged here
     templateCategories = {
         policies: {
             name: 'Policy Templates',
@@ -2543,13 +2539,15 @@ export class DocumentLibraryService {
         }
     };
     async getAvailableTemplates(tenantId, category) {
+        const { db } = await import('../db');
+        const { tenants } = await import('../../shared/schema');
+        const { eq } = await import('drizzle-orm');
         const tenant = await db.query.tenants.findFirst({
             where: eq(tenants.id, tenantId)
         });
         if (!tenant) {
             throw new Error('Tenant not found');
         }
-        // Filter templates based on tenant type and permissions
         const availableTemplates = category
             ? { [category]: this.templateCategories[category] }
             : this.templateCategories;
@@ -2570,6 +2568,9 @@ export class DocumentLibraryService {
         };
     }
     async generateTemplateContent(templateName, tenantId, format) {
+        const { db } = await import('../db');
+        const { tenants } = await import('../../shared/schema');
+        const { eq } = await import('drizzle-orm');
         // Get tenant-specific branding and customization
         const tenant = await db.query.tenants.findFirst({
             where: eq(tenants.id, tenantId)

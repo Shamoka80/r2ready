@@ -1,7 +1,7 @@
-import { rateLimitService } from '../services/rateLimitService';
-import { bruteForceAlertService } from '../services/bruteForceAlertService';
-import { isTestEmail } from './testUserGuard';
-import { isDevelopment } from '../config/environment';
+import { rateLimitService } from '../services/rateLimitService.js';
+import { bruteForceAlertService } from '../services/bruteForceAlertService.js';
+import { isTestEmail } from './testUserGuard.js';
+import { isDevelopment } from '../config/environment.js';
 /**
  * Rate limiting middleware factory
  * Creates middleware for specific resources and actions

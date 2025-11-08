@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { db } from "../db";
-import { organizationProfiles, facilityProfiles, scopeProfiles, users, tenants, clientOrganizations, clientFacilities } from "../../shared/schema";
+import { db } from '../db.js';
+import { organizationProfiles, facilityProfiles, scopeProfiles, users, tenants, clientOrganizations, clientFacilities } from '../../shared/schema.js';
 import { eq, and, sql } from "drizzle-orm";
-import { AuthService } from "../services/authService";
+import { AuthService } from '../services/authService.js';
 import { z } from "zod";
 const router = Router();
 // Middleware - require authentication for all onboarding routes

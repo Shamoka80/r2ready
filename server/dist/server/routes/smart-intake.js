@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
-import { AuthService } from "../services/authService";
-import { ConditionalQuestionService } from "../services/conditionalQuestionService";
-import { SmartPrePopulationService } from "../services/smartPrePopulationService";
+import { AuthService } from '../services/authService.js';
+import { ConditionalQuestionService } from '../services/conditionalQuestionService.js';
+import { SmartPrePopulationService } from '../services/smartPrePopulationService.js';
 const router = Router();
 // All routes require authentication
 router.use(AuthService.authMiddleware);

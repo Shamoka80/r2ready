@@ -1,7 +1,7 @@
-import { db } from '../db';
-import { users, assessments, clientOrganizations, clientFacilities } from '@shared/schema';
+import { db } from '../db.js';
+import { users, assessments, clientOrganizations, clientFacilities } from '../../shared/schema.js';
 import { eq, and, sql, inArray, desc } from 'drizzle-orm';
-import ObservabilityService from './observabilityService';
+import ObservabilityService from './observabilityService.js';
 /**
  * Advanced Consultant Features Service
  * Enterprise-grade multi-client management and white-label capabilities
@@ -85,15 +85,19 @@ export class ConsultantFeaturesService {
                         }
                     }
                 });
-                recentActivity.push(...recentAssessments.map(assessment => ({
-                    id: assessment.id,
-                    type: assessment.status === 'COMPLETED' ? 'assessment_completed' : 'assessment_completed',
-                    clientName: assessment.clientOrganization?.legalName || 'Unknown Client',
-                    facilityName: assessment.clientFacility?.name || undefined,
-                    description: `Assessment "${assessment.title}" ${assessment.status}`,
-                    timestamp: assessment.completedAt || assessment.updatedAt,
-                    priority: 'medium'
-                })));
+                recentActivity.push(...recentAssessments.map(assessment => {
+                    const clientOrg = Array.isArray(assessment.clientOrganization) ? assessment.clientOrganization[0] : assessment.clientOrganization;
+                    const clientFac = Array.isArray(assessment.clientFacility) ? assessment.clientFacility[0] : assessment.clientFacility;
+                    return {
+                        id: assessment.id,
+                        type: assessment.status === 'COMPLETED' ? 'assessment_completed' : 'assessment_completed',
+                        clientName: clientOrg?.legalName || 'Unknown Client',
+                        facilityName: clientFac?.name || undefined,
+                        description: `Assessment "${assessment.title}" ${assessment.status}`,
+                        timestamp: assessment.completedAt || assessment.updatedAt,
+                        priority: 'medium'
+                    };
+                }));
             }
             // Calculate performance metrics
             const performanceMetrics = {
@@ -180,7 +184,7 @@ export class ConsultantFeaturesService {
                         city: true,
                         state: true,
                         zipCode: true,
-                        facilityType: true,
+                        // facilityType: true,  // Remove if not in schema
                         operatingStatus: true
                     }
                 });
@@ -218,7 +222,7 @@ export class ConsultantFeaturesService {
                         id: facility.id,
                         name: facility.name,
                         location: `${facility.city}, ${facility.state} ${facility.zipCode}`,
-                        facilityType: facility.facilityType || 'Unknown',
+                        facilityType: 'Unknown', // facilityType not available
                         certificationStatus: facility.operatingStatus || 'Unknown',
                         lastAssessment: undefined,
                         nextAudit: undefined

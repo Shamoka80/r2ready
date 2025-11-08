@@ -1,5 +1,5 @@
 import { z, ZodError } from 'zod';
-import { rateLimitService } from '../services/rateLimitService';
+import { rateLimitService } from '../services/rateLimitService.js';
 /**
  * Generic validation middleware factory
  * Validates request body, query, and params against provided Zod schemas

@@ -1,5 +1,5 @@
-import { db } from '../db';
-import { assessments, answers, questions, clauses, users, facilityProfiles, auditLog, licenses } from '@shared/schema';
+import { db } from '../db.js';
+import { assessments, answers, questions, clauses, users, facilityProfiles, auditLog, licenses } from '../../shared/schema.js';
 import { eq, and, sql, lte, desc, count, isNotNull, inArray } from 'drizzle-orm';
 /**
  * Dashboard Analytics Service
@@ -535,9 +535,10 @@ export class DashboardAnalyticsService {
             .innerJoin(clauses, eq(questions.clauseId, clauses.id))
             .where(sql `upper(clauses.clause_ref) LIKE 'CR%' OR upper(clauses.clause_ref) LIKE 'APP%'`); // Assuming CR and APP are the relevant question types
         const groupedResults = {};
+        const assessmentsList = await assessmentsQuery;
         questionsAndAnswers.forEach(qa => {
             const { assessmentId, questionId, questionText, answerValue, clauseRef } = qa;
-            const facilityId = assessmentsQuery.find((a) => a.id === assessmentId)?.facilityId;
+            const facilityId = assessmentsList.find((a) => a.id === assessmentId)?.facilityId;
             if (!groupedResults[assessmentId] && facilityId) {
                 groupedResults[assessmentId] = {
                     assessmentId,

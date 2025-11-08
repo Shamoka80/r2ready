@@ -200,15 +200,19 @@ export class ConsultantFeaturesService {
           }
         });
 
-        recentActivity.push(...recentAssessments.map(assessment => ({
-          id: assessment.id,
-          type: assessment.status === 'COMPLETED' ? 'assessment_completed' as const : 'assessment_completed' as const,
-          clientName: assessment.clientOrganization?.legalName || 'Unknown Client',
-          facilityName: assessment.clientFacility?.name || undefined,
-          description: `Assessment "${assessment.title}" ${assessment.status}`,
-          timestamp: assessment.completedAt || assessment.updatedAt,
-          priority: 'medium' as const
-        })));
+        recentActivity.push(...recentAssessments.map(assessment => {
+          const clientOrg = Array.isArray(assessment.clientOrganization) ? assessment.clientOrganization[0] : assessment.clientOrganization;
+          const clientFac = Array.isArray(assessment.clientFacility) ? assessment.clientFacility[0] : assessment.clientFacility;
+          return {
+            id: assessment.id,
+            type: assessment.status === 'COMPLETED' ? 'assessment_completed' as const : 'assessment_completed' as const,
+            clientName: clientOrg?.legalName || 'Unknown Client',
+            facilityName: clientFac?.name || undefined,
+            description: `Assessment "${assessment.title}" ${assessment.status}`,
+            timestamp: assessment.completedAt || assessment.updatedAt,
+            priority: 'medium' as const
+          };
+        }));
       }
 
       // Calculate performance metrics
@@ -311,7 +315,7 @@ export class ConsultantFeaturesService {
             city: true,
             state: true,
             zipCode: true,
-            facilityType: true,
+            // facilityType: true,  // Remove if not in schema
             operatingStatus: true
           }
         });
@@ -355,7 +359,7 @@ export class ConsultantFeaturesService {
             id: facility.id,
             name: facility.name,
             location: `${facility.city}, ${facility.state} ${facility.zipCode}`,
-            facilityType: facility.facilityType || 'Unknown',
+            facilityType: 'Unknown',  // facilityType not available
             certificationStatus: facility.operatingStatus || 'Unknown',
             lastAssessment: undefined,
             nextAudit: undefined

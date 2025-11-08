@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { TrainingCenterService } from '../services/trainingCenterService';
-import { AuthService } from '../services/authService';
-import { observabilityMiddleware } from '../middleware/observabilityMiddleware';
-import { requireFlag } from '../lib/flags';
+import { TrainingCenterService } from '../services/trainingCenterService.js';
+import { AuthService } from '../services/authService.js';
+import { observabilityMiddleware } from '../middleware/observabilityMiddleware.js';
+import { requireFlag } from '../lib/flags.js';
 const router = Router();
 // Apply middleware
 router.use(AuthService.authMiddleware);

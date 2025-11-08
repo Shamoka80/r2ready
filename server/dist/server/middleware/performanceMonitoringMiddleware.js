@@ -1,5 +1,5 @@
-import { db } from '../db';
-import { performanceMetrics } from '../../shared/schema';
+import { db } from '../db.js';
+import { performanceMetrics } from '../../shared/schema.js';
 // Performance monitoring middleware enhanced for Phase 2 SLOs
 export function performanceMonitor(req, res, next) {
     const startTime = Date.now();

@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { db } from "../db";
-import { assessments, questions, answers, clauses } from "../../shared/schema";
+import { db } from '../db.js';
+import { assessments, questions, answers, clauses } from '../../shared/schema.js';
 import { eq, and } from "drizzle-orm";
-import { requireFacilityPermissionFromAssessment } from "../services/authService";
+import { requireFacilityPermissionFromAssessment } from '../services/authService.js';
 const router = Router();
 // Scoring configuration based on question categories and intake complexity
 const SCORING_WEIGHTS = {

@@ -49,7 +49,7 @@ class EmailService {
         this.logger.info('Email service initialized with Resend provider');
         return;
       } catch (error) {
-        this.logger.error('Failed to initialize Resend provider', error);
+        this.logger.error('Failed to initialize Resend provider', error as any);
       }
     }
 
@@ -66,7 +66,7 @@ class EmailService {
         });
         this.logger.info('Email service configured with SendGrid provider (Resend is prioritized)');
       } catch (error) {
-        this.logger.warn('Failed to initialize SendGrid provider', error);
+        this.logger.warn('Failed to initialize SendGrid provider', error as any);
       }
     }
 
@@ -82,7 +82,7 @@ class EmailService {
         });
         this.logger.info(`Email service configured with SMTP provider (${process.env.SMTP_HOST}) (Resend is prioritized)`);
       } catch (error) {
-        this.logger.warn('Failed to initialize SMTP provider', error);
+        this.logger.warn('Failed to initialize SMTP provider', error as any);
       }
     }
 
@@ -97,10 +97,12 @@ class EmailService {
       this.logger.info('Email service initialized with Console provider');
     }
 
-    this.logger.info('Email service provider initialization complete', {
+    // Use metadata wrapper for extra properties not in LogContext
+    const metadata: any = {
       providers: this.providers.map(p => `${p.name}${p.isConfigured ? '' : ' (Not Configured)'}`),
       activeProvider: this.providers.find(p => p.isConfigured)?.name || 'None'
-    });
+    };
+    this.logger.info('Email service provider initialization complete', { metadata });
   }
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
@@ -111,18 +113,20 @@ class EmailService {
       const provider = this.providers[this.currentProviderIndex];
 
       if (!provider || !provider.isConfigured) {
-        this.logger.warn('Skipping unavailable or unconfigured email provider', { providerName: provider?.name, attempt: attempt + 1 });
+        this.logger.warn('Skipping unavailable or unconfigured email provider', { metadata: { providerName: provider?.name, attempt: attempt + 1 } } as any);
         this.currentProviderIndex = (this.currentProviderIndex + 1) % this.providers.length;
         continue;
       }
 
       try {
         this.logger.info('Attempting email send', {
-          provider: provider.name,
-          to: options.to,
-          subject: options.subject,
-          attempt: attempt + 1
-        });
+          metadata: {
+            provider: provider.name,
+            to: options.to,
+            subject: options.subject,
+            attempt: attempt + 1
+          }
+        } as any);
 
         const emailData = {
           from: options.from || process.env.RESEND_FROM_EMAIL || 'no-reply@wrekdtech.com',
@@ -160,9 +164,11 @@ class EmailService {
           }
 
           this.logger.info('Email sent successfully via Resend', {
-            messageId: data?.id,
-            to: options.to
-          });
+            metadata: {
+              messageId: data?.id,
+              to: options.to
+            }
+          } as any);
 
           this.currentProviderIndex = 0;
           return true;
@@ -194,11 +200,13 @@ class EmailService {
         lastError = error as Error;
 
         this.logger.error('Email send failed', {
-          provider: provider.name,
-          error: lastError.message,
-          attempt: attempt + 1,
-          to: options.to
-        });
+          metadata: {
+            provider: provider.name,
+            error: lastError.message,
+            attempt: attempt + 1,
+            to: options.to
+          }
+        } as any);
 
         // Move to next provider for failover
         this.currentProviderIndex = (this.currentProviderIndex + 1) % this.providers.length;
@@ -206,10 +214,12 @@ class EmailService {
     }
 
     this.logger.error('All email providers failed to send email', {
-      attempts: maxAttempts,
-      lastError: lastError?.message,
-      to: options.to
-    });
+      metadata: {
+        attempts: maxAttempts,
+        lastError: lastError?.message,
+        to: options.to
+      }
+    } as any);
 
     return false;
   }

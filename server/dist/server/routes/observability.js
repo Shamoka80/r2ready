@@ -1,17 +1,17 @@
 import { Router } from 'express';
-import { AuthService } from '../services/authService';
-import ObservabilityService from '../services/observabilityService';
-import { ConsistentLogService } from '../services/consistentLogService';
-import { cacheService } from '../services/cachingService';
-import { queryOptimizationService } from '../services/queryOptimizationService';
-import { cloudStorageService } from '../services/cloudStorageService';
-import { strictRateLimit } from '../middleware/rateLimitMiddleware';
+import { AuthService } from '../services/authService.js';
+import ObservabilityService from '../services/observabilityService.js';
+import { ConsistentLogService } from '../services/consistentLogService.js';
+import { cacheService } from '../services/cachingService.js';
+import { queryOptimizationService } from '../services/queryOptimizationService.js';
+import { cloudStorageService } from '../services/cloudStorageService.js';
+import { strictRateLimit } from '../middleware/rateLimitMiddleware.js';
 // Assuming these services are available and imported elsewhere:
-// import { SystemHealthService } from '../services/systemHealthService';
-// import { ObservabilityDashboardService } from '../services/observabilityDashboardService';
-// import { UserActivityAnalyticsService } from '../services/userActivityAnalyticsService';
-// import { CachingService } from '../services/cachingService'; // This seems to be a duplicate import, using cacheService from above
-// import { RateLimitService } from '../services/rateLimitService'; // This seems to be a duplicate import, using rateLimitMiddleware from above
+// import { SystemHealthService } from '../services/systemHealthService.js';
+// import { ObservabilityDashboardService } from '../services/observabilityDashboardService.js';
+// import { UserActivityAnalyticsService } from '../services/userActivityAnalyticsService.js';
+// import { CachingService } from '../services/cachingService.js'; // This seems to be a duplicate import, using cacheService from above
+// import { RateLimitService } from '../services/rateLimitService.js'; // This seems to be a duplicate import, using rateLimitMiddleware from above
 const router = Router();
 const logger = ConsistentLogService.getInstance();
 /**

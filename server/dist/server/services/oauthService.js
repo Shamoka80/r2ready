@@ -1,6 +1,6 @@
 import crypto from 'crypto';
-import { db } from '../db';
-import { userCloudStorageConnections } from '@shared/schema';
+import { db } from '../db.js';
+import { userCloudStorageConnections } from '../../shared/schema.js';
 import { eq, and } from 'drizzle-orm';
 export class OAuthService {
     configs = new Map();

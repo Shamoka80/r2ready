@@ -11,7 +11,7 @@ import {
   evidenceFiles,
   intakeForms,
   // trainingProgress, // Table not defined in schema
-  documentTemplates,
+  // documentTemplates, // Table not defined in schema
   systemLogs
 } from '@shared/schema';
 import { eq, and, sql, gte, lte, desc, count, isNotNull, inArray, avg, sum } from 'drizzle-orm';

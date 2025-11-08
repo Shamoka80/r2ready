@@ -1,6 +1,6 @@
 import { eq, sql, and, gte, lte, like, isNotNull, lt } from 'drizzle-orm';
-import { db } from '../db';
-import { systemLogs, assessments, answers } from '../../shared/schema'; // Assuming these schema imports are needed for the new methods
+import { db } from '../db.js';
+import { systemLogs, assessments, answers } from '../../shared/schema.js'; // Assuming these schema imports are needed for the new methods
 class ObservabilityService {
     // In-memory storage for development (in production, use proper database tables)
     logs = [];

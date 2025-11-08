@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { jwtService } from '../services/jwtService';
-import { authenticateUser } from '../middleware/authMiddleware';
-import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware';
+import { jwtService } from '../services/jwtService.js';
+import { authenticateUser } from '../middleware/authMiddleware.js';
+import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware.js';
 const router = Router();
 // Request validation schemas
 const refreshTokenSchema = z.object({

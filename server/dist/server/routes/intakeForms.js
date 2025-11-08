@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
-import { db } from "../db";
-import { intakeForms, intakeAnswers, intakeFacilities, intakeQuestions, assessments, standardVersions, answers } from "../../shared/schema";
+import { db } from '../db.js';
+import { intakeForms, intakeAnswers, intakeFacilities, intakeQuestions, assessments, standardVersions, answers } from '../../shared/schema.js';
 import { eq, and, desc } from "drizzle-orm";
-import { AuthService } from "../services/authService";
+import { AuthService } from '../services/authService.js';
 import { IntakeProcessor } from "./intakeLogic.js";
 const router = Router();
 // All routes require authentication

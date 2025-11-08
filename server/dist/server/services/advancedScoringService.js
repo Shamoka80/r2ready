@@ -1,7 +1,7 @@
-import { db } from "../db";
-import { assessments, answers, questions, clauses, intakeForms } from "../../shared/schema";
+import { db } from '../db.js';
+import { assessments, answers, questions, clauses, intakeForms } from '../../shared/schema.js';
 import { eq, desc } from "drizzle-orm";
-import { IntakeProcessor } from "../routes/intakeLogic";
+import { IntakeProcessor } from '../routes/intakeLogic.js';
 class AdvancedScoringService {
     // R2v3 Core Requirement Weights (based on SERI R2v3 standard)
     static CORE_WEIGHTS = {
@@ -35,7 +35,7 @@ class AdvancedScoringService {
                 throw new Error('Assessment not found');
             }
             // Get all answers for this assessment
-            const assessmentAnswers = await this.getAllAnswersWithQuestionDetails(assessmentId);
+            const assessmentAnswers = await AdvancedScoringService.getAllAnswersWithQuestionDetails(assessmentId);
             if (assessmentAnswers.length === 0) {
                 return 0; // No answers yet
             }
@@ -62,7 +62,7 @@ class AdvancedScoringService {
             throw new Error('Assessment not found');
         }
         // Get answers with question details
-        const answersWithDetails = await this.getAllAnswersWithQuestionDetails(assessmentId);
+        const answersWithDetails = await AdvancedScoringService.getAllAnswersWithQuestionDetails(assessmentId);
         // Identify gaps
         const gaps = [];
         const targetScore = 100; // Full compliance target
@@ -73,7 +73,7 @@ class AdvancedScoringService {
                 gaps.push({
                     questionId: answer.questionId,
                     questionText: answer.questionText,
-                    category: answer.categoryName || answer.category,
+                    category: (answer.categoryName || answer.category),
                     currentScore,
                     targetScore,
                     gapSeverity,
@@ -445,7 +445,7 @@ class AdvancedScoringService {
     }
     // Calculate comprehensive scoring with weighted categories
     static async calculateComprehensiveScore(assessmentId, tenantId) {
-        const answers = await db
+        const answerResults = await db
             .select({
             questionId: answers.questionId,
             value: answers.value,
@@ -465,23 +465,23 @@ class AdvancedScoringService {
             .innerJoin(clauses, eq(questions.clauseId, clauses.id))
             .where(eq(answers.assessmentId, assessmentId));
         // Calculate Core Requirements scores (CR1-CR10)
-        const coreRequirementScores = this.calculateCoreRequirementScores(answers);
+        const coreRequirementScores = this.calculateCoreRequirementScores(answerResults);
         // Calculate category-weighted scoring
-        const categoryScores = this.calculateCategoryScores(answers);
+        const categoryScores = this.calculateCategoryScores(answerResults);
         // Calculate compliance metrics
-        const complianceMetrics = this.calculateComplianceMetrics(answers);
+        const complianceMetrics = this.calculateComplianceMetrics(answerResults);
         // Calculate readiness assessment
-        const readinessAssessment = this.calculateReadinessAssessment(answers, complianceMetrics);
+        const readinessAssessment = this.calculateReadinessAssessment(answerResults, complianceMetrics);
         // Advanced gap analysis
-        const gapAnalysis = this.performGapAnalysis(answers);
-        const totalScore = answers.reduce((sum, answer) => sum + (answer.score || 0), 0);
-        const maxPossibleScore = answers.reduce((sum, answer) => sum + (answer.maxScore || 100), 0);
+        const gapAnalysis = this.performGapAnalysis(answerResults);
+        const totalScore = answerResults.reduce((sum, answer) => sum + (answer.score || 0), 0);
+        const maxPossibleScore = answerResults.reduce((sum, answer) => sum + (answer.maxScore || 100), 0);
         const overallScore = maxPossibleScore > 0 ? Math.round((totalScore / maxPossibleScore) * 100) : 0;
         return {
             overallScore,
             maxPossibleScore,
             scorePercentage: overallScore,
-            totalAnswered: answers.length,
+            totalAnswered: answerResults.length,
             complianceStatus: this.determineComplianceStatus(overallScore / 100),
             readinessLevel: this.determineReadinessLevel(overallScore),
             estimatedAuditSuccess: this.calculateAuditSuccessProbability(overallScore, complianceMetrics),

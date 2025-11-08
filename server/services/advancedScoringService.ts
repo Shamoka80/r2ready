@@ -113,7 +113,7 @@ class AdvancedScoringService {
       }
 
       // Get all answers for this assessment
-      const assessmentAnswers = await this.getAllAnswersWithQuestionDetails(assessmentId);
+      const assessmentAnswers = await AdvancedScoringService.getAllAnswersWithQuestionDetails(assessmentId);
 
       if (assessmentAnswers.length === 0) {
         return 0; // No answers yet
@@ -145,14 +145,14 @@ class AdvancedScoringService {
     }
 
     // Get answers with question details
-    const answersWithDetails = await this.getAllAnswersWithQuestionDetails(assessmentId);
+    const answersWithDetails = await AdvancedScoringService.getAllAnswersWithQuestionDetails(assessmentId);
 
     // Identify gaps
     const gaps: GapItem[] = [];
     const targetScore = 100; // Full compliance target
 
     for (const answer of answersWithDetails) {
-      const currentScore = answer.score || this.convertAnswerToScore(answer.value);
+      const currentScore = answer.score || this.convertAnswerToScore(answer.value as string | null);
 
       if (currentScore < 80) { // Below 80% is a gap
         const gapSeverity = this.determineGapSeverity(currentScore, answer.required, answer.weight);
@@ -160,12 +160,12 @@ class AdvancedScoringService {
         gaps.push({
           questionId: answer.questionId,
           questionText: answer.questionText,
-          category: answer.categoryName || answer.category,
+          category: (answer.categoryName || answer.category) as string,
           currentScore,
           targetScore,
           gapSeverity,
-          impact: this.generateImpactDescription(answer.category, currentScore),
-          recommendation: this.generateRecommendation(answer.category, answer.value, currentScore)
+          impact: this.generateImpactDescription(answer.category as string, currentScore),
+          recommendation: this.generateRecommendation(answer.category as string, answer.value as string | null, currentScore)
         });
       }
     }
@@ -177,7 +177,7 @@ class AdvancedScoringService {
 
     // Calculate overall gap score
     const totalPossibleScore = answersWithDetails.length * 100;
-    const actualScore = answersWithDetails.reduce((sum, a) => sum + (a.score || 0), 0);
+    const actualScore = answersWithDetails.reduce((sum: number, a: any) => sum + (a.score || 0), 0);
     const overallGapScore = Math.max(0, ((totalPossibleScore - actualScore) / totalPossibleScore) * 100);
 
     // Generate prioritized actions
@@ -220,13 +220,13 @@ class AdvancedScoringService {
       .orderBy(desc(answers.updatedAt));
 
     // Calculate overall compliance
-    const scores = detailedAnswers.map(a => a.score || this.convertAnswerToScore(a.value));
+    const scores = detailedAnswers.map(a => a.score || this.convertAnswerToScore(a.value as string | null));
     const overallCompliance = scores.length > 0 ? 
       Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) : 0;
 
     // Calculate core requirement compliance
     const coreAnswers = detailedAnswers.filter(a => !a.appendix || a.appendix.length === 0);
-    const coreScores = coreAnswers.map(a => a.score || this.convertAnswerToScore(a.value));
+    const coreScores = coreAnswers.map(a => a.score || this.convertAnswerToScore(a.value as string | null));
     const coreRequirementCompliance = coreScores.length > 0 ? 
       Math.round(coreScores.reduce((sum, score) => sum + score, 0) / coreScores.length) : 0;
 
@@ -236,8 +236,8 @@ class AdvancedScoringService {
 
     for (const appendix of appendices) {
       const appendixAnswers = detailedAnswers.filter(a => a.appendix === appendix);
-      const appendixScores = appendixAnswers.map(a => a.score || this.convertAnswerToScore(a.value));
-      appendixCompliance[appendix!] = appendixScores.length > 0 ? 
+      const appendixScores = appendixAnswers.map(a => a.score || this.convertAnswerToScore(a.value as string | null));
+      appendixCompliance[appendix as string] = appendixScores.length > 0 ? 
         Math.round(appendixScores.reduce((sum, score) => sum + score, 0) / appendixScores.length) : 0;
     }
 
@@ -249,8 +249,8 @@ class AdvancedScoringService {
       const categoryAnswers = detailedAnswers.filter(a => 
         (a.categoryName || a.category) === category
       );
-      const categoryScores = categoryAnswers.map(a => a.score || this.convertAnswerToScore(a.value));
-      categoryBreakdown[category!] = categoryScores.length > 0 ? 
+      const categoryScores = categoryAnswers.map(a => a.score || this.convertAnswerToScore(a.value as string | null));
+      categoryBreakdown[category as string] = categoryScores.length > 0 ? 
         Math.round(categoryScores.reduce((sum, score) => sum + score, 0) / categoryScores.length) : 0;
     }
 
@@ -442,13 +442,13 @@ class AdvancedScoringService {
 
     // Core category weights
     const categoryPrefix = category?.split('-')[0];
-    if (categoryPrefix && AdvancedScoringService.CORE_WEIGHTS[categoryPrefix]) {
-      baseWeight = AdvancedScoringService.CORE_WEIGHTS[categoryPrefix] / 10; // Normalize
+    if (categoryPrefix && (AdvancedScoringService.CORE_WEIGHTS as any)[categoryPrefix]) {
+      baseWeight = (AdvancedScoringService.CORE_WEIGHTS as any)[categoryPrefix] / 10; // Normalize
     }
 
     // Appendix weights
-    if (appendix && AdvancedScoringService.APPENDIX_WEIGHTS[appendix]) {
-      baseWeight += AdvancedScoringService.APPENDIX_WEIGHTS[appendix] / 20; // Additional weight
+    if (appendix && (AdvancedScoringService.APPENDIX_WEIGHTS as any)[appendix]) {
+      baseWeight += (AdvancedScoringService.APPENDIX_WEIGHTS as any)[appendix] / 20; // Additional weight
     }
 
     // Required questions get higher weight
@@ -579,7 +579,7 @@ class AdvancedScoringService {
 
   // Calculate comprehensive scoring with weighted categories
   static async calculateComprehensiveScore(assessmentId: string, tenantId: string) {
-    const answers = await db
+    const answerResults = await db
       .select({
         questionId: answers.questionId,
         value: answers.value,
@@ -600,29 +600,29 @@ class AdvancedScoringService {
       .where(eq(answers.assessmentId, assessmentId));
 
     // Calculate Core Requirements scores (CR1-CR10)
-    const coreRequirementScores = this.calculateCoreRequirementScores(answers);
+    const coreRequirementScores = this.calculateCoreRequirementScores(answerResults);
 
     // Calculate category-weighted scoring
-    const categoryScores = this.calculateCategoryScores(answers);
+    const categoryScores = this.calculateCategoryScores(answerResults);
 
     // Calculate compliance metrics
-    const complianceMetrics = this.calculateComplianceMetrics(answers);
+    const complianceMetrics = this.calculateComplianceMetrics(answerResults);
 
     // Calculate readiness assessment
-    const readinessAssessment = this.calculateReadinessAssessment(answers, complianceMetrics);
+    const readinessAssessment = this.calculateReadinessAssessment(answerResults, complianceMetrics);
 
     // Advanced gap analysis
-    const gapAnalysis = this.performGapAnalysis(answers);
+    const gapAnalysis = this.performGapAnalysis(answerResults);
 
-    const totalScore = answers.reduce((sum, answer) => sum + (answer.score || 0), 0);
-    const maxPossibleScore = answers.reduce((sum, answer) => sum + (answer.maxScore || 100), 0);
+    const totalScore = answerResults.reduce((sum, answer) => sum + (answer.score || 0), 0);
+    const maxPossibleScore = answerResults.reduce((sum, answer) => sum + (answer.maxScore || 100), 0);
     const overallScore = maxPossibleScore > 0 ? Math.round((totalScore / maxPossibleScore) * 100) : 0;
 
     return {
       overallScore,
       maxPossibleScore,
       scorePercentage: overallScore,
-      totalAnswered: answers.length,
+      totalAnswered: answerResults.length,
       complianceStatus: this.determineComplianceStatus(overallScore / 100),
       readinessLevel: this.determineReadinessLevel(overallScore),
       estimatedAuditSuccess: this.calculateAuditSuccessProbability(overallScore, complianceMetrics),

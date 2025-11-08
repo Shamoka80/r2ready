@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { AuthService } from '../services/authService';
-import { ReviewWorkflowService } from '../services/reviewWorkflowService';
-import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware';
-import ObservabilityService from '../services/observabilityService';
+import { AuthService } from '../services/authService.js';
+import { ReviewWorkflowService } from '../services/reviewWorkflowService.js';
+import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware.js';
+import ObservabilityService from '../services/observabilityService.js';
 const router = Router();
 // All routes require authentication
 router.use(AuthService.authMiddleware);

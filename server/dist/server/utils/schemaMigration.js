@@ -1,6 +1,6 @@
-import { db } from '../db';
+import { db } from '../db.js';
 import { sql } from 'drizzle-orm';
-import { validateSchemaConsistency } from './schemaValidator';
+import { validateSchemaConsistency } from './schemaValidator.js';
 export async function autoMigrateSchema() {
     const appliedMigrations = [];
     const errors = [];

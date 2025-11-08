@@ -1,5 +1,5 @@
-import { db } from "../db";
-import { intakeForms, recMapping } from "../../shared/schema";
+import { db } from '../db.js';
+import { intakeForms, recMapping } from '../../shared/schema.js';
 import { eq } from "drizzle-orm";
 export class IntakeProcessor {
     /**

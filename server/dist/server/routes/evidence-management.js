@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
-import { AuthService } from '../services/authService';
+import { AuthService } from '../services/authService.js';
 const router = Router();
 // Configure multer for file uploads
 const storage = multer.diskStorage({

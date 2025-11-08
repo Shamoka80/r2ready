@@ -1,6 +1,6 @@
 import { eq, and, gte, lt } from 'drizzle-orm';
-import { db } from '../db';
-import { rateLimitEvents } from '@shared/schema';
+import { db } from '../db.js';
+import { rateLimitEvents } from '../../shared/schema.js';
 /**
  * Rate Limiting Service
  * Provides configurable rate limiting for different resources and actions

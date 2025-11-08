@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { db } from "../db";
-import { licenses } from "../../shared/schema";
+import { db } from '../db.js';
+import { licenses } from '../../shared/schema.js';
 import { eq, and } from "drizzle-orm";
-import { AuthService } from "../services/authService";
+import { AuthService } from '../services/authService.js';
 const router = Router();
 // Middleware - require authentication for all license routes
 router.use(AuthService.authMiddleware);

@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
-import { AuthService } from "../services/authService";
-import { calendarService } from "../services/calendarService";
-import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware';
+import { AuthService } from '../services/authService.js';
+import { calendarService } from '../services/calendarService.js';
+import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware.js';
 const router = Router();
 // Validation schemas
 const createEventSchema = z.object({

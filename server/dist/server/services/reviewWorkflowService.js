@@ -1,7 +1,7 @@
-import { db } from '../db';
-import { reviewWorkflows, decisionLog, clientInvitations, assessments, clientOrganizations, users } from '@shared/schema';
+import { db } from '../db.js';
+import { reviewWorkflows, decisionLog, clientInvitations, assessments, clientOrganizations, users } from '../../shared/schema.js';
 import { eq, and, desc, inArray } from 'drizzle-orm';
-import ObservabilityService from './observabilityService';
+import ObservabilityService from './observabilityService.js';
 import crypto from 'crypto';
 /**
  * Review Workflow Service

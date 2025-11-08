@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { ConsultantFeaturesService } from '../services/consultantFeaturesService';
-import { AuthService } from '../services/authService';
-import { observabilityMiddleware } from '../middleware/observabilityMiddleware';
+import { ConsultantFeaturesService } from '../services/consultantFeaturesService.js';
+import { AuthService } from '../services/authService.js';
+import { observabilityMiddleware } from '../middleware/observabilityMiddleware.js';
 const router = Router();
 // Apply middleware
 router.use(AuthService.authMiddleware);

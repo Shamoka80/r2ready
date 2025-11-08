@@ -1,6 +1,6 @@
 import { eq, sql, and, gte, lte, desc } from 'drizzle-orm';
-import { db } from '../db';
-import { systemLogs, auditLog, users } from '@shared/schema';
+import { db } from '../db.js';
+import { systemLogs, auditLog, users } from '../../shared/schema.js';
 class UserActivityAnalyticsService {
     async getUserActivityMetrics(timeRange = '30d') {
         const endTime = new Date();

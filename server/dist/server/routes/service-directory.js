@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { ServiceDirectoryService } from '../services/serviceDirectoryService';
+import { ServiceDirectoryService } from '../services/serviceDirectoryService.js';
 const router = Router();
 const serviceDirectory = ServiceDirectoryService.getInstance();
 /**

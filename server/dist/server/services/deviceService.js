@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { eq, and, desc, lt } from 'drizzle-orm';
-import { db } from '../db';
-import { userDevices, securityAuditLog } from '@shared/schema';
+import { db } from '../db.js';
+import { userDevices, securityAuditLog } from '../../shared/schema.js';
 /**
  * Device Management Service
  * Handles device registration, tracking, and security management

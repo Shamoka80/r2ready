@@ -14,8 +14,8 @@ import { db } from './db.js';
 import { questionMapping, questions, recMapping } from '../shared/schema.js';
 import { sql } from 'drizzle-orm';
 // Import routes
-import authRoutes from './routes/auth';
-import serviceDirectoryRoutes from './routes/service-directory';
+import authRoutes from './routes/auth.js';
+import serviceDirectoryRoutes from './routes/service-directory.js';
 import Stripe from 'stripe';
 import { handleStripeWebhook } from './routes/stripe-webhooks.js';
 const __filename = fileURLToPath(import.meta.url);

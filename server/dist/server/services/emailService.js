@@ -8,7 +8,7 @@
  * - Console: Development mode (logs to console)
  */
 import { Resend } from 'resend';
-import { ConsistentLogService } from './consistentLogService';
+import { ConsistentLogService } from './consistentLogService.js';
 class EmailService {
     providers = [];
     currentProviderIndex = 0;
@@ -77,10 +77,12 @@ class EmailService {
             });
             this.logger.info('Email service initialized with Console provider');
         }
-        this.logger.info('Email service provider initialization complete', {
+        // Use metadata wrapper for extra properties not in LogContext
+        const metadata = {
             providers: this.providers.map(p => `${p.name}${p.isConfigured ? '' : ' (Not Configured)'}`),
             activeProvider: this.providers.find(p => p.isConfigured)?.name || 'None'
-        });
+        };
+        this.logger.info('Email service provider initialization complete', { metadata });
     }
     async sendEmail(options) {
         const maxAttempts = this.providers.length;
@@ -88,16 +90,18 @@ class EmailService {
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
             const provider = this.providers[this.currentProviderIndex];
             if (!provider || !provider.isConfigured) {
-                this.logger.warn('Skipping unavailable or unconfigured email provider', { providerName: provider?.name, attempt: attempt + 1 });
+                this.logger.warn('Skipping unavailable or unconfigured email provider', { metadata: { providerName: provider?.name, attempt: attempt + 1 } });
                 this.currentProviderIndex = (this.currentProviderIndex + 1) % this.providers.length;
                 continue;
             }
             try {
                 this.logger.info('Attempting email send', {
-                    provider: provider.name,
-                    to: options.to,
-                    subject: options.subject,
-                    attempt: attempt + 1
+                    metadata: {
+                        provider: provider.name,
+                        to: options.to,
+                        subject: options.subject,
+                        attempt: attempt + 1
+                    }
                 });
                 const emailData = {
                     from: options.from || process.env.RESEND_FROM_EMAIL || 'no-reply@wrekdtech.com',
@@ -131,8 +135,10 @@ class EmailService {
                         throw new Error(`Resend error: ${error.message}`);
                     }
                     this.logger.info('Email sent successfully via Resend', {
-                        messageId: data?.id,
-                        to: options.to
+                        metadata: {
+                            messageId: data?.id,
+                            to: options.to
+                        }
                     });
                     this.currentProviderIndex = 0;
                     return true;
@@ -159,19 +165,23 @@ class EmailService {
             catch (error) {
                 lastError = error;
                 this.logger.error('Email send failed', {
-                    provider: provider.name,
-                    error: lastError.message,
-                    attempt: attempt + 1,
-                    to: options.to
+                    metadata: {
+                        provider: provider.name,
+                        error: lastError.message,
+                        attempt: attempt + 1,
+                        to: options.to
+                    }
                 });
                 // Move to next provider for failover
                 this.currentProviderIndex = (this.currentProviderIndex + 1) % this.providers.length;
             }
         }
         this.logger.error('All email providers failed to send email', {
-            attempts: maxAttempts,
-            lastError: lastError?.message,
-            to: options.to
+            metadata: {
+                attempts: maxAttempts,
+                lastError: lastError?.message,
+                to: options.to
+            }
         });
         return false;
     }

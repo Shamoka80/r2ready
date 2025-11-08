@@ -2916,34 +2916,7 @@ class TrainingCenterService {
     return results;
   }
 
-  // Get interactive tutorials
-  async getInteractiveTutorial(tutorialId: string): Promise<any> {
-    const tutorials = {
-      'facility-walkthrough': {
-        id: 'facility-walkthrough',
-        title: 'R2v3 Facility Virtual Walkthrough',
-        description: 'Interactive walkthrough of a compliant R2v3 facility',
-        steps: [
-          {
-            id: 'step-1',
-            title: 'Reception Area',
-            description: 'Learn about intake procedures and documentation requirements',
-            content: 'The reception area is the first point of contact for incoming materials...',
-            interactiveElements: ['security-checkpoint', 'weighing-station', 'documentation-center']
-          },
-          {
-            id: 'step-2',
-            title: 'Processing Floor',
-            description: 'Explore processing equipment and safety procedures',
-            content: 'The processing floor contains specialized equipment for material handling...',
-            interactiveElements: ['disassembly-stations', 'data-destruction-area', 'sorting-systems']
-          }
-        ]
-      }
-    };
-
-    return tutorials[tutorialId] || null;
-  }
+  // Get interactive tutorials - REMOVED DUPLICATE (keeping version with userId parameter below)
 
   // Get user progress tracking
   async getProgressTracking(userId: string): Promise<any> {
@@ -3085,8 +3058,29 @@ class TrainingCenterService {
   }
 
   // Get interactive tutorial
-  async getInteractiveTutorial(tutorialId: string, userId: string): Promise<any> {
-    const tutorials = {
+  async getInteractiveTutorial(tutorialId: string, userId?: string): Promise<any> {
+    const tutorials: { [key: string]: any } = {
+      'facility-walkthrough': {
+        id: 'facility-walkthrough',
+        title: 'R2v3 Facility Virtual Walkthrough',
+        description: 'Interactive walkthrough of a compliant R2v3 facility',
+        steps: [
+          {
+            id: 'step-1',
+            title: 'Reception Area',
+            description: 'Learn about intake procedures and documentation requirements',
+            content: 'The reception area is the first point of contact for incoming materials...',
+            interactiveElements: ['security-checkpoint', 'weighing-station', 'documentation-center']
+          },
+          {
+            id: 'step-2',
+            title: 'Processing Floor',
+            description: 'Explore processing equipment and safety procedures',
+            content: 'The processing floor contains specialized equipment for material handling...',
+            interactiveElements: ['disassembly-stations', 'data-destruction-area', 'sorting-systems']
+          }
+        ]
+      },
       'scope-definition-simulator': {
         id: 'scope-definition-simulator',
         title: 'R2v3 Scope Definition Simulator',

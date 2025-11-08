@@ -1,7 +1,10 @@
-import { db } from '../db';
-import { assessments, users, auditLog, evidenceFiles, systemLogs } from '@shared/schema';
+import { db } from '../db.js';
+import { assessments, users, auditLog, evidenceFiles, 
+// trainingProgress, // Table not defined in schema
+// documentTemplates, // Table not defined in schema
+systemLogs } from '../../shared/schema.js';
 import { eq, and, sql, gte, lte, count, isNotNull, avg } from 'drizzle-orm';
-import { ConsistentLogService } from './consistentLogService';
+import { ConsistentLogService } from './consistentLogService.js';
 export class ComplianceAnalyticsService {
     logger = ConsistentLogService.getInstance();
     /**

@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { eq, and } from 'drizzle-orm';
-import { db } from '../db';
-import { userTwoFactorAuth, securityAuditLog } from '@shared/schema';
+import { db } from '../db.js';
+import { userTwoFactorAuth, securityAuditLog } from '../../shared/schema.js';
 /**
  * Two-Factor Authentication Service
  * Provides TOTP-based 2FA functionality with backup codes and security auditing

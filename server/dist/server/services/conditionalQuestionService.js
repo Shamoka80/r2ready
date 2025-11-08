@@ -1,5 +1,5 @@
-import { db } from '../db';
-import { intakeAnswers, intakeForms } from '../../shared/schema';
+import { db } from '../db.js';
+import { intakeAnswers, intakeForms } from '../../shared/schema.js';
 import { eq } from 'drizzle-orm';
 /**
  * Advanced Conditional Question Service for Phase 4

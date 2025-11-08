@@ -1,11 +1,10 @@
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
-import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
-import { db } from '../db';
-import { assessments, answers, questions, clauses, facilityProfiles } from '../../shared/schema';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, Header } from 'docx';
+import { db } from '../db.js';
+import { assessments, answers, questions, clauses, facilityProfiles } from '../../shared/schema.js';
 import { eq } from 'drizzle-orm';
-import AdvancedScoringService from './advancedScoringService';
-import { templateProcessor } from './templateProcessor';
+import AdvancedScoringService from './advancedScoringService.js';
 // Placeholder for TemplateProcessor and DocumentGenerationOptions, assuming they exist elsewhere
 // In a real scenario, these would be imported from their respective files.
 class TemplateProcessor {
@@ -39,7 +38,8 @@ class TemplateProcessor {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Report');
         worksheet.addRow([populatedTemplate]); // Simplified for example
-        return workbook.xlsx.writeBuffer();
+        const buffer = await workbook.xlsx.writeBuffer();
+        return Buffer.from(buffer);
     }
     async generateWordFromTemplate(populatedTemplate, assessmentData) {
         console.log(`Generating Word from populated template for assessment ${assessmentData.assessment.id}`);
@@ -171,7 +171,8 @@ class ExportService {
         // Action Items Sheet
         const actionsSheet = workbook.addWorksheet('Action Items');
         await this.buildExcelActionItems(actionsSheet, data);
-        return await workbook.xlsx.writeBuffer();
+        const buffer = await workbook.xlsx.writeBuffer();
+        return Buffer.from(buffer);
     }
     // Old Word generation - kept for now, but ideally would be integrated with TemplateProcessor
     async generateWordOld(options) {
@@ -180,8 +181,7 @@ class ExportService {
             sections: [{
                     properties: {},
                     headers: {
-                        default: {
-                            options: {},
+                        default: new Header({
                             children: [
                                 new Paragraph({
                                     children: [
@@ -193,7 +193,7 @@ class ExportService {
                                     ]
                                 })
                             ]
-                        }
+                        })
                     },
                     children: await this.buildWordContent(data, options)
                 }]
@@ -203,18 +203,15 @@ class ExportService {
     // Old Email Template generation - kept for now, but ideally would be integrated with TemplateProcessor
     async generateEmailTemplate(options) {
         const data = await this.getAssessmentData(options.assessmentId);
-        const template = await templateProcessor.processTemplate('email-consultation', {
-            assessment: data.assessment,
-            facility: data.facility,
-            complianceScore: data.complianceMetrics.overallCompliance,
-            readinessLevel: data.readinessAssessment.readinessLevel,
-            criticalGaps: data.gapAnalysis.criticalGaps.length,
-            recommendations: data.readinessAssessment.recommendations,
-            consultant: options.brandingOptions?.consultantInfo || {
-                name: 'R2Ready Consultant',
-                company: 'R2Ready Assessment Platform'
-            }
-        });
+        // Note: processTemplate method not found in templateProcessor
+        // Return a simple template for now
+        const template = `
+      <h1>R2v3 Assessment Report</h1>
+      <p>Assessment: ${data.assessment.title}</p>
+      <p>Compliance Score: ${data.complianceMetrics.overallCompliance}%</p>
+      <p>Readiness Level: ${data.readinessAssessment.readinessLevel}</p>
+      <p>Critical Gaps: ${data.gapAnalysis.criticalGaps.length}</p>
+    `;
         return template;
     }
     // Private helper methods
@@ -382,7 +379,8 @@ class ExportService {
             .text('Compliance by Category:', 50, yPosition);
         yPosition += 30;
         Object.entries(data.complianceMetrics.categoryBreakdown).forEach(([category, score]) => {
-            const scoreColor = score >= 90 ? '#22c55e' : score >= 70 ? '#f59e0b' : '#ef4444';
+            const scoreValue = typeof score === 'number' ? score : Number(score) || 0;
+            const scoreColor = scoreValue >= 90 ? '#22c55e' : scoreValue >= 70 ? '#f59e0b' : '#ef4444';
             doc.fontSize(11)
                 .fillColor('#374151')
                 .text(category, 50, yPosition);
@@ -390,11 +388,11 @@ class ExportService {
             doc.rect(200, yPosition, 200, 12)
                 .fillColor('#e5e7eb')
                 .fill();
-            doc.rect(200, yPosition, (score / 100) * 200, 12)
+            doc.rect(200, yPosition, (scoreValue / 100) * 200, 12)
                 .fillColor(scoreColor)
                 .fill();
             doc.fillColor('#374151')
-                .text(`${score}%`, 420, yPosition);
+                .text(`${scoreValue}%`, 420, yPosition);
             yPosition += 25;
         });
     }
@@ -496,9 +494,10 @@ class ExportService {
         worksheet.getRow(row).font = { bold: true };
         row++;
         Object.entries(data.complianceMetrics.categoryBreakdown).forEach(([category, score]) => {
+            const scoreValue = typeof score === 'number' ? score : Number(score) || 0;
             worksheet.getCell(`A${row}`).value = category;
-            worksheet.getCell(`B${row}`).value = score;
-            worksheet.getCell(`C${row}`).value = score >= 90 ? 'Excellent' : score >= 70 ? 'Good' : 'Needs Work';
+            worksheet.getCell(`B${row}`).value = scoreValue;
+            worksheet.getCell(`C${row}`).value = scoreValue >= 90 ? 'Excellent' : scoreValue >= 70 ? 'Good' : 'Needs Work';
             row++;
         });
     }

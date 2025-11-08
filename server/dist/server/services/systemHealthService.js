@@ -1,4 +1,4 @@
-import ObservabilityService from './observabilityService';
+import ObservabilityService from './observabilityService.js';
 class SystemHealthService {
     healthHistory = [];
     maxHistorySize = 100;

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { TemplateValidator } from "../services/templateValidator";
+import { TemplateValidator } from '../services/templateValidator.js';
 const router = Router();
 // GET /api/templates/validate
 router.get("/validate", async (req, res) => {

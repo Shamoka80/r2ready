@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
-import { executeQuery } from "../db";
-import { AuthService } from "../services/authService";
+import { executeQuery } from '../db.js';
+import { AuthService } from '../services/authService.js';
 const router = Router();
 // Validation schemas
 const createCorrectiveActionSchema = z.object({

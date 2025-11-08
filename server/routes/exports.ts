@@ -263,7 +263,7 @@ router.get('/assessment/:assessmentId/summary', (async (req: AuthenticatedReques
 // Enhanced PDF export with multiple template options
 router.get("/:assessmentId/pdf/:templateType?", 
   rateLimitMiddleware.pdfExport,
-  (async (req: AuthenticatedRequest, res) => {
+  (async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { assessmentId } = req.params;
       const { templateType } = req.params; // Extract templateType from params

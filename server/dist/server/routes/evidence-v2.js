@@ -7,7 +7,7 @@ import path from "path";
 import crypto from "crypto";
 import { evidenceService } from "../services/evidenceService.js";
 import { requireFacilityPermissionFromAssessment } from "../services/authService.js";
-import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware';
+import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware.js';
 const router = Router();
 // Configure multer for temporary uploads (evidenceService will handle final storage)
 const upload = multer({

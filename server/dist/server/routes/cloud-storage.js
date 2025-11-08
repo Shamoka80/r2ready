@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { AuthService } from '../services/authService';
-import { cloudStorageService } from '../services/cloudStorageService';
-import { ConsistentLogService } from '../services/consistentLogService';
-import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware';
-import { requireFlag } from '../lib/flags';
+import { AuthService } from '../services/authService.js';
+import { cloudStorageService } from '../services/cloudStorageService.js';
+import { ConsistentLogService } from '../services/consistentLogService.js';
+import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware.js';
+import { requireFlag } from '../lib/flags.js';
 const router = Router();
 const upload = multer({
     storage: multer.memoryStorage(),

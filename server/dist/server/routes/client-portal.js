@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { AuthService } from '../services/authService';
-import { ClientPortalService } from '../services/clientPortalService';
-import ObservabilityService from '../services/observabilityService';
+import { AuthService } from '../services/authService.js';
+import { ClientPortalService } from '../services/clientPortalService.js';
+import ObservabilityService from '../services/observabilityService.js';
 const router = Router();
 // All routes require authentication
 router.use(AuthService.authMiddleware);

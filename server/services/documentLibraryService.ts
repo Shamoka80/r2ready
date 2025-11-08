@@ -1979,13 +1979,13 @@ Training or retraining required when:
 
 ## TRAINING BUDGET
 
-**Annual Budget:** ${{trainingBudget}}
+**Annual Budget:** $\{{trainingBudget\}}
 
 **Allocation:**
-- External courses: ${{externalCourseBudget}}
-- Certifications: ${{certificationBudget}}
-- Materials/supplies: ${{materialsBudget}}
-- Travel (if applicable): ${{travelBudget}}
+- External courses: $\{{externalCourseBudget\}}
+- Certifications: $\{{certificationBudget\}}
+- Materials/supplies: $\{{materialsBudget\}}
+- Travel (if applicable): $\{{travelBudget\}}
 
 ---
 
@@ -2635,13 +2635,8 @@ Last Updated: ${template.lastUpdated}
       autoUpdateEnabled
     };
   }
-}
-
-import { db } from '../db';
-import { facilityProfiles, tenants } from '../../shared/schema';
-import { eq } from 'drizzle-orm';
-
-export class DocumentLibraryService {
+  
+  // Additional methods from duplicate class - merged here
   private readonly templateCategories = {
     policies: {
       name: 'Policy Templates',
@@ -2673,6 +2668,10 @@ export class DocumentLibraryService {
   };
 
   async getAvailableTemplates(tenantId: string, category?: string) {
+    const { db } = await import('../db');
+    const { tenants } = await import('../../shared/schema');
+    const { eq } = await import('drizzle-orm');
+    
     const tenant = await db.query.tenants.findFirst({
       where: eq(tenants.id, tenantId)
     });
@@ -2682,8 +2681,9 @@ export class DocumentLibraryService {
     }
 
     // Filter templates based on tenant type and permissions
+    type TemplateCategoryKey = keyof typeof this.templateCategories;
     const availableTemplates = category 
-      ? { [category]: this.templateCategories[category] }
+      ? { [category]: this.templateCategories[category as TemplateCategoryKey] }
       : this.templateCategories;
 
     return {
@@ -2708,6 +2708,10 @@ export class DocumentLibraryService {
   }
 
   private async generateTemplateContent(templateName: string, tenantId: string, format: string): Promise<Buffer> {
+    const { db } = await import('../db');
+    const { tenants } = await import('../../shared/schema');
+    const { eq } = await import('drizzle-orm');
+    
     // Get tenant-specific branding and customization
     const tenant = await db.query.tenants.findFirst({
       where: eq(tenants.id, tenantId)
@@ -2718,7 +2722,7 @@ export class DocumentLibraryService {
       templateName,
       generatedDate: new Date().toLocaleDateString(),
       format,
-      customizations: tenant?.branding || {}
+      customizations: (tenant as any)?.branding || {}
     };
 
     // Generate content based on template type
@@ -2836,7 +2840,7 @@ export class DocumentLibraryService {
   }
 
   private getMimeType(format: string): string {
-    const mimeTypes = {
+    const mimeTypes: { [key: string]: string } = {
       'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'pdf': 'application/pdf',
       'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'

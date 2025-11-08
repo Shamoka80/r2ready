@@ -1,6 +1,6 @@
 import { eq, and, gte, desc, count, or, like } from 'drizzle-orm';
-import { db } from '../db';
-import { securityAuditLog } from '@shared/schema';
+import { db } from '../db.js';
+import { securityAuditLog } from '../../shared/schema.js';
 /**
  * Brute-Force Detection and Alert Service
  *

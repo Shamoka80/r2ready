@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { z } from "zod";
-import { db } from "../db";
-import { standardVersions, assessments, questions, clauses, answers, intakeForms, facilityProfiles, clientOrganizations, clientFacilities } from "../../shared/schema";
+import { db } from '../db.js';
+import { standardVersions, assessments, questions, clauses, answers, intakeForms, facilityProfiles, clientOrganizations, clientFacilities } from '../../shared/schema.js';
 import { eq, and, desc, sql, inArray, or } from "drizzle-orm";
-import { AuthService } from "../services/authService";
+import { AuthService } from '../services/authService.js';
 import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware.js';
-import { IntakeProcessor } from './intakeLogic';
+import { IntakeProcessor } from './intakeLogic.js';
 const router = Router();
 // Helper function to get user's accessible facilities
 async function getUserAccessibleFacilities(userId, tenantId) {
