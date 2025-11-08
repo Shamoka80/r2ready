@@ -98,6 +98,23 @@ args = "sleep 2"
 task = "shell.exec"
 args = "npm run dev"
 
+[[workflows.workflow]]
+name = "Production Build Test"
+author = 42087522
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run build"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run type-check"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"Build verification complete\""
+
 [userenv]
 
 [userenv.shared]
