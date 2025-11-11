@@ -17,8 +17,10 @@ import { sql } from 'drizzle-orm';
 // Import routes
 import authRoutes from './routes/auth';
 import serviceDirectoryRoutes from './routes/service-directory';
+import jobRoutes from './routes/jobs.js';
 import Stripe from 'stripe';
 import { handleStripeWebhook } from './routes/stripe-webhooks.js';
+import { jobWorker } from './workers/jobWorker.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -383,6 +385,7 @@ async function startServer() {
   // Mount routes
   app.use('/api/auth', authRoutes);
   app.use('/api/directory', serviceDirectoryRoutes);
+  app.use('/api/jobs', jobRoutes);
 
   // Start server
   const port = parseInt(process.env.PORT || '5000', 10);
@@ -395,14 +398,19 @@ async function startServer() {
     } else {
       console.log(`🌐 Development app available at http://0.0.0.0:${port} (proxying to Vite)`);
     }
+
+    jobWorker.start().catch(error => {
+      console.error('❌ Failed to start job worker:', error);
+    });
   });
 
   // Set unlimited listeners to handle proxy and WebSocket connections during HMR
   server.setMaxListeners(0);
 
   // Graceful shutdown
-  process.on('SIGTERM', () => {
+  process.on('SIGTERM', async () => {
     console.log('SIGTERM signal received: closing HTTP server');
+    await jobWorker.stop();
     server.close(() => {
       console.log('HTTP server closed');
     });

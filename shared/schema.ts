@@ -523,6 +523,48 @@ export const errorLogs = pgTable("ErrorLog", {
   timestamp: timestamp("timestamp").default(sql`now()`).notNull(),
 });
 
+// === BACKGROUND JOB QUEUE ===
+
+// Job status enum
+export const jobStatusEnum = pgEnum("JobStatus", [
+  "PENDING",
+  "PROCESSING",
+  "COMPLETED",
+  "FAILED"
+]);
+
+// Job priority enum
+export const jobPriorityEnum = pgEnum("JobPriority", [
+  "low",
+  "medium",
+  "high"
+]);
+
+// Jobs table - Background job queue with persistence
+export const jobs = pgTable("Job", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+
+  // Job details
+  type: varchar("type").notNull(), // 'report_generation', 'email_sending', etc.
+  status: jobStatusEnum("status").notNull().default("PENDING"),
+  priority: jobPriorityEnum("priority").notNull().default("medium"),
+
+  // Job data
+  payload: jsonb("payload").notNull(), // Job parameters
+  result: jsonb("result"), // Job result (nullable)
+  error: text("error"), // Error message (nullable)
+
+  // Retry logic
+  attempts: integer("attempts").notNull().default(0),
+  maxAttempts: integer("maxAttempts").notNull().default(3),
+
+  // Timestamps
+  createdAt: timestamp("createdAt").default(sql`now()`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`now()`).notNull(),
+  completedAt: timestamp("completedAt"),
+});
+
 // === CONSULTANT CLIENT MANAGEMENT ===
 
 // Review workflow status enum
@@ -2262,6 +2304,16 @@ export type PerformanceMetric = typeof performanceMetrics.$inferSelect;
 export type NewPerformanceMetric = typeof performanceMetrics.$inferInsert;
 export type ErrorLog = typeof errorLogs.$inferSelect;
 export type NewErrorLog = typeof errorLogs.$inferInsert;
+
+// Job types
+export type Job = typeof jobs.$inferSelect;
+export type NewJob = typeof jobs.$inferInsert;
+export const insertJobSchema = createInsertSchema(jobs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertJob = z.infer<typeof insertJobSchema>;
 
 // Review workflow types
 export type ReviewWorkflow = typeof reviewWorkflows.$inferSelect;
