@@ -272,8 +272,150 @@ async function handleEmailSending(payload: any): Promise<any> {
   };
 }
 
+// Handler for purging old slow query logs (Phase 3 Track 1)
+async function handlePurgeSlowQueryLogs(payload: any): Promise<any> {
+  console.log('[JobQueue] Purging old slow query logs...');
+  
+  const { QueryMonitoringService } = await import('./queryMonitoring.js');
+  const deletedCount = await QueryMonitoringService.purgeOldSlowQueryLogs();
+  
+  const result = {
+    deletedCount,
+    purgedAt: new Date().toISOString(),
+  };
+  
+  console.log(`[JobQueue] Purged ${result.deletedCount} old slow query log entries`);
+  
+  return result;
+}
+
+// Helper function to execute maintenance SQL with timeout (Phase 3 Track 2)
+async function executeMaintenanceSQL(sqlQuery: string, timeout: number): Promise<any> {
+  const startTime = Date.now();
+  
+  try {
+    await db.execute(sql.raw(`SET LOCAL statement_timeout = '${timeout}ms'`));
+    
+    const result = await db.execute(sql.raw(sqlQuery));
+    
+    const duration = Date.now() - startTime;
+    
+    return {
+      success: true,
+      duration,
+      query: sqlQuery,
+    };
+  } catch (error: any) {
+    const duration = Date.now() - startTime;
+    console.error(`[JobQueue] Maintenance SQL failed after ${duration}ms:`, error.message);
+    
+    throw error;
+  }
+}
+
+// Handler for ANALYZE table (Phase 3 Track 2)
+async function handleAnalyzeTable(payload: any): Promise<any> {
+  const { tableName } = payload;
+  
+  if (!tableName) {
+    throw new Error('tableName is required for analyze_table job');
+  }
+  
+  console.log(`[JobQueue] Running ANALYZE on table: ${tableName}`);
+  
+  const startTime = Date.now();
+  const timeoutMs = 30000;
+  
+  try {
+    const tableStatsQuery = `SELECT reltuples::bigint as row_count FROM pg_class WHERE relname = '${tableName}'`;
+    const statsResult = await db.execute(sql.raw(tableStatsQuery));
+    const rowCountBefore = statsResult.rows[0]?.row_count || 0;
+    
+    const analyzeQuery = `ANALYZE "${tableName}"`;
+    await executeMaintenanceSQL(analyzeQuery, timeoutMs);
+    
+    const duration = Date.now() - startTime;
+    
+    const result = {
+      tableName,
+      operation: 'ANALYZE',
+      duration,
+      rowCount: rowCountBefore,
+      completedAt: new Date().toISOString(),
+    };
+    
+    console.log(`[JobQueue] ANALYZE completed for ${tableName} in ${duration}ms (${rowCountBefore} rows)`);
+    
+    return result;
+  } catch (error: any) {
+    const duration = Date.now() - startTime;
+    console.error(`[JobQueue] ANALYZE failed for ${tableName} after ${duration}ms:`, error.message);
+    
+    return {
+      tableName,
+      operation: 'ANALYZE',
+      duration,
+      success: false,
+      error: error.message,
+      completedAt: new Date().toISOString(),
+    };
+  }
+}
+
+// Handler for VACUUM table (Phase 3 Track 2)
+async function handleVacuumTable(payload: any): Promise<any> {
+  const { tableName } = payload;
+  
+  if (!tableName) {
+    throw new Error('tableName is required for vacuum_table job');
+  }
+  
+  console.log(`[JobQueue] Running VACUUM on table: ${tableName}`);
+  
+  const startTime = Date.now();
+  const timeoutMs = 120000;
+  
+  try {
+    const tableStatsQuery = `SELECT reltuples::bigint as row_count FROM pg_class WHERE relname = '${tableName}'`;
+    const statsResult = await db.execute(sql.raw(tableStatsQuery));
+    const rowCountBefore = statsResult.rows[0]?.row_count || 0;
+    
+    const vacuumQuery = `VACUUM "${tableName}"`;
+    await executeMaintenanceSQL(vacuumQuery, timeoutMs);
+    
+    const duration = Date.now() - startTime;
+    
+    const result = {
+      tableName,
+      operation: 'VACUUM',
+      duration,
+      rowCount: rowCountBefore,
+      completedAt: new Date().toISOString(),
+    };
+    
+    console.log(`[JobQueue] VACUUM completed for ${tableName} in ${duration}ms (${rowCountBefore} rows)`);
+    
+    return result;
+  } catch (error: any) {
+    const duration = Date.now() - startTime;
+    console.error(`[JobQueue] VACUUM failed for ${tableName} after ${duration}ms:`, error.message);
+    
+    return {
+      tableName,
+      operation: 'VACUUM',
+      duration,
+      success: false,
+      error: error.message,
+      completedAt: new Date().toISOString(),
+    };
+  }
+}
+
 // Register handlers
 jobQueueService.registerHandler('report_generation', handleReportGeneration);
 jobQueueService.registerHandler('email_sending', handleEmailSending);
+jobQueueService.registerHandler('purge_slow_query_logs', handlePurgeSlowQueryLogs);
+jobQueueService.registerHandler('analyze_table', handleAnalyzeTable);
+jobQueueService.registerHandler('vacuum_table', handleVacuumTable);
 
 export { JobQueueService };

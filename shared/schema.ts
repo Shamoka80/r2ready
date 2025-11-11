@@ -1647,6 +1647,21 @@ export const assessmentSessions = pgTable("AssessmentSession", {
   userAgent: text("userAgent"),
 });
 
+// === PERFORMANCE MONITORING ===
+
+// Slow query log for performance tracking (Phase 3 Track 1)
+// Retention: 30 days (auto-purged by background job)
+export const slowQueryLog = pgTable("slow_query_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  query: text("query").notNull(),
+  duration: real("duration").notNull(), // Duration in milliseconds
+  timestamp: timestamp("timestamp").default(sql`now()`).notNull(),
+  caller: text("caller"), // Optional caller context (route, service, etc.)
+}, (table) => ({
+  timestampIdx: index("idx_slow_query_timestamp").on(table.timestamp),
+  durationIdx: index("idx_slow_query_duration").on(table.duration),
+}));
+
 // === RELATIONS ===
 
 export const tenantsRelations = relations(tenants, ({ many }) => ({

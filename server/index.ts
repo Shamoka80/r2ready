@@ -21,6 +21,8 @@ import jobRoutes from './routes/jobs.js';
 import Stripe from 'stripe';
 import { handleStripeWebhook } from './routes/stripe-webhooks.js';
 import { jobWorker } from './workers/jobWorker.js';
+import { jobQueueService } from './services/jobQueue.js';
+import { QueryMonitoringService } from './services/queryMonitoring.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -175,6 +177,122 @@ function validateConfig() {
     warnings.forEach(w => console.warn(`   - ${w}`));
   } else {
     console.log('✅ Configuration validated');
+  }
+}
+
+async function scheduleDailyPurgeJob() {
+  const SYSTEM_TENANT_ID = 'system';
+  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+  async function enqueuePurgeJob() {
+    try {
+      const jobId = await jobQueueService.enqueue({
+        tenantId: SYSTEM_TENANT_ID,
+        type: 'purge_slow_query_logs',
+        payload: {},
+        priority: 'low',
+        maxAttempts: 2,
+      });
+      console.log(`📅 Scheduled daily purge job: ${jobId}`);
+    } catch (error) {
+      console.error('Failed to enqueue purge job:', error);
+    }
+  }
+
+  await enqueuePurgeJob();
+
+  setInterval(enqueuePurgeJob, ONE_DAY_MS);
+
+  console.log('✅ Daily slow query log purge job scheduled');
+}
+
+async function scheduleDailyAnalyzeJobs() {
+  const SYSTEM_TENANT_ID = 'system';
+  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+  const HOT_TABLES = ['User', 'Assessment', 'Answer', 'EvidenceFile', 'Question'];
+
+  async function enqueueAnalyzeJobs() {
+    for (let i = 0; i < HOT_TABLES.length; i++) {
+      const tableName = HOT_TABLES[i];
+      
+      setTimeout(async () => {
+        try {
+          const jobId = await jobQueueService.enqueue({
+            tenantId: SYSTEM_TENANT_ID,
+            type: 'analyze_table',
+            payload: { tableName },
+            priority: 'low',
+            maxAttempts: 2,
+          });
+          console.log(`📊 Scheduled ANALYZE job for ${tableName}: ${jobId}`);
+        } catch (error) {
+          console.error(`Failed to enqueue ANALYZE job for ${tableName}:`, error);
+        }
+      }, i * 5000);
+    }
+  }
+
+  await enqueueAnalyzeJobs();
+
+  setInterval(enqueueAnalyzeJobs, ONE_DAY_MS);
+
+  console.log(`✅ Daily ANALYZE jobs scheduled for ${HOT_TABLES.length} hot tables`);
+}
+
+async function scheduleWeeklyVacuumJobs() {
+  const SYSTEM_TENANT_ID = 'system';
+  const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const ALL_TABLES = [
+    'User', 
+    'Assessment', 
+    'Answer', 
+    'EvidenceFile', 
+    'Question',
+    'Facility',
+    'IntakeForm',
+    'License',
+    'jobs',
+    'slow_query_log'
+  ];
+
+  async function enqueueVacuumJobs() {
+    for (let i = 0; i < ALL_TABLES.length; i++) {
+      const tableName = ALL_TABLES[i];
+      
+      setTimeout(async () => {
+        try {
+          const jobId = await jobQueueService.enqueue({
+            tenantId: SYSTEM_TENANT_ID,
+            type: 'vacuum_table',
+            payload: { tableName },
+            priority: 'low',
+            maxAttempts: 2,
+          });
+          console.log(`🧹 Scheduled VACUUM job for ${tableName}: ${jobId}`);
+        } catch (error) {
+          console.error(`Failed to enqueue VACUUM job for ${tableName}:`, error);
+        }
+      }, i * 10000);
+    }
+  }
+
+  await enqueueVacuumJobs();
+
+  setInterval(enqueueVacuumJobs, ONE_WEEK_MS);
+
+  console.log(`✅ Weekly VACUUM jobs scheduled for ${ALL_TABLES.length} tables`);
+}
+
+async function enablePgStatStatements() {
+  try {
+    const result = await QueryMonitoringService.enablePgStatStatements();
+    if (result.success) {
+      console.log('✅ pg_stat_statements enabled successfully');
+    } else {
+      console.warn('⚠️  pg_stat_statements not available:', result.message);
+    }
+  } catch (error) {
+    console.warn('⚠️  pg_stat_statements enablement error (expected on Neon free tier)');
   }
 }
 
@@ -401,6 +519,22 @@ async function startServer() {
 
     jobWorker.start().catch(error => {
       console.error('❌ Failed to start job worker:', error);
+    });
+
+    scheduleDailyPurgeJob().catch(error => {
+      console.error('❌ Failed to schedule daily purge job:', error);
+    });
+
+    scheduleDailyAnalyzeJobs().catch(error => {
+      console.error('❌ Failed to schedule daily ANALYZE jobs:', error);
+    });
+
+    scheduleWeeklyVacuumJobs().catch(error => {
+      console.error('❌ Failed to schedule weekly VACUUM jobs:', error);
+    });
+
+    enablePgStatStatements().catch(error => {
+      console.warn('⚠️  pg_stat_statements enablement failed (expected on free tier):', error);
     });
   });
 
