@@ -75,8 +75,10 @@ export class LRUCache<T> {
     // Evict oldest entry if at capacity
     if (this.cache.size >= this.maxSize) {
       const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
-      this.stats.evictions++;
+      if (firstKey !== undefined) {
+        this.cache.delete(firstKey);
+        this.stats.evictions++;
+      }
     }
 
     this.cache.set(key, {
@@ -141,6 +143,8 @@ export const questionCache = new LRUCache<any>(500, 10 * 60 * 1000); // 500 ques
 export const recMappingCache = new LRUCache<any>(1000, 10 * 60 * 1000); // 1000 mappings, 10min TTL
 export const mustPassRuleCache = new LRUCache<any>(100, 10 * 60 * 1000); // 100 rules, 10min TTL
 export const scoringConfigCache = new LRUCache<any>(50, 10 * 60 * 1000); // 50 configs, 10min TTL
+export const cloudStorageMetadataCache = new LRUCache<any>(500, 60 * 60 * 1000); // 500 files, 1hr TTL
+export const cloudStorageUrlCache = new LRUCache<any>(1000, 5 * 60 * 1000); // 1000 URLs, 5min TTL
 
 /**
  * Cache invalidation helpers
@@ -187,6 +191,37 @@ export const cacheInvalidation = {
   },
 
   /**
+   * Invalidate cloud storage metadata cache (includes both file metadata and list caches)
+   */
+  invalidateStorageMetadata(tenantId?: string, fileId?: string): void {
+    if (tenantId && fileId) {
+      // Invalidate specific file metadata
+      cloudStorageMetadataCache.invalidate(`storage_meta:${tenantId}:${fileId}`);
+      // Also invalidate all list caches for this tenant since file was modified
+      cloudStorageMetadataCache.invalidatePattern(new RegExp(`^storage_list:${tenantId}:`));
+    } else if (tenantId) {
+      // Invalidate all metadata and lists for this tenant
+      cloudStorageMetadataCache.invalidatePattern(new RegExp(`^storage_meta:${tenantId}:`));
+      cloudStorageMetadataCache.invalidatePattern(new RegExp(`^storage_list:${tenantId}:`));
+    } else {
+      cloudStorageMetadataCache.clear();
+    }
+  },
+
+  /**
+   * Invalidate cloud storage URL cache
+   */
+  invalidateStorageUrls(tenantId?: string, fileId?: string): void {
+    if (tenantId && fileId) {
+      cloudStorageUrlCache.invalidate(`storage_url:${tenantId}:${fileId}`);
+    } else if (tenantId) {
+      cloudStorageUrlCache.invalidatePattern(new RegExp(`^storage_url:${tenantId}:`));
+    } else {
+      cloudStorageUrlCache.clear();
+    }
+  },
+
+  /**
    * Invalidate all caches
    */
   invalidateAll(): void {
@@ -194,6 +229,8 @@ export const cacheInvalidation = {
     recMappingCache.clear();
     mustPassRuleCache.clear();
     scoringConfigCache.clear();
+    cloudStorageMetadataCache.clear();
+    cloudStorageUrlCache.clear();
   }
 };
 
@@ -217,6 +254,14 @@ export function getAllCacheStats() {
     scoringConfigs: {
       ...scoringConfigCache.getStats(),
       hitRate: scoringConfigCache.getHitRate()
+    },
+    cloudStorageMetadata: {
+      ...cloudStorageMetadataCache.getStats(),
+      hitRate: cloudStorageMetadataCache.getHitRate()
+    },
+    cloudStorageUrls: {
+      ...cloudStorageUrlCache.getStats(),
+      hitRate: cloudStorageUrlCache.getHitRate()
     }
   };
 }

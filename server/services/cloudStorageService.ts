@@ -2,6 +2,7 @@ import { ConsistentLogService } from './consistentLogService';
 import { S3Client, PutObjectCommand, GetObjectCommand, ListObjectsV2Command, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
+import { cloudStorageMetadataCache, cloudStorageUrlCache, cacheInvalidation } from './dataCache';
 
 export interface CloudStorageConfig {
   provider: 'google_drive' | 'onedrive' | 'dropbox' | 'aws_s3' | 'azure_blob';
@@ -145,6 +146,7 @@ export class CloudStorageService {
 
       // Upload based on provider
       const uploadResult = await this.uploadToProvider(
+        tenantId,
         config,
         processedBuffer,
         options
@@ -172,6 +174,9 @@ export class CloudStorageService {
           provider: config.provider
         }
       });
+
+      // Invalidate caches after successful upload using helper
+      cacheInvalidation.invalidateStorageMetadata(tenantId);
 
       await this.logger.info('File uploaded successfully', {
         service: 'cloud-storage',
@@ -217,7 +222,37 @@ export class CloudStorageService {
         return { success: false, error: 'Cloud storage not configured for tenant' };
       }
 
-      const downloadResult = await this.downloadFromProvider(config, fileId);
+      // Check cache for signed URL - return early if found (short-circuit)
+      const urlCacheKey = `storage_url:${tenantId}:${fileId}`;
+      const cachedUrl = cloudStorageUrlCache.get(urlCacheKey);
+      
+      if (cachedUrl) {
+        await this.logger.info('Download URL retrieved from cache, returning without fetching from provider', {
+          service: 'cloud-storage',
+          operation: 'download',
+          tenantId,
+          metadata: {
+            fileId,
+            provider: config.provider,
+            cached: true
+          }
+        });
+        
+        // Return cached URL without downloading buffer - client can download directly
+        return {
+          success: true,
+          file: {
+            id: fileId,
+            name: fileId.split('/').pop() || fileId,
+            mimeType: 'application/octet-stream',
+            size: 0,
+            downloadUrl: cachedUrl,
+            uploadedAt: new Date()
+          }
+        };
+      }
+
+      const downloadResult = await this.downloadFromProvider(tenantId, config, fileId);
 
       if (!downloadResult.success) {
         return { success: false, error: downloadResult.error };
@@ -228,6 +263,11 @@ export class CloudStorageService {
       // Decrypt if file was encrypted
       if (config.settings.encryptFiles) {
         processedBuffer = await this.decryptFile(processedBuffer, tenantId);
+      }
+
+      // Cache the download URL if available
+      if (downloadResult.file?.downloadUrl) {
+        cloudStorageUrlCache.set(urlCacheKey, downloadResult.file.downloadUrl);
       }
 
       await this.logger.info('File downloaded successfully', {
@@ -274,10 +314,42 @@ export class CloudStorageService {
         return { success: false, error: 'Cloud storage not configured for tenant' };
       }
 
+      // Check cache first - include all query parameters to prevent key collisions
+      const folderPath = options.folderPath || 'root';
+      const limit = options.limit || 'all';
+      const pageToken = options.pageToken || 'none';
+      const cacheKey = `storage_list:${tenantId}:${folderPath}:${limit}:${pageToken}`;
+      const cachedResult = cloudStorageMetadataCache.get(cacheKey);
+      
+      if (cachedResult && !options.pageToken) {
+        await this.logger.debug('Files listed from cache', {
+          service: 'cloud-storage',
+          operation: 'list',
+          tenantId,
+          metadata: {
+            count: cachedResult.files?.length || 0,
+            provider: config.provider,
+            folderPath: options.folderPath,
+            cached: true
+          }
+        });
+        
+        return cachedResult;
+      }
+
       const listResult = await this.listFromProvider(config, options);
 
       if (!listResult.success) {
         return { success: false, error: listResult.error };
+      }
+
+      // Cache the result (only if not paginated)
+      if (!options.pageToken) {
+        cloudStorageMetadataCache.set(cacheKey, {
+          success: true,
+          files: listResult.files,
+          nextPageToken: listResult.nextPageToken
+        });
       }
 
       await this.logger.debug('Files listed successfully', {
@@ -326,6 +398,10 @@ export class CloudStorageService {
         return { success: false, error: deleteResult.error };
       }
 
+      // Invalidate caches after successful deletion using helpers
+      cacheInvalidation.invalidateStorageMetadata(tenantId, fileId);
+      cacheInvalidation.invalidateStorageUrls(tenantId, fileId);
+
       await this.logger.info('File deleted successfully', {
         service: 'cloud-storage',
         operation: 'delete',
@@ -372,6 +448,7 @@ export class CloudStorageService {
 
   // Provider-specific implementations
   private async uploadToProvider(
+    tenantId: string,
     config: CloudStorageConfig,
     buffer: Buffer,
     options: UploadOptions
@@ -399,7 +476,7 @@ export class CloudStorageService {
           };
           await this.s3.send(new PutObjectCommand(uploadParams));
           const url = `https://${this.bucket}.s3.${config.credentials.region}.amazonaws.com/${key}`;
-          const downloadUrl = await this.getSignedUrlForProvider(config, key);
+          const downloadUrl = await this.getSignedUrlForProvider(config, key, tenantId);
 
           return {
             success: true,
@@ -419,6 +496,7 @@ export class CloudStorageService {
   }
 
   private async downloadFromProvider(
+    tenantId: string,
     config: CloudStorageConfig,
     fileId: string
   ): Promise<{ success: boolean; buffer?: Buffer; file?: StorageFile; error?: string }> {
@@ -433,13 +511,18 @@ export class CloudStorageService {
         };
         const result = await this.s3.send(new GetObjectCommand(downloadParams));
         const bodyBytes = await result.Body?.transformToByteArray();
+        
+        // Generate signed URL for future caching
+        const downloadUrl = await this.getSignedUrlForProvider(config, fileId, tenantId);
+        
         const file: StorageFile = {
           id: fileId,
           name: fileId.split('/').pop() || 'untitled',
           mimeType: result.ContentType || 'application/octet-stream',
           size: result.ContentLength || 0,
           uploadedAt: result.LastModified || new Date(),
-          metadata: result.Metadata
+          metadata: result.Metadata,
+          downloadUrl: downloadUrl
         };
         return { success: true, buffer: Buffer.from(bodyBytes || []), file: file };
       } catch (error) {
@@ -622,14 +705,27 @@ export class CloudStorageService {
   }
 
   // Helper for generating signed URL for AWS S3
-  private async getSignedUrlForProvider(config: CloudStorageConfig, fileId: string): Promise<string> {
+  private async getSignedUrlForProvider(config: CloudStorageConfig, fileId: string, tenantId: string): Promise<string> {
+    // Check cache first - short-circuit if valid URL found
+    const cacheKey = `storage_url:${tenantId}:${fileId}`;
+    const cachedUrl = cloudStorageUrlCache.get(cacheKey);
+    if (cachedUrl) {
+      return cachedUrl;
+    }
+    
+    // Only fetch from provider if cache miss
     if (config.provider === 'aws_s3' && this.s3 && this.bucket) {
       try {
         const command = new GetObjectCommand({
           Bucket: this.bucket,
           Key: fileId
         });
-        return await getSignedUrl(this.s3, command, { expiresIn: 3600 });
+        const url = await getSignedUrl(this.s3, command, { expiresIn: 3600 });
+        
+        // Cache the generated URL
+        cloudStorageUrlCache.set(cacheKey, url);
+        
+        return url;
       } catch (error) {
         this.logger.error('AWS S3 getSignedUrl failed', { service: 'cloud-storage', operation: 'getSignedUrl', error: error instanceof Error ? error.message : String(error) });
         return '';
