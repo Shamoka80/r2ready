@@ -1,6 +1,8 @@
 import { db } from '../db.js';
 import { jobs, Job, NewJob } from '../../shared/schema.js';
 import { eq, and, desc, sql, lte } from 'drizzle-orm';
+import { ExportService } from './exportService.js';
+import { emailService } from './emailService.js';
 
 type JobHandler = (payload: any) => Promise<any>;
 
@@ -214,16 +216,58 @@ class JobQueueService {
 
 export const jobQueueService = new JobQueueService();
 
-jobQueueService.registerHandler('report_generation', async (payload) => {
-  console.log('[JobQueue] Stub: Generating report', payload);
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  return { reportId: 'stub-report-123', status: 'generated' };
-});
+// Helper function to get MIME type from format
+function getMimeType(format: string): string {
+  const mimeTypes: Record<string, string> = {
+    pdf: 'application/pdf',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  };
+  return mimeTypes[format] || 'application/octet-stream';
+}
 
-jobQueueService.registerHandler('email_sending', async (payload) => {
-  console.log('[JobQueue] Stub: Sending email', payload);
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  return { emailId: 'stub-email-456', status: 'sent' };
-});
+// Handler for report generation
+async function handleReportGeneration(payload: any): Promise<any> {
+  const { assessmentId, tenantId, format, templateType } = payload;
+  
+  console.log(`[JobQueue] Generating ${format} report for assessment ${assessmentId}`);
+  
+  let buffer: Buffer;
+  if (format === 'pdf') {
+    buffer = await ExportService.generatePDF(assessmentId, tenantId, templateType);
+  } else if (format === 'xlsx') {
+    buffer = await ExportService.generateExcel(assessmentId, tenantId, templateType);
+  } else if (format === 'docx') {
+    buffer = await ExportService.generateWord(assessmentId, tenantId, templateType);
+  } else {
+    throw new Error(`Unsupported format: ${format}`);
+  }
+  
+  // Store buffer as base64 in job result
+  return {
+    filename: `report_${Date.now()}.${format}`,
+    buffer: buffer.toString('base64'),
+    mimeType: getMimeType(format)
+  };
+}
+
+// Handler for email sending
+async function handleEmailSending(payload: any): Promise<any> {
+  const { to, subject, html, text, from } = payload;
+  
+  console.log(`[JobQueue] Sending email to ${to}: ${subject}`);
+  
+  const success = await emailService.sendEmail({ to, subject, html, text, from });
+  
+  return {
+    success,
+    sentAt: new Date().toISOString(),
+    recipient: to
+  };
+}
+
+// Register handlers
+jobQueueService.registerHandler('report_generation', handleReportGeneration);
+jobQueueService.registerHandler('email_sending', handleEmailSending);
 
 export { JobQueueService };

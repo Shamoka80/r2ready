@@ -10,6 +10,7 @@
 
 import { Resend } from 'resend';
 import { ConsistentLogService } from './consistentLogService';
+import { jobQueueService } from './jobQueue';
 
 interface EmailOptions {
   to: string;
@@ -465,6 +466,51 @@ If you didn't request this password reset, please ignore this email.
 
     this.logger.warn(`Health check not fully implemented for provider: ${primaryProvider.name}`);
     return false; // Default to false if health check is not implemented for the provider
+  }
+
+  /**
+   * Queue email for asynchronous sending via background job
+   * Use this for non-critical emails (notifications, reports, etc.)
+   * For critical emails (2FA, password reset, verification), use sendEmail() instead
+   */
+  async queueEmail(
+    options: EmailOptions & { tenantId?: string },
+    priority: 'high' | 'medium' | 'low' = 'medium'
+  ): Promise<string> {
+    // Validate required fields
+    if (!options.to || !options.subject || !options.html) {
+      throw new Error('Missing required email fields: to, subject, html');
+    }
+
+    // Include provider metadata in payload
+    const payload = {
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      text: options.text,
+      from: options.from || this.getDefaultSender(),
+      providers: this.providers.map(p => p.name)
+    };
+
+    const jobId = await jobQueueService.enqueue({
+      tenantId: options.tenantId || 'system',
+      type: 'email_sending',
+      priority,
+      payload
+    });
+
+    console.log(`[EmailService] Queued email to ${options.to}: ${options.subject} (jobId: ${jobId})`);
+    return jobId;
+  }
+
+  /**
+   * Get default sender email from environment
+   */
+  private getDefaultSender(): string {
+    return process.env.RESEND_FROM_EMAIL || 
+           process.env.SENDGRID_FROM_EMAIL || 
+           process.env.SMTP_FROM_EMAIL || 
+           'noreply@example.com';
   }
 
   private stripHtml(html: string): string {

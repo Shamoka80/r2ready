@@ -5,13 +5,27 @@ import { db } from '../db';
 import { assessments, intakeForms, organizationProfiles, facilityProfiles } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import path from 'path';
-import { z } from 'zod'; // Import Zod for validation
-import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware'; // Assuming rateLimitMiddleware is available
+import { z } from 'zod';
+import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware';
+import { jobQueueService } from '../services/jobQueue';
 
 const router = express.Router();
 
 // Apply authentication middleware to all routes
 router.use(authenticateUser as any);
+
+// Helper function to normalize formats for backward compatibility
+function normalizeFormat(format: string): 'pdf' | 'xlsx' | 'docx' {
+  const formatMap: Record<string, 'pdf' | 'xlsx' | 'docx'> = {
+    'pdf': 'pdf',
+    'excel': 'xlsx',
+    'xlsx': 'xlsx',
+    'word': 'docx',
+    'docx': 'docx'
+  };
+  
+  return formatMap[format.toLowerCase()] || 'pdf';
+}
 
 // Production-ready export validation schema
 const exportRequestSchema = z.object({
@@ -72,26 +86,21 @@ router.get('/templates', (async (req: AuthenticatedRequest, res: Response) => {
 
 /**
  * POST /api/exports/generate
- * Generate export document
+ * Generate export document - supports both sync (default) and async modes
  */
 router.post('/generate', (async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { assessmentId, templateId, format, includeEvidence, includeAnalytics } = req.body;
+    const { async: isAsync, assessmentId, templateId, format: rawFormat, includeEvidence, includeAnalytics } = req.body;
 
-    if (!assessmentId || !templateId || !format) {
+    if (!assessmentId || !rawFormat) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required parameters: assessmentId, templateId, format'
+        error: 'Missing required parameters: assessmentId, format'
       });
     }
 
-    // Validate format
-    if (!['pdf', 'xlsx', 'docx'].includes(format)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid format. Must be pdf, xlsx, or docx'
-      });
-    }
+    // Normalize format for backward compatibility (excel -> xlsx, word -> docx)
+    const format = normalizeFormat(rawFormat);
 
     // Get assessment data with tenant isolation
     const assessment = await db.query.assessments.findFirst({
@@ -108,37 +117,37 @@ router.post('/generate', (async (req: AuthenticatedRequest, res: Response) => {
       });
     }
 
-    // Get related intake data
-    let intakeData = null;
-    if (assessment.intakeFormId) {
-      intakeData = await db.query.intakeForms.findFirst({
-        where: and(
-          eq(intakeForms.id, assessment.intakeFormId),
-          eq(intakeForms.tenantId, req.user.tenantId)
-        )
+    // Determine template type
+    const templateType = templateId || (format === 'pdf' ? 'technical-report' : format === 'xlsx' ? 'dashboard' : 'executive-summary');
+
+    // ASYNC MODE: Enqueue job and return jobId
+    if (isAsync) {
+      const jobId = await jobQueueService.enqueue({
+        tenantId: req.user.tenantId,
+        type: 'report_generation',
+        priority: 'medium',
+        payload: {
+          assessmentId,
+          tenantId: req.user.tenantId,
+          format,
+          templateType
+        }
+      });
+
+      console.log(`[Exports] Enqueued report generation job ${jobId} for assessment ${assessmentId}`);
+
+      return res.json({
+        success: true,
+        jobId,
+        async: true,
+        message: 'Report generation job enqueued. Use /api/exports/jobs/:jobId to check status and download.'
       });
     }
 
-    // Get organization profile
-    const organizationProfile = await db.query.organizationProfiles.findFirst({
-      where: eq(organizationProfiles.tenantId, req.user.tenantId)
-    });
-
-    // Get facility profiles  
-    const facilityProfilesData = await db.query.facilityProfiles.findMany({
-      where: eq(facilityProfiles.tenantId, req.user.tenantId)
-    });
-
-    // Prepare onboarding data
-    const onboardingData = {
-      organizationProfile,
-      facilityProfiles: facilityProfilesData
-    };
-
-    // Generate the document based on format
-    let buffer: Buffer;
-    const templateType = templateId || (format === 'pdf' ? 'technical-report' : format === 'xlsx' ? 'dashboard' : 'executive-summary');
+    // SYNC MODE (DEFAULT): Generate and return file immediately
+    console.log(`[Exports] Generating ${format} synchronously for assessment ${assessmentId}`);
     
+    let buffer: Buffer;
     if (format === 'pdf') {
       buffer = await ExportService.generatePDF(assessmentId, req.user.tenantId, templateType);
     } else if (format === 'xlsx') {
@@ -146,28 +155,27 @@ router.post('/generate', (async (req: AuthenticatedRequest, res: Response) => {
     } else if (format === 'docx') {
       buffer = await ExportService.generateWord(assessmentId, req.user.tenantId, templateType);
     } else {
-      throw new Error('Invalid format specified');
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid format'
+      });
     }
 
-    // Set appropriate headers
-    const mimeTypes = {
+    // Return file directly
+    const mimeTypes: Record<string, string> = {
       pdf: 'application/pdf',
       xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     };
 
-    const extensions = {
+    const extensions: Record<string, string> = {
       pdf: 'pdf',
       xlsx: 'xlsx',
       docx: 'docx'
     };
 
-    const filename = `${assessment.title || 'assessment'}_${Date.now()}.${extensions[format as keyof typeof extensions]}`;
-
-    res.setHeader('Content-Type', mimeTypes[format as keyof typeof mimeTypes]);
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', buffer.length);
-
+    res.setHeader('Content-Type', mimeTypes[format]);
+    res.setHeader('Content-Disposition', `attachment; filename="${assessment.title}_report.${extensions[format]}"`);
     res.send(buffer);
 
   } catch (error) {
@@ -260,13 +268,106 @@ router.get('/assessment/:assessmentId/summary', (async (req: AuthenticatedReques
   }
 }) as any);
 
-// Enhanced PDF export with multiple template options
+/**
+ * GET /api/exports/jobs/:jobId
+ * Get job status (structured response, not raw file download)
+ */
+router.get('/jobs/:jobId', (async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { jobId } = req.params;
+
+    const job = await jobQueueService.getJob(jobId);
+
+    if (!job || job.tenantId !== req.user.tenantId) {
+      return res.status(404).json({
+        success: false,
+        error: 'Job not found'
+      });
+    }
+
+    // Return structured status (not raw download)
+    const response: any = {
+      success: true,
+      jobId: job.id,
+      status: job.status,
+      createdAt: job.createdAt,
+      updatedAt: job.updatedAt,
+      completedAt: job.completedAt,
+      attempts: job.attempts,
+      maxAttempts: job.maxAttempts
+    };
+
+    if (job.status === 'COMPLETED' && job.result) {
+      // Include download URL instead of raw file
+      response.downloadUrl = `/api/exports/jobs/${job.id}/download`;
+      const result = job.result as any;
+      response.filename = result.filename;
+      response.mimeType = result.mimeType;
+    }
+
+    if (job.status === 'FAILED') {
+      response.error = job.error;
+    }
+
+    res.json(response);
+  } catch (error) {
+    console.error('Job status check error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to check job status',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+}) as any);
+
+/**
+ * GET /api/exports/jobs/:jobId/download
+ * Download completed job result
+ */
+router.get('/jobs/:jobId/download', (async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { jobId } = req.params;
+
+    const job = await jobQueueService.getJob(jobId);
+
+    if (!job || job.tenantId !== req.user.tenantId) {
+      return res.status(404).json({
+        success: false,
+        error: 'Job not found'
+      });
+    }
+
+    if (job.status !== 'COMPLETED' || !job.result) {
+      return res.status(400).json({
+        success: false,
+        error: 'Job not completed or no result available',
+        status: job.status
+      });
+    }
+
+    // Decode base64 buffer and send file
+    const result = job.result as { buffer: string; mimeType: string; filename: string };
+    const buffer = Buffer.from(result.buffer, 'base64');
+    
+    res.setHeader('Content-Type', result.mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+    res.send(buffer);
+  } catch (error) {
+    console.error('Job download error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to download job result',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+}) as any);
+
+// Enhanced PDF export - synchronous (most common use case)
 router.get("/:assessmentId/pdf/:templateType?", 
   rateLimitMiddleware.pdfExport,
   (async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const { assessmentId } = req.params;
-      const { templateType } = req.params; // Extract templateType from params
+      const { assessmentId, templateType } = req.params;
       const validationResult = exportRequestSchema.safeParse({ assessmentId, templateType, format: 'pdf' });
 
       if (!validationResult.success) {
@@ -294,19 +395,17 @@ router.get("/:assessmentId/pdf/:templateType?",
         });
       }
 
-      // Generate the document using ExportService
+      // Generate and return PDF immediately (synchronous)
+      console.log(`[Exports] Generating PDF synchronously for assessment ${validatedAssessmentId}`);
+      
       const buffer = await ExportService.generatePDF(
         validatedAssessmentId,
         req.user.tenantId,
         validatedTemplateType || 'technical-report'
       );
 
-      const filename = `${assessment.title || 'assessment'}_${validatedTemplateType || 'report'}_${Date.now()}.pdf`;
-
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.setHeader('Content-Length', buffer.length);
-
+      res.setHeader('Content-Disposition', `attachment; filename="${assessment.title}_report.pdf"`);
       res.send(buffer);
 
     } catch (error) {

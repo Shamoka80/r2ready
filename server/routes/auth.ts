@@ -571,25 +571,22 @@ router.post('/register-tenant', rateLimitMiddleware.login, blockTestUserRegistra
         })
         .where(eq(tenants.id, existingUser.tenantId));
 
-      // Send verification email
+      // Send verification email synchronously (critical path)
       try {
-        const emailSent = await emailService.sendVerificationEmail(
+        await emailService.sendVerificationEmail(
           data.ownerEmail,
           verificationToken,
           verificationCode,
           data.ownerFirstName
         );
-
-        if (!emailSent) {
-          console.error('Failed to send verification email to:', data.ownerEmail);
-          return res.status(500).json({
-            error: 'Failed to send verification email. Please try again later.'
-          });
-        }
+        console.log(`[Auth] Sent verification email to ${data.ownerEmail}`);
       } catch (emailError) {
+        // Log error and surface to user - verification is critical
         console.error('Error sending verification email:', emailError);
         return res.status(500).json({
-          error: 'Failed to send verification email. Please try again later.'
+          success: false,
+          error: 'Failed to send verification email. Please try again or contact support.',
+          details: emailError instanceof Error ? emailError.message : 'Unknown error'
         });
       }
 
@@ -647,25 +644,22 @@ router.post('/register-tenant', rateLimitMiddleware.login, blockTestUserRegistra
         })
         .where(eq(users.id, user.id));
 
-      // Send verification email
+      // Send verification email synchronously (critical path)
       try {
-        const emailSent = await emailService.sendVerificationEmail(
+        await emailService.sendVerificationEmail(
           data.ownerEmail,
           verificationToken,
           verificationCode,
           data.ownerFirstName
         );
-
-        if (!emailSent) {
-          console.error('Failed to send verification email to:', data.ownerEmail);
-          return res.status(500).json({
-            error: 'Failed to send verification email. Please try again later.'
-          });
-        }
+        console.log(`[Auth] Sent verification email to ${data.ownerEmail}`);
       } catch (emailError) {
+        // Log error and surface to user - verification is critical
         console.error('Error sending verification email:', emailError);
         return res.status(500).json({
-          error: 'Failed to send verification email. Please try again later.'
+          success: false,
+          error: 'Failed to send verification email. Please try again or contact support.',
+          details: emailError instanceof Error ? emailError.message : 'Unknown error'
         });
       }
 
@@ -1538,17 +1532,33 @@ router.post('/send-verification-email', strictRateLimit.passwordChange, async (r
       .set(updateData)
       .where(eq(users.id, user.id));
 
-    // Send verification email
-    const emailSent = await emailService.sendVerificationEmail(
-      email,
-      token,
-      verificationCode,
-      user.firstName
-    );
-
-    if (!emailSent) {
-      console.error('Failed to send verification email to:', email);
-      return res.status(500).json({ error: 'Failed to send verification email' });
+    // Send verification email synchronously (critical path)
+    try {
+      const emailSent = await emailService.sendVerificationEmail(
+        email,
+        token,
+        verificationCode,
+        user.firstName
+      );
+      
+      // Check if email actually sent successfully
+      if (!emailSent) {
+        console.error('Failed to send verification email - emailService returned false');
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to send verification email. Please try again later.'
+        });
+      }
+      
+      console.log(`[Auth] Sent verification email to ${email}`);
+    } catch (emailError) {
+      // Return error response instead of silently failing
+      console.error('Failed to send verification email:', emailError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to send verification email. Please try again later.',
+        details: emailError instanceof Error ? emailError.message : 'Unknown error'
+      });
     }
 
     // Log verification email sent
