@@ -43,6 +43,9 @@ import cacheMetricsRoutes from './routes/cache-metrics.js';
 // Import testing routes (development/test only)
 import testingRoutes from './routes/testing.js';
 
+// Import Phase 4: Configuration Layer routes
+import configurationRoutes from './routes/configuration.js';
+
 export async function registerRoutes(app: Express) {
   // Health check endpoint for e2e tests and monitoring
   app.get('/api/health', (req, res) => {
@@ -137,6 +140,9 @@ export async function registerRoutes(app: Express) {
 
   // Cache metrics and management
   app.use('/api/cache', cacheMetricsRoutes);
+
+  // Phase 4: Configuration Layer (R2v3 Algorithm Enhancement)
+  app.use('/api/configuration', configurationRoutes);
 
   // Testing helpers (development/test only)
   app.use('/api/testing', testingRoutes);
