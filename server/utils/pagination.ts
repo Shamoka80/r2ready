@@ -177,7 +177,7 @@ export class PaginationUtils {
     };
   }
 
-  static async executePaginatedQuery<T extends Record<string, any>>(
+  static async executePaginatedQuery<T extends PgTable>(
     query: any,
     table: T,
     options: {
@@ -198,8 +198,8 @@ export class PaginationUtils {
         table,
         cursorData,
         direction,
-        table[idColumn],
-        table[timestampColumn]
+        (table as any)[idColumn],
+        (table as any)[timestampColumn]
       );
       if (condition) {
         modifiedQuery = modifiedQuery.where(condition);
@@ -207,10 +207,10 @@ export class PaginationUtils {
     }
     
     // Use timestamp column parameter for ORDER BY
-    // Both directions use DESC for consistent cursor logic
+    // Forward: DESC (newest first), Backward: ASC (oldest first, then reversed in buildResponse)
     modifiedQuery = direction === 'forward'
-      ? modifiedQuery.orderBy(desc(table[timestampColumn]), desc(table[idColumn]))
-      : modifiedQuery.orderBy(desc(table[timestampColumn]), desc(table[idColumn]));
+      ? modifiedQuery.orderBy(desc((table as any)[timestampColumn]), desc((table as any)[idColumn]))
+      : modifiedQuery.orderBy(asc((table as any)[timestampColumn]), asc((table as any)[idColumn]));
     
     modifiedQuery = modifiedQuery.limit(limit + 1);
     
