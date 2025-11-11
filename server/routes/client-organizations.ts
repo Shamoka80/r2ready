@@ -145,55 +145,58 @@ router.get("/", async (req: AuthenticatedRequest, res) => {
 // GET /api/client-organizations/stats - Get stats for all client organizations
 router.get("/stats", async (req: AuthenticatedRequest, res) => {
   try {
-    const { db: dbInstance } = await import('../db.js');
-    const { assessments } = await import('../../shared/schema.js');
-    const { sql } = await import('drizzle-orm');
+    // Query the materialized view instead of N+1 queries
+    // This provides a massive performance improvement for consultants with many client orgs
+    const statsResults = await db.execute(sql`
+      SELECT 
+        client_organization_id,
+        facility_count,
+        assessment_count,
+        active_count,
+        completed_count
+      FROM client_org_stats
+      WHERE tenant_id = ${req.tenant!.id}
+    `);
 
-    const organizations = await db.query.clientOrganizations.findMany({
-      where: eq(clientOrganizations.consultantTenantId, req.tenant!.id),
-      with: {
-        clientFacilities: true,
-      }
-    });
-
+    // Transform results into the expected format
     const statsMap: Record<string, any> = {};
-
-    for (const org of organizations) {
-      const assessmentCounts = await dbInstance
-        .select({
-          status: assessments.status,
-          count: sql<number>`count(*)`
-        })
-        .from(assessments)
-        .where(and(
-          eq(assessments.tenantId, req.tenant!.id),
-          eq(assessments.clientOrganizationId, org.id)
-        ))
-        .groupBy(assessments.status);
-
-      const totalAssessments = assessmentCounts.reduce((sum, a) => sum + Number(a.count), 0);
-      const activeAssessments = assessmentCounts
-        .filter(a => a.status === 'IN_PROGRESS' || a.status === 'DRAFT')
-        .reduce((sum, a) => sum + Number(a.count), 0);
-      const completedAssessments = assessmentCounts
-        .filter(a => a.status === 'COMPLETED')
-        .reduce((sum, a) => sum + Number(a.count), 0);
-
+    
+    for (const row of statsResults.rows) {
+      const totalAssessments = Number(row.assessment_count) || 0;
+      const completedAssessments = Number(row.completed_count) || 0;
+      
       const completionRate = totalAssessments > 0 
         ? (completedAssessments / totalAssessments) * 100 
         : 0;
 
-      statsMap[org.id] = {
-        facilityCount: org.clientFacilities?.length || 0,
+      statsMap[row.client_organization_id as string] = {
+        facilityCount: Number(row.facility_count) || 0,
         assessmentCount: totalAssessments,
-        activeAssessmentCount: activeAssessments,
+        activeAssessmentCount: Number(row.active_count) || 0,
         completionRate: Math.round(completionRate)
       };
     }
 
     res.json(statsMap);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching client organization stats:", error);
+    
+    // If the materialized view doesn't exist, fall back to creating it
+    if (error.code === '42P01' || error.message?.includes('does not exist')) {
+      console.log('[ClientOrgs] Materialized view not found, attempting to initialize...');
+      const { initializeViews } = await import('../services/materializedViews.js');
+      try {
+        await initializeViews();
+        // Retry the query after initializing
+        return res.status(503).json({ 
+          error: "Stats view is being initialized. Please try again in a moment.",
+          code: "VIEW_INITIALIZING"
+        });
+      } catch (initError) {
+        console.error('[ClientOrgs] Failed to initialize materialized view:', initError);
+      }
+    }
+    
     res.status(500).json({ error: "Failed to fetch client organization stats" });
   }
 });

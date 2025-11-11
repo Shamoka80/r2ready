@@ -2381,3 +2381,56 @@ export type InsertIntakeFacility = z.infer<typeof insertIntakeFacilitySchema>;
 
 // Legacy alias for compatibility
 export type InsertUser = NewUser;
+
+// === MATERIALIZED VIEW DEFINITIONS ===
+
+// Materialized view for client organization stats (performance optimization)
+// This eliminates N+1 queries by pre-aggregating stats for all client organizations
+// Fixed to use CTEs to avoid Cartesian product double-counting bug
+export const clientOrgStatsViewSQL = `
+CREATE MATERIALIZED VIEW IF NOT EXISTS client_org_stats AS
+WITH facility_counts AS (
+  SELECT 
+    cf."clientOrganizationId" as client_organization_id,
+    co."consultantTenantId" as tenant_id,
+    COUNT(*) as facility_count
+  FROM "ClientFacility" cf
+  JOIN "ClientOrganization" co ON cf."clientOrganizationId" = co.id
+  GROUP BY cf."clientOrganizationId", co."consultantTenantId"
+),
+assessment_stats AS (
+  SELECT
+    "clientOrganizationId" as client_organization_id,
+    "tenantId" as tenant_id,
+    COUNT(*) as assessment_count,
+    COUNT(CASE WHEN status IN ('IN_PROGRESS', 'DRAFT') THEN 1 END) as active_count,
+    COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END) as completed_count
+  FROM "Assessment"
+  WHERE "clientOrganizationId" IS NOT NULL
+  GROUP BY "clientOrganizationId", "tenantId"
+)
+SELECT 
+  co.id as client_organization_id,
+  co."consultantTenantId" as tenant_id,
+  co."legalName" as legal_name,
+  COALESCE(fc.facility_count, 0) as facility_count,
+  COALESCE(ast.assessment_count, 0) as assessment_count,
+  COALESCE(ast.active_count, 0) as active_count,
+  COALESCE(ast.completed_count, 0) as completed_count,
+  NOW() as last_refreshed
+FROM "ClientOrganization" co
+LEFT JOIN facility_counts fc ON co.id = fc.client_organization_id AND co."consultantTenantId" = fc.tenant_id
+LEFT JOIN assessment_stats ast ON co.id = ast.client_organization_id AND co."consultantTenantId" = ast.tenant_id;
+`;
+
+// Indexes for the materialized view (must be created separately)
+export const clientOrgStatsIndexSQL = [
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_client_org_stats_pk ON client_org_stats (client_organization_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_client_org_stats_tenant ON client_org_stats (tenant_id);`
+];
+
+// SQL to refresh the materialized view
+export const refreshClientOrgStatsSQL = `REFRESH MATERIALIZED VIEW CONCURRENTLY client_org_stats;`;
+
+// SQL to drop the materialized view (for migrations/cleanup)
+export const dropClientOrgStatsViewSQL = `DROP MATERIALIZED VIEW IF EXISTS client_org_stats;`;

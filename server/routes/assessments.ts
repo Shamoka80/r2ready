@@ -23,6 +23,7 @@ import { QueryOptimizationService } from '../services/queryOptimizationService';
 import { cacheService } from '../services/cachingService';
 import { ConsistentLogService } from '../services/consistentLogService';
 import { IntakeProcessor } from './intakeLogic';
+import { refreshClientOrgStats } from '../services/materializedViews';
 
 const router = Router();
 
@@ -389,6 +390,13 @@ router.post("/",
       undefined,
       auditDetails
     );
+
+    // Refresh materialized view for consultant stats (non-blocking)
+    if (assessment.clientOrganizationId) {
+      refreshClientOrgStats().catch(err => {
+        console.error('[Assessment] Failed to refresh client org stats after creation:', err);
+      });
+    }
 
     // Return comprehensive response for frontend
     const responseData: any = {
@@ -849,6 +857,14 @@ router.put("/:id",
       { title: updatedAssessment.title, status: updatedAssessment.status }
     );
 
+    // Refresh materialized view if status changed (affects stats) and for consultant clients
+    if (updatedAssessment.clientOrganizationId && 
+        existingAssessment.status !== updatedAssessment.status) {
+      refreshClientOrgStats().catch(err => {
+        console.error('[Assessment] Failed to refresh client org stats after update:', err);
+      });
+    }
+
     res.json(updatedAssessment);
   } catch (error) {
     console.error("Error updating assessment:", error);
@@ -1191,6 +1207,13 @@ router.delete("/:id",
       { status: existingAssessment.status },
       { status: 'ARCHIVED' }
     );
+
+    // Refresh materialized view for consultant stats (archiving affects counts)
+    if (existingAssessment.clientOrganizationId) {
+      refreshClientOrgStats().catch(err => {
+        console.error('[Assessment] Failed to refresh client org stats after deletion:', err);
+      });
+    }
 
     res.json({ message: "Assessment archived successfully" });
   } catch (error) {
