@@ -106,15 +106,49 @@ RUR2 is a professional monorepo application for managing R2v3 pre-certification 
 - ✅ All Phase 2 schema fields utilized correctly by seed data
 - **Architect Review**: PASS - Phase 4 meets objectives and ready for Phase 5 (Nov 11, 2025)
 
-**Next Phase - Phase 5: Integration (NOT STARTED)**:
-- Wire new modules (CriticalGateEngine, MaturityEngine, ConfigurableScoring) with existing assessment/scoring code
-- Implement feature flags for gradual rollout (USE_CONFIG_WEIGHTS, ENFORCE_MUST_PASS, SEPARATE_MATURITY)
-- Update existing ScoringService to delegate to ConfigurableScoring when enabled
-- Integrate CriticalGateEngine into assessment submission flow
-- Add MaturityEngine scoring alongside readiness scoring
+**Phase 5 - Integration (✅ COMPLETED - Nov 11, 2025)**:
 
-**Future Phases**:
-- Phase 6: Validation & Testing - End-to-end verification with seeded scenarios, integration tests for new APIs
+*Feature Flag System*:
+- ✅ Added FeatureFlag table to schema with UUID PK and unique indexes
+- ✅ Integrated 4 feature flags into existing shared/flags.ts system:
+  - `use_config_weights`: Enable database-driven ConfigurableScoring
+  - `enforce_must_pass`: Enable CriticalGateEngine evaluation
+  - `separate_maturity`: Enable MaturityEngine scoring
+  - `exclude_na_from_denominator`: Exclude N/A from scoring denominators
+- ✅ All flags default to false for gradual rollout
+
+*ScoringOrchestrator Service* (`server/services/scoringOrchestrator.ts`):
+- ✅ Wraps legacy calculateAssessmentScore with feature flag checks
+- ✅ Conditionally delegates to ConfigurableScoring when use_config_weights=true
+- ✅ Runs CriticalGateEngine.evaluateAssessment when enforce_must_pass=true
+- ✅ Calculates & persists MaturityScore when separate_maturity=true
+- ✅ Maps new service results to legacy format for backward compatibility
+- ✅ Returns EnhancedScoringResult with optional Phase 5 fields
+- ✅ Implements adjustLegacyScoringForNAExclusion() for N/A exclusion in legacy path
+
+*Scoring Routes Integration* (`server/routes/scoring.ts`):
+- ✅ GET /api/assessments/:id/scoring uses ScoringOrchestrator
+- ✅ POST /api/assessments/:id/scoring/refresh uses ScoringOrchestrator
+- ✅ Maintains backward compatibility (legacy scoring when flags disabled)
+
+*N/A Exclusion Implementation*:
+- ✅ ConfigurableScoring: Skips N/A from maxScore/count when naHandling='EXCLUDE'
+- ✅ Legacy scoring: Recalculates from raw answers using determineCategoryKey grouping
+- ✅ Both paths exclude N/A from denominators when exclude_na_from_denominator=true
+- ✅ All headline metrics consistent (score, percentage, complianceStatus, readinessLevel)
+
+*Verification & Testing*:
+- ✅ Application boots successfully with all services integrated
+- ✅ No runtime or LSP errors
+- ✅ Feature flags working correctly in both scoring paths
+- ✅ Category grouping matches legacy logic (appendix → categoryCode → category)
+- **Architect Review**: PASS - Phase 5 meets all functional objectives (Nov 11, 2025)
+
+**Next Phase - Phase 6: Validation & Testing (NOT STARTED)**:
+- End-to-end verification with seeded scenarios
+- Integration tests for new APIs
+- Regression testing with flags toggled on/off
+- Performance testing under load
 
 ## System Architecture
 
