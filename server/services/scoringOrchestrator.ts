@@ -191,12 +191,12 @@ export class ScoringOrchestrator {
       try {
         const maturityResult = await MaturityEngine.calculateMaturityScore(assessmentId);
         
-        // Save maturity score and get the persisted record
-        const savedScore = await MaturityEngine.saveMaturityScore(assessmentId, maturityResult);
+        // Save maturity score and get the persisted ID
+        const savedScoreId = await MaturityEngine.saveMaturityScore(assessmentId, maturityResult);
         
         maturityResults = {
           enabled: true,
-          maturityScoreId: savedScore.id,
+          maturityScoreId: savedScoreId,
           bcpScore: maturityResult.businessContinuityScore,
           ciScore: maturityResult.continuousImprovementScore,
           stakeholderScore: maturityResult.stakeholderEngagementScore,
@@ -204,12 +204,14 @@ export class ScoringOrchestrator {
           maturityLevel: maturityResult.maturityLevel
         };
         
-        // Update assessment with maturity score reference
-        await db.update(assessments)
-          .set({
-            maturityScoreId: savedScore.id
-          })
-          .where(eq(assessments.id, assessmentId));
+        // Update assessment with maturity score reference (only if savedScoreId exists)
+        if (savedScoreId) {
+          await db.update(assessments)
+            .set({
+              maturityScoreId: savedScoreId
+            })
+            .where(eq(assessments.id, assessmentId));
+        }
       } catch (error) {
         console.error('[ScoringOrchestrator] MaturityEngine failed:', error);
         maturityResults = {
