@@ -13,7 +13,8 @@ import {
   clientOrganizations,
   clientFacilities
 } from "../../shared/schema";
-import { eq, and, desc, sql, count, SQL, inArray, or, isNotNull } from "drizzle-orm";
+import { eq, and, desc, sql, count, SQL, inArray, or, isNotNull, lt, gt } from "drizzle-orm";
+import { PaginationUtils, paginationParamsSchema } from "../utils/pagination.js";
 import { AuthService } from "../services/authService";
 import type { AuthenticatedRequest } from "../services/authService";
 import { validateRequest, validation, businessSchemas, commonSchemas } from "../middleware/validationMiddleware.js";
@@ -414,25 +415,34 @@ router.post("/",
   }
 });
 
-// GET /api/assessments - List assessments for tenant with explicit Business/Consultant filtering
+// GET /api/assessments - List assessments for tenant with cursor-based pagination
 router.get("/", 
   rateLimitMiddleware.general, 
   async (req: AuthenticatedRequest, res) => {
   try {
-    const { page = 1, limit = 10, status, facilityId } = req.query;
-    const offset = (Number(page) - 1) * Number(limit);
+    const { status, facilityId } = req.query;
+
+    // Parse and validate pagination parameters
+    const paginationParams = paginationParamsSchema.safeParse(req.query);
+    if (!paginationParams.success) {
+      return res.status(400).json({ 
+        error: "Invalid pagination parameters", 
+        details: paginationParams.error.errors 
+      });
+    }
+
+    const { limit, cursor, direction } = PaginationUtils.validateParams(paginationParams.data);
 
     // Get facility context from header
     const facilityContext = req.headers['x-facility-context'] as string;
 
     const tenantType = req.tenant!.tenantType;
 
-    // CRITICAL: Explicit tenant-based filtering for security
+    // CRITICAL: Explicit tenant-based filtering for security (preserved from original)
     let whereCondition: SQL<unknown>;
 
     if (tenantType === 'CONSULTANT') {
       // CONSULTANT PATH: Show only client assessments
-      // Filter assessments where clientOrganizationId is set AND belongs to this consultant's clients
       console.log(`🔒 CONSULTANT filtering for tenant ${req.tenant!.id}`);
 
       // Get all client organizations managed by this consultant
@@ -446,8 +456,8 @@ router.get("/",
       if (clientOrgIds.length === 0) {
         // Consultant has no clients yet, return empty results
         return res.json({
-          assessments: [],
-          pagination: { page: Number(page), limit: Number(limit), total: 0, pages: 0 }
+          data: [],
+          pagination: { hasMore: false, nextCursor: null, prevCursor: null, totalReturned: 0 }
         });
       }
 
@@ -499,8 +509,8 @@ router.get("/",
         } else {
           // User has no facility access, return empty results
           return res.json({
-            assessments: [],
-            pagination: { page: Number(page), limit: Number(limit), total: 0, pages: 0 }
+            data: [],
+            pagination: { hasMore: false, nextCursor: null, prevCursor: null, totalReturned: 0 }
           });
         }
       }
@@ -514,11 +524,46 @@ router.get("/",
       )!;
     }
 
-    const allAssessments = await db.query.assessments.findMany({
+    // Build cursor condition for pagination using (updatedAt DESC, id ASC) composite
+    if (cursor && cursor.timestamp) {
+      const cursorTimestamp = new Date(cursor.timestamp);
+      
+      if (direction === 'forward') {
+        // Forward DESC: (updatedAt < cursor.updatedAt) OR (updatedAt = cursor.updatedAt AND id > cursor.id)
+        // Primary sort DESC uses <, tie-breaker ASC uses >
+        whereCondition = and(
+          whereCondition,
+          or(
+            lt(assessments.updatedAt, cursorTimestamp),
+            and(
+              eq(assessments.updatedAt, cursorTimestamp),
+              gt(assessments.id, cursor.id)
+            )
+          )
+        )!;
+      } else {
+        // Backward DESC: (updatedAt > cursor.updatedAt) OR (updatedAt = cursor.updatedAt AND id < cursor.id)
+        whereCondition = and(
+          whereCondition,
+          or(
+            gt(assessments.updatedAt, cursorTimestamp),
+            and(
+              eq(assessments.updatedAt, cursorTimestamp),
+              lt(assessments.id, cursor.id)
+            )
+          )
+        )!;
+      }
+    }
+
+    // Query limit + 1 to determine if there are more results
+    // For backward navigation, invert ORDER BY, then reverse results
+    let allAssessments = await db.query.assessments.findMany({
       where: whereCondition,
-      orderBy: [desc(assessments.updatedAt)],
-      limit: Number(limit),
-      offset,
+      orderBy: direction === 'forward' 
+        ? [desc(assessments.updatedAt), assessments.id]
+        : [assessments.updatedAt, desc(assessments.id)],
+      limit: limit + 1,
       with: {
         standard: {
           columns: {
@@ -561,23 +606,50 @@ router.get("/",
       }
     });
 
-    // Get total count for pagination
-    const totalResult = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(assessments)
-      .where(whereCondition);
+    // For backward navigation, reverse the results to maintain natural order
+    if (direction === 'backward') {
+      allAssessments = allAssessments.reverse();
+    }
 
-    const total = totalResult[0]?.count || 0;
+    // Build paginated response
+    // For backward: sentinel is at START after reverse, skip it
+    // For forward: sentinel is at END, take first limit items
+    const hasMore = allAssessments.length > limit;
+    const data = hasMore 
+      ? (direction === 'backward' ? allAssessments.slice(1) : allAssessments.slice(0, limit))
+      : allAssessments;
 
-    console.log(`✅ Returned ${allAssessments.length} assessments for ${tenantType} tenant ${req.tenant!.id}`);
+    let nextCursor = null;
+    let prevCursor = null;
+
+    if (data.length > 0) {
+      if (direction === 'forward' && hasMore) {
+        const lastItem = data[data.length - 1];
+        nextCursor = PaginationUtils.encodeCursor({
+          id: lastItem.id,
+          timestamp: lastItem.updatedAt?.getTime(),
+        });
+      }
+
+      // Only provide prevCursor if not on first page
+      if (cursor) {
+        const firstItem = data[0];
+        prevCursor = PaginationUtils.encodeCursor({
+          id: firstItem.id,
+          timestamp: firstItem.updatedAt?.getTime(),
+        });
+      }
+    }
+
+    console.log(`✅ Returned ${data.length} assessments for ${tenantType} tenant ${req.tenant!.id}`);
 
     res.json({
-      assessments: allAssessments,
+      data,
       pagination: {
-        page: Number(page),
-        limit: Number(limit),
-        total,
-        pages: Math.ceil(total / Number(limit)),
+        hasMore,
+        nextCursor,
+        prevCursor,
+        totalReturned: data.length,
       }
     });
   } catch (error) {

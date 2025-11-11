@@ -1,9 +1,10 @@
 import { Router } from 'express';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, gt, lt, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { AuthService, AuthenticatedRequest } from '../services/authService';
 import { db } from '../db.js';
 import { clientOrganizations, clientFacilities } from '../../shared/schema.js';
+import { PaginationUtils, paginationParamsSchema } from '../utils/pagination.js';
 
 const router = Router();
 
@@ -28,15 +29,113 @@ const createClientOrgSchema = z.object({
 
 const updateClientOrgSchema = createClientOrgSchema.partial();
 
-// GET /api/client-organizations - List all client organizations for consultant
+// GET /api/client-organizations - List all client organizations for consultant (with pagination)
 router.get("/", async (req: AuthenticatedRequest, res) => {
   try {
-    const organizations = await db.query.clientOrganizations.findMany({
-      where: eq(clientOrganizations.consultantTenantId, req.tenant!.id),
-      orderBy: [clientOrganizations.legalName],
-    });
+    // Parse and validate pagination parameters
+    const paginationParams = paginationParamsSchema.safeParse(req.query);
+    if (!paginationParams.success) {
+      return res.status(400).json({ 
+        error: "Invalid pagination parameters", 
+        details: paginationParams.error.errors 
+      });
+    }
 
-    res.json(organizations);
+    const { limit, cursor, direction } = PaginationUtils.validateParams(paginationParams.data);
+
+    // Build the base query condition
+    const baseCondition = eq(clientOrganizations.consultantTenantId, req.tenant!.id);
+
+    // Build cursor condition if cursor is provided
+    // Order: (legalName ASC, id ASC) - both ascending
+    let cursorCondition;
+    if (cursor) {
+      const cursorLegalName = cursor.sortField || cursor.id; // Fallback for backward compat
+      
+      if (direction === 'forward') {
+        // Forward ASC: (legalName > cursor.legalName) OR (legalName = cursor.legalName AND id > cursor.id)
+        cursorCondition = or(
+          gt(clientOrganizations.legalName, cursorLegalName),
+          and(
+            eq(clientOrganizations.legalName, cursorLegalName),
+            gt(clientOrganizations.id, cursor.id)
+          )
+        );
+      } else {
+        // Backward ASC: (legalName < cursor.legalName) OR (legalName = cursor.legalName AND id < cursor.id)
+        cursorCondition = or(
+          lt(clientOrganizations.legalName, cursorLegalName),
+          and(
+            eq(clientOrganizations.legalName, cursorLegalName),
+            lt(clientOrganizations.id, cursor.id)
+          )
+        );
+      }
+    }
+
+    // Combine conditions
+    const whereCondition = cursorCondition 
+      ? and(baseCondition, cursorCondition)
+      : baseCondition;
+
+    // Fetch limit + 1 to determine if there are more results
+    // For backward navigation, invert ORDER BY, then reverse results
+    let organizations = await db
+      .select()
+      .from(clientOrganizations)
+      .where(whereCondition)
+      .orderBy(
+        direction === 'forward' ? clientOrganizations.legalName : desc(clientOrganizations.legalName),
+        direction === 'forward' ? clientOrganizations.id : desc(clientOrganizations.id)
+      )
+      .limit(limit + 1);
+
+    // For backward navigation, reverse the results to maintain natural order
+    if (direction === 'backward') {
+      organizations = organizations.reverse();
+    }
+
+    // Build paginated response
+    // For backward: sentinel is at START after reverse, skip it
+    // For forward: sentinel is at END, take first limit items
+    const hasMore = organizations.length > limit;
+    const data = hasMore 
+      ? (direction === 'backward' ? organizations.slice(1) : organizations.slice(0, limit))
+      : organizations;
+
+    let nextCursor = null;
+    let prevCursor = null;
+
+    if (data.length > 0) {
+      if (direction === 'forward' && hasMore) {
+        const lastItem = data[data.length - 1];
+        nextCursor = PaginationUtils.encodeCursor({
+          id: lastItem.id,
+          sortField: lastItem.legalName,
+          timestamp: lastItem.createdAt?.getTime(),
+        });
+      }
+
+      // Only provide prevCursor if not on first page
+      if (cursor) {
+        const firstItem = data[0];
+        prevCursor = PaginationUtils.encodeCursor({
+          id: firstItem.id,
+          sortField: firstItem.legalName,
+          timestamp: firstItem.createdAt?.getTime(),
+        });
+      }
+    }
+
+    res.json({
+      data,
+      pagination: {
+        hasMore,
+        nextCursor,
+        prevCursor,
+        totalReturned: data.length,
+      },
+    });
   } catch (error) {
     console.error("Error fetching client organizations:", error);
     res.status(500).json({ error: "Failed to fetch client organizations" });
