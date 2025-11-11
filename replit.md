@@ -7,6 +7,41 @@ RUR2 is a professional monorepo application for managing R2v3 pre-certification 
 - Preferred communication style: Simple, everyday language.
 - **Working Standards**: ALWAYS verify solutions will work BEFORE proposing them. Never make assumptions or suggest actions without first consulting architect or doing proper analysis. User values efficiency and thoroughness - jumping to unverified solutions wastes time and credits.
 
+## Recent Changes
+
+### R2v3 Algorithm Enhancement Project (November 2025)
+**Goal**: Enhance the readiness assessment algorithm with modular, configurable system featuring dynamic question branching, critical gate enforcement, separate maturity scoring, and externalized configuration while maintaining 100% backward compatibility.
+
+**Phase 2 - Schema Design & Implementation (COMPLETED - Nov 11, 2025)**:
+- ✅ Enhanced `questions` table with 9 new fields supporting critical gates, branching logic, maturity scoring, and configuration overrides
+- ✅ Enhanced `assessments` table with 5 new fields for readiness classification and configuration references
+- ✅ Added 7 new configuration tables with normalized schema:
+  - `scoringConfigs`: Externalized weights, thresholds, N/A handling rules
+  - `mustPassRules`: Critical gate rule definitions (8 specific must-pass requirements)
+  - `mustPassRuleQuestions`: Normalized FK join table for rule-question mappings
+  - `conditionalRules`: Dynamic branching logic definitions
+  - `conditionalRuleTargets`: Normalized FK join table for rule-target mappings
+  - `questionDependencies`: Parent-child question relationships
+  - `maturityScores`: Separate operational maturity tracking (BCP, CI, Stakeholder dimensions)
+- ✅ All FK constraints include explicit `onDelete` behavior (`SET NULL` for configs, `CASCADE` for join tables)
+- ✅ Insert/select schemas and type exports added for all new tables
+- ✅ Drizzle relations defined for all new tables
+- ✅ 100% backward compatible: All new fields nullable or defaulted, no schema removals
+- ✅ TypeScript compilation validated, database schema validation passed
+- **Architect Review**: Approved (Nov 11, 2025)
+
+**Implementation Approach**:
+- Hybrid enhancement strategy: Layer new modules on existing foundation rather than replacement
+- Discovered existing conditional question infrastructure (ConditionalQuestionService, QuestionDependencyService)
+- Strategy revised from "build from scratch" to "enhance and externalize" existing hardcoded rules to database configuration
+- Feature flags planned for gradual rollout: USE_CONFIG_WEIGHTS, ENFORCE_MUST_PASS, SEPARATE_MATURITY, EXCLUDE_NA_FROM_DENOMINATOR
+
+**Next Steps**:
+- Phase 3: Database migration generation and execution
+- Phase 4: Core algorithm services implementation (CriticalGateEngine, MaturityEngine, ConfigurableScoring)
+- Phase 5: API routes and frontend integration
+- Phase 6: Testing and validation
+
 ## System Architecture
 
 ### UI/UX Decisions

@@ -745,8 +745,8 @@ export const clauses: any = pgTable("Clause", {
   isActive: boolean("isActive").default(true).notNull(),
 });
 
-// Questions within clauses
-export const questions = pgTable("Question", {
+// Questions within clauses - Enhanced for R2v3 Algorithm
+export const questions: any = pgTable("Question", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   questionId: text("questionId").notNull().unique(),
   clauseId: varchar("clauseId").notNull().references(() => clauses.id),
@@ -764,10 +764,30 @@ export const questions = pgTable("Question", {
   order: integer("order").default(0).notNull(),
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").default(sql`now()`).notNull(),
+  
+  // R2v3 Algorithm Enhancements - Critical Gate Support
+  isMustPass: boolean("isMustPass").default(false).notNull(),
+  mustPassRuleId: varchar("mustPassRuleId").references(() => mustPassRules.id, { onDelete: "set null" }),
+  
+  // R2v3 Algorithm Enhancements - Branching/Conditional Support
+  parentQuestionId: varchar("parentQuestionId").references(() => questions.id, { onDelete: "set null" }),
+  displayCondition: json("displayCondition"),
+  
+  // R2v3 Algorithm Enhancements - Maturity Scoring Support
+  isMaturityQuestion: boolean("isMaturityQuestion").default(false).notNull(),
+  maturityCategory: text("maturityCategory"),
+  
+  // R2v3 Algorithm Enhancements - Configuration Override Support
+  weightOverride: real("weightOverride"),
+  scoringConfigId: varchar("scoringConfigId").references(() => scoringConfigs.id, { onDelete: "set null" }),
+  
+  // R2v3 Algorithm Enhancements - Metadata
+  effectiveDate: timestamp("effectiveDate").default(sql`now()`).notNull(),
+  deprecatedDate: timestamp("deprecatedDate"),
 });
 
 // Assessments with tenant isolation
-export const assessments = pgTable("Assessment", {
+export const assessments: any = pgTable("Assessment", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenantId").notNull().references(() => tenants.id, { onDelete: "cascade" }),
   createdBy: varchar("createdBy").notNull().references(() => users.id),
@@ -799,6 +819,15 @@ export const assessments = pgTable("Assessment", {
 
   // REC mapping and intelligent filtering metadata
   filteringInfo: json("filteringInfo"),
+  
+  // R2v3 Algorithm Enhancements - Readiness Classification
+  readinessClassification: text("readinessClassification"),
+  criticalBlockers: json("criticalBlockers"),
+  criticalBlockersCount: integer("criticalBlockersCount").default(0),
+  
+  // R2v3 Algorithm Enhancements - Maturity & Configuration References
+  maturityScoreId: varchar("maturityScoreId").references(() => maturityScores.id, { onDelete: "set null" }),
+  scoringConfigId: varchar("scoringConfigId").references(() => scoringConfigs.id, { onDelete: "set null" }),
 
   // Timestamps
   createdAt: timestamp("createdAt").default(sql`now()`).notNull(),
@@ -841,6 +870,188 @@ export const answers = pgTable("Answer", {
 //   complianceIdx: index("answer_compliance_idx").on(table.compliance),
 // })
 );
+
+// === R2V3 ALGORITHM ENHANCEMENT TABLES ===
+
+// Scoring configuration table - Externalized weights and thresholds
+export const scoringConfigs = pgTable("ScoringConfig", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Configuration identification
+  configName: text("configName").notNull(),
+  configVersion: text("configVersion").notNull().default("1.0"),
+  description: text("description"),
+  
+  // Scope
+  standardId: varchar("standardId").references(() => standardVersions.id),
+  applicability: text("applicability").default("GLOBAL").notNull(),
+  
+  // Weight configuration
+  weights: json("weights").notNull(),
+  appendixWeights: json("appendixWeights"),
+  
+  // Scoring rules
+  naHandling: text("naHandling").default("EXCLUDE").notNull(),
+  requiredQuestionMultiplier: real("requiredQuestionMultiplier").default(1.5).notNull(),
+  
+  // Threshold configuration
+  readinessThresholds: json("readinessThresholds").notNull(),
+  
+  // Metadata
+  isActive: boolean("isActive").default(true).notNull(),
+  isDefault: boolean("isDefault").default(false).notNull(),
+  effectiveDate: timestamp("effectiveDate").default(sql`now()`).notNull(),
+  createdAt: timestamp("createdAt").default(sql`now()`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`now()`).notNull(),
+});
+
+// Must-pass rules table - Critical gate enforcement
+export const mustPassRules = pgTable("MustPassRule", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Rule identification
+  ruleCode: text("ruleCode").notNull().unique(),
+  ruleName: text("ruleName").notNull(),
+  description: text("description"),
+  
+  // Rule definition
+  ruleType: text("ruleType").notNull(),
+  
+  // For THRESHOLD type (section-based rules)
+  thresholdSection: text("thresholdSection"),
+  thresholdOperator: text("thresholdOperator"),
+  thresholdValue: real("thresholdValue"),
+  
+  // Blocker configuration
+  blockerSeverity: text("blockerSeverity").default("CRITICAL").notNull(),
+  blockerMessage: text("blockerMessage"),
+  maxReadinessLevel: text("maxReadinessLevel"),
+  
+  // Metadata
+  isActive: boolean("isActive").default(true).notNull(),
+  priority: integer("priority").default(1).notNull(),
+  effectiveDate: timestamp("effectiveDate").default(sql`now()`).notNull(),
+  createdAt: timestamp("createdAt").default(sql`now()`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`now()`).notNull(),
+});
+
+// Must-pass rule questions join table - Normalized question references
+export const mustPassRuleQuestions = pgTable("MustPassRuleQuestion", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Foreign keys with ON DELETE CASCADE
+  mustPassRuleId: varchar("mustPassRuleId").notNull().references(() => mustPassRules.id, { onDelete: "cascade" }),
+  questionId: varchar("questionId").notNull().references(() => questions.id, { onDelete: "cascade" }),
+  
+  // Composite rule configuration
+  compositeLogicType: text("compositeLogicType"),
+  requiredCount: integer("requiredCount"),
+  
+  // Acceptable values for this question
+  acceptableValues: json("acceptableValues").notNull(),
+  
+  // Metadata
+  order: integer("order").default(0).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").default(sql`now()`).notNull(),
+}, (table) => ({
+  uniqueRuleQuestion: uniqueIndex("unique_must_pass_rule_question")
+    .on(table.mustPassRuleId, table.questionId),
+}));
+
+// Conditional rules table - Dynamic question branching logic
+export const conditionalRules = pgTable("ConditionalRule", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Rule identification
+  ruleId: text("ruleId").notNull().unique(),
+  ruleName: text("ruleName").notNull(),
+  description: text("description"),
+  
+  // Trigger configuration
+  triggeredBy: text("triggeredBy").notNull(),
+  triggerCondition: json("triggerCondition").notNull(),
+  
+  // Action configuration
+  action: text("action").notNull(),
+  
+  // Priority and logic
+  priority: integer("priority").default(1).notNull(),
+  evaluationLogic: text("evaluationLogic").default("AND").notNull(),
+  
+  // Scope
+  ruleScope: text("ruleScope").default("ASSESSMENT").notNull(),
+  standardId: varchar("standardId").references(() => standardVersions.id),
+  
+  // Metadata
+  isActive: boolean("isActive").default(true).notNull(),
+  effectiveDate: timestamp("effectiveDate").default(sql`now()`).notNull(),
+  createdAt: timestamp("createdAt").default(sql`now()`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`now()`).notNull(),
+});
+
+// Conditional rule targets join table - Normalized question references
+export const conditionalRuleTargets = pgTable("ConditionalRuleTarget", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Foreign keys with ON DELETE CASCADE
+  conditionalRuleId: varchar("conditionalRuleId").notNull().references(() => conditionalRules.id, { onDelete: "cascade" }),
+  targetQuestionId: varchar("targetQuestionId").notNull().references(() => questions.id, { onDelete: "cascade" }),
+  
+  // Target-specific overrides
+  actionOverride: text("actionOverride"),
+  
+  // Metadata
+  order: integer("order").default(0).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").default(sql`now()`).notNull(),
+}, (table) => ({
+  uniqueRuleTarget: uniqueIndex("unique_conditional_rule_target")
+    .on(table.conditionalRuleId, table.targetQuestionId),
+}));
+
+// Question dependencies table - Parent-child question relationships
+export const questionDependencies = pgTable("QuestionDependency", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Foreign keys with ON DELETE CASCADE
+  questionId: varchar("questionId").notNull().references(() => questions.id, { onDelete: "cascade" }),
+  dependsOnQuestionId: varchar("dependsOnQuestionId").notNull().references(() => questions.id, { onDelete: "cascade" }),
+  
+  // Dependency condition
+  dependencyCondition: json("dependencyCondition").notNull(),
+  dependencyType: text("dependencyType").default("VISIBILITY").notNull(),
+  logic: text("logic").default("AND").notNull(),
+  
+  // Metadata
+  isActive: boolean("isActive").default(true).notNull(),
+  priority: integer("priority").default(1).notNull(),
+  createdAt: timestamp("createdAt").default(sql`now()`).notNull(),
+}, (table) => ({
+  uniqueDependency: uniqueIndex("unique_question_dependency")
+    .on(table.questionId, table.dependsOnQuestionId),
+}));
+
+// Maturity scores table - Separate operational maturity tracking
+export const maturityScores: any = pgTable("MaturityScore", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Assessment reference
+  assessmentId: varchar("assessmentId").notNull().references(() => assessments.id, { onDelete: "cascade" }),
+  
+  // Maturity dimensions
+  bcpScore: real("bcpScore").default(0),
+  ciScore: real("ciScore").default(0),
+  stakeholderScore: real("stakeholderScore").default(0),
+  overallMaturityScore: real("overallMaturityScore").default(0).notNull(),
+  maturityLevel: text("maturityLevel"),
+  
+  // Metadata
+  calculatedAt: timestamp("calculatedAt").default(sql`now()`).notNull(),
+  calculatedBy: varchar("calculatedBy").references(() => users.id),
+  createdAt: timestamp("createdAt").default(sql`now()`).notNull(),
+  updatedAt: timestamp("updatedAt").default(sql`now()`).notNull(),
+});
 
 // === INTAKE SYSTEM ===
 
@@ -1716,6 +1927,80 @@ export const userCloudStorageConnectionsRelations = relations(userCloudStorageCo
   }),
 }));
 
+// === R2V3 ALGORITHM RELATIONS ===
+
+// Scoring Config relations
+export const scoringConfigsRelations = relations(scoringConfigs, ({ one, many }) => ({
+  standardVersion: one(standardVersions, {
+    fields: [scoringConfigs.standardId],
+    references: [standardVersions.id],
+  }),
+  questions: many(questions),
+  assessments: many(assessments),
+}));
+
+// Must-Pass Rule relations
+export const mustPassRulesRelations = relations(mustPassRules, ({ many }) => ({
+  ruleQuestions: many(mustPassRuleQuestions),
+}));
+
+// Must-Pass Rule Questions relations
+export const mustPassRuleQuestionsRelations = relations(mustPassRuleQuestions, ({ one }) => ({
+  rule: one(mustPassRules, {
+    fields: [mustPassRuleQuestions.mustPassRuleId],
+    references: [mustPassRules.id],
+  }),
+  question: one(questions, {
+    fields: [mustPassRuleQuestions.questionId],
+    references: [questions.id],
+  }),
+}));
+
+// Conditional Rule relations
+export const conditionalRulesRelations = relations(conditionalRules, ({ one, many }) => ({
+  standardVersion: one(standardVersions, {
+    fields: [conditionalRules.standardId],
+    references: [standardVersions.id],
+  }),
+  ruleTargets: many(conditionalRuleTargets),
+}));
+
+// Conditional Rule Targets relations
+export const conditionalRuleTargetsRelations = relations(conditionalRuleTargets, ({ one }) => ({
+  rule: one(conditionalRules, {
+    fields: [conditionalRuleTargets.conditionalRuleId],
+    references: [conditionalRules.id],
+  }),
+  targetQuestion: one(questions, {
+    fields: [conditionalRuleTargets.targetQuestionId],
+    references: [questions.id],
+  }),
+}));
+
+// Question Dependencies relations
+export const questionDependenciesRelations = relations(questionDependencies, ({ one }) => ({
+  question: one(questions, {
+    fields: [questionDependencies.questionId],
+    references: [questions.id],
+  }),
+  dependsOnQuestion: one(questions, {
+    fields: [questionDependencies.dependsOnQuestionId],
+    references: [questions.id],
+  }),
+}));
+
+// Maturity Scores relations
+export const maturityScoresRelations = relations(maturityScores, ({ one }) => ({
+  assessment: one(assessments, {
+    fields: [maturityScores.assessmentId],
+    references: [assessments.id],
+  }),
+  calculatedByUser: one(users, {
+    fields: [maturityScores.calculatedBy],
+    references: [users.id],
+  }),
+}));
+
 // === ZOD SCHEMAS ===
 
 export const insertTenantSchema = createInsertSchema(tenants).omit({
@@ -1814,6 +2099,47 @@ export const insertLicenseEventSchema = createInsertSchema(licenseEvents).omit({
 export const insertEvidenceObjectSchema = createInsertSchema(evidenceObjects).omit({
   id: true,
   createdAt: true,
+});
+
+// === R2V3 ALGORITHM SCHEMAS ===
+
+export const insertScoringConfigSchema = createInsertSchema(scoringConfigs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMustPassRuleSchema = createInsertSchema(mustPassRules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMustPassRuleQuestionSchema = createInsertSchema(mustPassRuleQuestions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertConditionalRuleSchema = createInsertSchema(conditionalRules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertConditionalRuleTargetSchema = createInsertSchema(conditionalRuleTargets).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertQuestionDependencySchema = createInsertSchema(questionDependencies).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertMaturityScoreSchema = createInsertSchema(maturityScores).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 // === PHASE 5 SECURITY SCHEMAS ===
@@ -1939,6 +2265,43 @@ export type NewClientFacility = typeof clientFacilities.$inferInsert;
 export type NewLicenseAddon = typeof licenseAddons.$inferInsert;
 export type NewLicenseEvent = typeof licenseEvents.$inferInsert;
 export type NewEvidenceObject = typeof evidenceObjects.$inferInsert;
+
+// === R2V3 ALGORITHM TYPE EXPORTS ===
+
+// Scoring configuration types
+export type ScoringConfig = typeof scoringConfigs.$inferSelect;
+export type NewScoringConfig = typeof scoringConfigs.$inferInsert;
+export type InsertScoringConfig = z.infer<typeof insertScoringConfigSchema>;
+
+// Must-pass rule types
+export type MustPassRule = typeof mustPassRules.$inferSelect;
+export type NewMustPassRule = typeof mustPassRules.$inferInsert;
+export type InsertMustPassRule = z.infer<typeof insertMustPassRuleSchema>;
+
+// Must-pass rule question types
+export type MustPassRuleQuestion = typeof mustPassRuleQuestions.$inferSelect;
+export type NewMustPassRuleQuestion = typeof mustPassRuleQuestions.$inferInsert;
+export type InsertMustPassRuleQuestion = z.infer<typeof insertMustPassRuleQuestionSchema>;
+
+// Conditional rule types
+export type ConditionalRule = typeof conditionalRules.$inferSelect;
+export type NewConditionalRule = typeof conditionalRules.$inferInsert;
+export type InsertConditionalRule = z.infer<typeof insertConditionalRuleSchema>;
+
+// Conditional rule target types
+export type ConditionalRuleTarget = typeof conditionalRuleTargets.$inferSelect;
+export type NewConditionalRuleTarget = typeof conditionalRuleTargets.$inferInsert;
+export type InsertConditionalRuleTarget = z.infer<typeof insertConditionalRuleTargetSchema>;
+
+// Question dependency types
+export type QuestionDependency = typeof questionDependencies.$inferSelect;
+export type NewQuestionDependency = typeof questionDependencies.$inferInsert;
+export type InsertQuestionDependency = z.infer<typeof insertQuestionDependencySchema>;
+
+// Maturity score types
+export type MaturityScore = typeof maturityScores.$inferSelect;
+export type NewMaturityScore = typeof maturityScores.$inferInsert;
+export type InsertMaturityScore = z.infer<typeof insertMaturityScoreSchema>;
 
 // === PHASE 5 SECURITY TYPE EXPORTS ===
 
