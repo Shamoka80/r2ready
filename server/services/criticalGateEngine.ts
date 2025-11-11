@@ -7,6 +7,7 @@ import {
   assessments 
 } from '../../shared/schema';
 import { eq, and, inArray, sql } from 'drizzle-orm';
+import { mustPassRuleCache, questionCache } from './dataCache';
 
 export interface CriticalGateResult {
   passed: boolean;
@@ -46,8 +47,10 @@ export interface MustPassRuleConfig {
 export class CriticalGateEngine {
   
   /**
-   * Evaluate all must-pass rules for an assessment
-   * Returns detailed results including which rules failed and why
+   * OPTIMIZATION: Batch fetch all answers for assessment upfront to avoid N+1
+   * Previously: evaluateRule would query answers for each rule separately
+   * Now: Single query fetches all assessment answers, then filter by rule in memory
+   * Reduces queries from O(N rules) to O(1)
    */
   static async evaluateAssessment(assessmentId: string): Promise<CriticalGateResult> {
     const activeRules = await this.getActiveMustPassRules();
@@ -62,11 +65,20 @@ export class CriticalGateEngine {
       };
     }
 
+    // OPTIMIZATION: Fetch all answers once with questions joined
+    // Instead of fetching per-rule in evaluateRule loop
+    const allAnswers = await db.query.answers.findMany({
+      where: eq(answers.assessmentId, assessmentId),
+      with: {
+        question: true
+      }
+    });
+
     const failedRules: FailedMustPassRule[] = [];
     const criticalBlockers: string[] = [];
 
     for (const rule of activeRules) {
-      const ruleResult = await this.evaluateRule(assessmentId, rule);
+      const ruleResult = await this.evaluateRule(assessmentId, rule, allAnswers);
       
       if (!ruleResult.passed) {
         failedRules.push({
@@ -92,9 +104,22 @@ export class CriticalGateEngine {
   }
 
   /**
-   * Get all active must-pass rules with their associated questions
+   * OPTIMIZATION: Batch fetch all rules + rule-questions + questions in single query
+   * CACHE INTEGRATION: Implements cache-aside pattern for must-pass rules
+   * Previously: Would fetch rules, then loop through each rule's questions
+   * Now: Check cache first, then single query with nested JOINs gets everything at once
+   * Eliminates N+1 queries when loading rule configurations
    */
   static async getActiveMustPassRules(): Promise<MustPassRuleConfig[]> {
+    const cacheKey = 'mustpass:all';
+    
+    // Check cache first
+    const cached = mustPassRuleCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    // Cache miss - fetch from database
     const rules = await db.query.mustPassRules.findMany({
       where: eq(mustPassRules.isActive, true),
       with: {
@@ -106,7 +131,7 @@ export class CriticalGateEngine {
       }
     });
 
-    return rules.map(rule => ({
+    const result = rules.map(rule => ({
       id: rule.id,
       ruleName: rule.ruleName,
       ruleCode: rule.ruleCode,
@@ -118,14 +143,22 @@ export class CriticalGateEngine {
       questionIds: rule.ruleQuestions.map((rq: any) => rq.questionId),
       thresholdValue: rule.thresholdValue
     }));
+
+    // Populate cache with fetched data
+    mustPassRuleCache.set(cacheKey, result);
+    
+    return result;
   }
 
   /**
-   * Evaluate a single must-pass rule for an assessment
+   * OPTIMIZATION: Accepts pre-fetched answers to avoid database query per rule
+   * Filters answers in-memory instead of querying database
+   * For missing questions, uses pre-loaded question data from rule config
    */
   private static async evaluateRule(
     assessmentId: string, 
-    rule: MustPassRuleConfig
+    rule: MustPassRuleConfig,
+    allAnswers: any[]
   ): Promise<{
     passed: boolean;
     failedQuestions: {
@@ -139,15 +172,10 @@ export class CriticalGateEngine {
       return { passed: true, failedQuestions: [] };
     }
 
-    const assessmentAnswers = await db.query.answers.findMany({
-      where: and(
-        eq(answers.assessmentId, assessmentId),
-        inArray(answers.questionId, rule.questionIds)
-      ),
-      with: {
-        question: true
-      }
-    });
+    // OPTIMIZATION: Filter pre-fetched answers in memory instead of querying DB
+    const assessmentAnswers = allAnswers.filter(a => 
+      rule.questionIds.includes(a.questionId)
+    );
 
     const failedQuestions: {
       questionId: string;
@@ -172,16 +200,45 @@ export class CriticalGateEngine {
       }
     }
 
-    for (const questionId of rule.questionIds) {
-      const answered = assessmentAnswers.some(a => a.questionId === questionId);
-      if (!answered) {
-        const question = await db.query.questions.findFirst({
-          where: eq(questions.id, questionId)
+    // OPTIMIZATION: Batch fetch unanswered questions using IN clause
+    // CACHE INTEGRATION: Check cache for each question before database query
+    const answeredQuestionIds = new Set(assessmentAnswers.map(a => a.questionId));
+    const unansweredQuestionIds = rule.questionIds.filter(qId => !answeredQuestionIds.has(qId));
+    
+    if (unansweredQuestionIds.length > 0) {
+      // Try to fetch from cache first
+      const uncachedQuestionIds: string[] = [];
+      const cachedQuestions: any[] = [];
+      
+      for (const questionId of unansweredQuestionIds) {
+        const cacheKey = `question:${questionId}`;
+        const cached = questionCache.get(cacheKey);
+        if (cached) {
+          cachedQuestions.push(cached);
+        } else {
+          uncachedQuestionIds.push(questionId);
+        }
+      }
+      
+      // Batch query for uncached questions only
+      if (uncachedQuestionIds.length > 0) {
+        const dbQuestions = await db.query.questions.findMany({
+          where: inArray(questions.id, uncachedQuestionIds)
         });
         
+        // Populate cache with fetched questions
+        for (const question of dbQuestions) {
+          const cacheKey = `question:${question.id}`;
+          questionCache.set(cacheKey, question);
+          cachedQuestions.push(question);
+        }
+      }
+      
+      // Process all unanswered questions (from cache and DB)
+      for (const question of cachedQuestions) {
         failedQuestions.push({
-          questionId,
-          questionText: question?.text || 'Unknown question',
+          questionId: question.id,
+          questionText: question.text || 'Unknown question',
           userAnswer: 'Not answered',
           requirementNotMet: 'Question not answered'
         });

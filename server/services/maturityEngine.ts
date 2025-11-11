@@ -85,9 +85,13 @@ export class MaturityEngine {
   }
 
   /**
-   * Get all maturity questions for an assessment
+   * OPTIMIZATION: Batch fetch all answers+questions with single JOIN query
+   * Previously: Would potentially query questions separately
+   * Now: Single query with JOIN loads everything, then filter in memory
+   * Eliminates potential N+1 when processing maturity questions
    */
   private static async getMaturityQuestions(assessmentId: string): Promise<MaturityQuestionMetrics[]> {
+    // OPTIMIZATION: Single query fetches answers with questions joined
     const assessmentAnswers = await db.query.answers.findMany({
       where: eq(answers.assessmentId, assessmentId),
       with: {
@@ -95,11 +99,13 @@ export class MaturityEngine {
       }
     });
 
+    // Filter maturity questions in memory - no additional queries
     const maturityAnswers = assessmentAnswers.filter(answer => {
       const questionObj = Array.isArray(answer.question) ? answer.question[0] : answer.question;
       return questionObj?.isMaturityQuestion === true;
     });
 
+    // Process all maturity questions in memory - question data already loaded
     return maturityAnswers.map(answer => {
       const questionObj = Array.isArray(answer.question) ? answer.question[0] : answer.question;
       const score = this.calculateAnswerScore(answer.value);

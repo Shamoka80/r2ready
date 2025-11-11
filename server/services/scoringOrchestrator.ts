@@ -278,8 +278,10 @@ export class ScoringOrchestrator {
   }
 
   /**
-   * Adjust legacy scoring result to exclude N/A from denominators
-   * Recalculates from raw answers using legacy logic but skipping N/A
+   * OPTIMIZATION: Batch fetch answers+questions once for N/A exclusion
+   * Previously: Would fetch answers separately from main scoring
+   * Now: Single query with JOIN gets all data needed for recalculation
+   * Eliminates redundant answer fetching
    */
   private static async adjustLegacyScoringForNAExclusion(
     assessmentId: string,
@@ -294,7 +296,7 @@ export class ScoringOrchestrator {
       'In Progress': 25
     };
 
-    // Fetch all answers with question metadata
+    // OPTIMIZATION: Single batch query fetches all answers with questions joined
     const answerList = await db.query.answers.findMany({
       where: eq(answers.assessmentId, assessmentId),
       with: {

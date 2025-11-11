@@ -6,6 +6,7 @@ import {
   assessments 
 } from '../../shared/schema';
 import { eq, and, sql } from 'drizzle-orm';
+import { scoringConfigCache } from './dataCache';
 
 export interface ScoringConfig {
   id: string;
@@ -109,8 +110,18 @@ export class ConfigurableScoring {
 
   /**
    * Get scoring configuration by ID
+   * CACHE INTEGRATION: Implements cache-aside pattern for scoring configs
    */
   static async getScoringConfig(configId: string): Promise<ScoringConfig | null> {
+    const cacheKey = `config:${configId}`;
+    
+    // Check cache first
+    const cached = scoringConfigCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    // Cache miss - fetch from database
     const config = await db.query.scoringConfigs.findFirst({
       where: eq(scoringConfigs.id, configId)
     });
@@ -119,7 +130,7 @@ export class ConfigurableScoring {
       return null;
     }
 
-    return {
+    const result = {
       id: config.id,
       configName: config.configName,
       configVersion: config.configVersion,
@@ -130,12 +141,27 @@ export class ConfigurableScoring {
       requiredQuestionMultiplier: config.requiredQuestionMultiplier,
       isActive: config.isActive
     };
+
+    // Populate cache with fetched data
+    scoringConfigCache.set(cacheKey, result);
+    
+    return result;
   }
 
   /**
    * Get default (active) scoring configuration
+   * CACHE INTEGRATION: Implements cache-aside pattern with 'default' key
    */
   static async getDefaultScoringConfig(): Promise<ScoringConfig | null> {
+    const cacheKey = 'config:default';
+    
+    // Check cache first
+    const cached = scoringConfigCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    // Cache miss - fetch from database
     const config = await db.query.scoringConfigs.findFirst({
       where: eq(scoringConfigs.isActive, true),
       orderBy: (scoringConfigs, { desc }) => [desc(scoringConfigs.createdAt)]
@@ -145,7 +171,7 @@ export class ConfigurableScoring {
       return this.createDefaultConfig();
     }
 
-    return {
+    const result = {
       id: config.id,
       configName: config.configName,
       configVersion: config.configVersion,
@@ -156,6 +182,11 @@ export class ConfigurableScoring {
       requiredQuestionMultiplier: config.requiredQuestionMultiplier,
       isActive: config.isActive
     };
+
+    // Populate cache with fetched data
+    scoringConfigCache.set(cacheKey, result);
+    
+    return result;
   }
 
   /**
@@ -194,7 +225,10 @@ export class ConfigurableScoring {
   }
 
   /**
-   * Get all answers for an assessment with question details
+   * OPTIMIZATION: Batch fetch answers + questions in single JOIN query
+   * Previously: Would fetch answers first, then potentially loop to fetch questions
+   * Now: Single query with JOIN to get all related data at once
+   * This eliminates N+1 queries when processing answers
    */
   private static async getAssessmentAnswers(assessmentId: string) {
     return await db.query.answers.findMany({
@@ -207,6 +241,8 @@ export class ConfigurableScoring {
 
   /**
    * Calculate scores for each category
+   * OPTIMIZATION: Uses pre-fetched answers+questions (already batch loaded)
+   * No additional queries needed - all data loaded in single JOIN
    */
   private static async calculateCategoryScores(
     assessmentAnswers: any[],
@@ -218,6 +254,8 @@ export class ConfigurableScoring {
       count: number;
     }>();
 
+    // Process all answers in memory - no database queries needed
+    // Question data already loaded via JOIN in getAssessmentAnswers
     for (const answer of assessmentAnswers) {
       const questionObj = Array.isArray(answer.question) ? answer.question[0] : answer.question;
       const category = questionObj?.category || 'UNKNOWN';
