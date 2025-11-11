@@ -104,10 +104,12 @@ export default function QuestionsTab({ assessmentId, intakeFormId, filteringInfo
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Local answer state keyed by questionId
+  // Local answer state keyed by questionId (display code)
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [saveStatuses, setSaveStatuses] = useState<Record<string, SaveStatus>>({});
   const [saveErrors, setSaveErrors] = useState<Record<string, string>>({});
+  // Mapping from questionId (display code like "Q141") to id (UUID)
+  const questionIdToUuidMap = useRef<Record<string, string>>({});
 
   const debounceTimeout = useRef<ReturnType<typeof setTimeout>>();
   const pendingAnswers = useRef<Map<string, number>>(new Map()); // questionId -> revision
@@ -142,15 +144,20 @@ export default function QuestionsTab({ assessmentId, intakeFormId, filteringInfo
         const response = await apiGet<QuestionsResponse>(url);
         setQuestionsData(response);
 
+        // Build mapping from questionId (display code) to id (UUID)
+        const idMap: Record<string, string> = {};
         // Initialize answers from backend data
         const initialAnswers: Record<string, string> = {};
         response.groups.forEach(group => {
           group.questions.forEach(question => {
+            // Map display code to UUID
+            idMap[question.questionId] = question.id;
             if (question.answer && question.answer.value !== null && question.answer.value !== undefined) {
               initialAnswers[question.questionId] = String(question.answer.value);
             }
           });
         });
+        questionIdToUuidMap.current = idMap;
         setAnswers(initialAnswers);
 
         setError(null);
@@ -173,13 +180,14 @@ export default function QuestionsTab({ assessmentId, intakeFormId, filteringInfo
     const answersToSave: Answer[] = Array.from(batchToSave.keys())
       .filter(questionId => answers[questionId] !== undefined)
       .map(questionId => ({
-        questionId,
+        questionId: questionIdToUuidMap.current[questionId] || questionId, // Use UUID from map
         value: answers[questionId]!
       }));
 
-    // Mark all pending as saving
+    // Mark all pending as saving (use original questionId for status tracking)
     const statusUpdates: Record<string, SaveStatus> = {};
-    answersToSave.forEach(({ questionId }) => {
+    const displayCodeIds = Array.from(batchToSave.keys());
+    displayCodeIds.forEach((questionId) => {
       statusUpdates[questionId] = 'saving';
     });
     setSaveStatuses(prev => ({ ...prev, ...statusUpdates }));
@@ -189,14 +197,14 @@ export default function QuestionsTab({ assessmentId, intakeFormId, filteringInfo
         answers: answersToSave
       });
 
-      // Mark all as saved
-      answersToSave.forEach(({ questionId }) => {
+      // Mark all as saved (use original questionId for status tracking)
+      displayCodeIds.forEach((questionId) => {
         statusUpdates[questionId] = 'saved';
       });
       setSaveStatuses(prev => ({ ...prev, ...statusUpdates }));
 
       // Only clear pending answers that match the saved revision (prevent race condition)
-      answersToSave.forEach(({ questionId }) => {
+      displayCodeIds.forEach((questionId) => {
         const savedRevision = batchToSave.get(questionId);
         const currentRevision = pendingAnswers.current.get(questionId);
         // Only clear if the revision matches (no newer edit was queued)
@@ -206,7 +214,7 @@ export default function QuestionsTab({ assessmentId, intakeFormId, filteringInfo
       });
 
       // Cancel any retry timers for successfully saved answers
-      answersToSave.forEach(({ questionId }) => {
+      displayCodeIds.forEach((questionId) => {
         if (retryTimeouts.current.has(questionId)) {
           clearTimeout(retryTimeouts.current.get(questionId)!);
           retryTimeouts.current.delete(questionId);
@@ -216,7 +224,7 @@ export default function QuestionsTab({ assessmentId, intakeFormId, filteringInfo
       // Clear errors for successfully saved questions (shared success path)
       setSaveErrors(prev => {
         const newErrors = { ...prev };
-        answersToSave.forEach(({ questionId }) => {
+        displayCodeIds.forEach((questionId) => {
           delete newErrors[questionId];
         });
         return newErrors;
@@ -226,7 +234,7 @@ export default function QuestionsTab({ assessmentId, intakeFormId, filteringInfo
       setTimeout(() => {
         setSaveStatuses(prev => {
           const newStatuses = { ...prev };
-          answersToSave.forEach(({ questionId }) => {
+          displayCodeIds.forEach((questionId) => {
             if (newStatuses[questionId] === 'saved') {
               newStatuses[questionId] = 'idle';
             }
@@ -246,9 +254,9 @@ export default function QuestionsTab({ assessmentId, intakeFormId, filteringInfo
         errorMessage = error;
       }
 
-      // Mark all as error with specific message
+      // Mark all as error with specific message (use original questionId for status tracking)
       const errorUpdates: Record<string, string> = {};
-      answersToSave.forEach(({ questionId }) => {
+      displayCodeIds.forEach((questionId) => {
         statusUpdates[questionId] = 'error';
         errorUpdates[questionId] = errorMessage;
       });
@@ -256,7 +264,7 @@ export default function QuestionsTab({ assessmentId, intakeFormId, filteringInfo
       setSaveErrors(prev => ({ ...prev, ...errorUpdates }));
 
       // Implement exponential backoff retry for failed saves
-      answersToSave.forEach(({ questionId }) => {
+      displayCodeIds.forEach((questionId) => {
         const retryCount = 0; // First retry
         const currentRevision = batchToSave.get(questionId);
         if (currentRevision !== undefined) {
@@ -295,8 +303,10 @@ export default function QuestionsTab({ assessmentId, intakeFormId, filteringInfo
 
         setSaveStatuses(prev => ({ ...prev, [questionId]: 'saving' }));
 
+        // Map display code to UUID for API
+        const questionUuid = questionIdToUuidMap.current[questionId] || questionId;
         await apiPost<{ upserted: number }>(`/api/answers/${currentAssessmentIdRef.current}/answers/batch`, {
-          answers: [{ questionId, value: currentAnswer }]
+          answers: [{ questionId: questionUuid, value: currentAnswer }]
         });
 
         // Success - clear error and set saved

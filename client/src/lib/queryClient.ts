@@ -78,6 +78,49 @@ export const getQueryFn: <T>(options: {
     return await res.json();
   };
 
+/**
+ * Download a file from an authenticated endpoint
+ * Uses fetch with Authorization header, converts to blob, and triggers download
+ */
+export async function downloadFile(url: string, filename: string): Promise<void> {
+  const token = localStorage.getItem('authToken') || localStorage.getItem('auth_token');
+  const currentFacilityId = sessionStorage.getItem('currentFacilityId');
+  
+  const headers: Record<string, string> = {};
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  if (currentFacilityId) {
+    headers['X-Facility-Context'] = currentFacilityId;
+  }
+  
+  const res = await fetch(url, {
+    headers,
+    credentials: "include",
+  });
+
+  await throwIfResNotOk(res);
+  
+  // Get the blob from the response
+  const blob = await res.blob();
+  
+  // Create a temporary URL for the blob
+  const blobUrl = window.URL.createObjectURL(blob);
+  
+  // Create a temporary anchor element to trigger download
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  
+  // Clean up
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(blobUrl);
+}
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

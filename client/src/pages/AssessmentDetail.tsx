@@ -29,6 +29,8 @@ import AnalyticsTab from "./AssessmentDetail/AnalyticsTab";
 import { apiGet } from "@/api";
 import { useAuth } from "@/hooks/use-auth";
 import ClientContextBanner from "@/components/ClientContextBanner";
+import { downloadFile } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface Facility {
   id: string;
@@ -105,7 +107,9 @@ export default function AssessmentDetail() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [isEditing, setIsEditing] = useState(false); // Added state for editing
+  const [downloadingExport, setDownloadingExport] = useState<string | null>(null);
   const { user } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!assessmentId) return;
@@ -145,6 +149,31 @@ export default function AssessmentDetail() {
       setError("Failed to load assessment details");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownloadExport = async (format: 'pdf' | 'excel' | 'word' | 'email', formatName: string) => {
+    if (!assessmentId || !assessment) return;
+    
+    setDownloadingExport(format);
+    
+    try {
+      const filename = `${assessment.title}_${formatName}.${format === 'excel' ? 'xlsx' : format === 'word' ? 'docx' : format === 'email' ? 'txt' : 'pdf'}`;
+      await downloadFile(`/api/exports/${assessmentId}/${format}`, filename);
+      
+      toast({
+        title: "Export successful",
+        description: `${formatName} downloaded successfully`,
+      });
+    } catch (error) {
+      console.error('Export download error:', error);
+      toast({
+        title: "Export failed",
+        description: error instanceof Error ? error.message : "Failed to download export",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingExport(null);
     }
   };
 
@@ -576,10 +605,12 @@ export default function AssessmentDetail() {
                         </div>
                       </div>
                       <button
-                        onClick={() => window.open(`/api/exports/${assessmentId}/pdf`, '_blank')}
-                        className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                        onClick={() => handleDownloadExport('pdf', 'Technical Report')}
+                        disabled={downloadingExport === 'pdf'}
+                        className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                        data-testid="button-download-pdf"
                       >
-                        Download PDF Report
+                        {downloadingExport === 'pdf' ? 'Downloading...' : 'Download PDF Report'}
                       </button>
                     </CardContent>
                   </Card>
@@ -613,10 +644,12 @@ export default function AssessmentDetail() {
                         </div>
                       </div>
                       <button
-                        onClick={() => window.open(`/api/exports/${assessmentId}/excel`, '_blank')}
-                        className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                        onClick={() => handleDownloadExport('excel', 'Management Dashboard')}
+                        disabled={downloadingExport === 'excel'}
+                        className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                        data-testid="button-download-excel"
                       >
-                        Download Excel Dashboard
+                        {downloadingExport === 'excel' ? 'Downloading...' : 'Download Excel Dashboard'}
                       </button>
                     </CardContent>
                   </Card>
@@ -650,10 +683,12 @@ export default function AssessmentDetail() {
                         </div>
                       </div>
                       <button
-                        onClick={() => window.open(`/api/exports/${assessmentId}/word`, '_blank')}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                        onClick={() => handleDownloadExport('word', 'Executive Summary')}
+                        disabled={downloadingExport === 'word'}
+                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                        data-testid="button-download-word"
                       >
-                        Download Word Summary
+                        {downloadingExport === 'word' ? 'Downloading...' : 'Download Word Summary'}
                       </button>
                     </CardContent>
                   </Card>
@@ -687,10 +722,12 @@ export default function AssessmentDetail() {
                         </div>
                       </div>
                       <button
-                        onClick={() => window.open(`/api/exports/${assessmentId}/email`, '_blank')}
-                        className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                        onClick={() => handleDownloadExport('email', 'Client Communication')}
+                        disabled={downloadingExport === 'email'}
+                        className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                        data-testid="button-download-email"
                       >
-                        Download Email Template
+                        {downloadingExport === 'email' ? 'Downloading...' : 'Download Email Template'}
                       </button>
                     </CardContent>
                   </Card>
