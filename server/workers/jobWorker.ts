@@ -1,5 +1,7 @@
 import { jobQueueService } from '../services/jobQueue.js';
-import { Job } from '../../shared/schema.js';
+import { Job, jobs } from '../../shared/schema.js';
+import { db } from '../db.js';
+import { eq, sql } from 'drizzle-orm';
 
 class JobWorker {
   private isRunning = false;
@@ -92,27 +94,38 @@ class JobWorker {
 
       console.error(`[JobWorker] Job ${job.id} failed (attempt ${currentAttempts}/${maxAttempts}):`, error.message);
 
+      // Check if job has exceeded max attempts
       if (currentAttempts >= maxAttempts) {
         await jobQueueService.updateStatus(
           job.id,
           'FAILED',
           null,
-          error.message || 'Unknown error'
+          `Max attempts (${maxAttempts}) exceeded: ${error.message || 'Unknown error'}`
         );
         console.error(`[JobWorker] Job ${job.id} failed permanently after ${maxAttempts} attempts`);
       } else {
-        const backoffDelay = this.calculateBackoff(currentAttempts);
-        console.log(`[JobWorker] Retrying job ${job.id} in ${backoffDelay}ms`);
+        // Calculate exponential backoff
+        const backoffMs = Math.pow(2, currentAttempts) * 1000;
+        console.log(`[JobWorker] Retrying job ${job.id} in ${backoffMs}ms (attempt ${currentAttempts}/${maxAttempts})`);
 
-        setTimeout(async () => {
-          try {
-            await jobQueueService.updateStatus(job.id, 'PENDING');
-            // CRITICAL FIX: Re-enqueue job in in-memory queue so worker can pick it up
-            await jobQueueService.retryJob(job.id);
-          } catch (retryError) {
-            console.error(`[JobWorker] Error requeueing job ${job.id}:`, retryError);
-          }
-        }, backoffDelay);
+        // Wait for backoff period
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
+
+        // CRITICAL: Update attempts atomically BEFORE retrying
+        await db.update(jobs)
+          .set({ 
+            attempts: currentAttempts,
+            status: 'PENDING',
+            updatedAt: sql`now()`
+          })
+          .where(eq(jobs.id, job.id));
+
+        // Then re-enqueue with updated attempts
+        try {
+          await jobQueueService.retryJob(job.id);
+        } catch (retryError) {
+          console.error(`[JobWorker] Error requeueing job ${job.id}:`, retryError);
+        }
       }
     }
   }

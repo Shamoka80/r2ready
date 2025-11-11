@@ -170,15 +170,21 @@ class JobQueueService {
   }
 
   async retryJob(jobId: string): Promise<void> {
-    const job = await this.getJob(jobId);
+    // Read fresh job data with updated attempts
+    const freshJob = await this.getJob(jobId);
 
-    if (!job) {
+    if (!freshJob) {
       throw new Error(`Job ${jobId} not found`);
     }
 
-    // Re-add job to in-memory queue so it can be picked up by workers
-    this.inMemoryQueue.set(jobId, job);
-    console.log(`[JobQueue] Re-enqueued job ${jobId} for retry (attempt ${job.attempts}/${job.maxAttempts})`);
+    // Check maxAttempts with fresh data
+    if (freshJob.attempts >= freshJob.maxAttempts) {
+      throw new Error(`Cannot retry job ${jobId}: max attempts (${freshJob.maxAttempts}) exceeded`);
+    }
+
+    // Re-add fresh job to in-memory queue so it can be picked up by workers
+    this.inMemoryQueue.set(jobId, freshJob);
+    console.log(`[JobQueue] Re-enqueued job ${jobId} for retry (attempt ${freshJob.attempts}/${freshJob.maxAttempts})`);
   }
 
   async cleanup(olderThanDays: number = 7): Promise<void> {

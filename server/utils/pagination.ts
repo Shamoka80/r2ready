@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SQL, sql, desc, asc, gt, lt, and } from 'drizzle-orm';
+import { SQL, sql, desc, asc, gt, lt, gte, lte, and, or } from 'drizzle-orm';
 import { PgTable } from 'drizzle-orm/pg-core';
 
 export interface PaginationParams {
@@ -96,20 +96,22 @@ export class PaginationUtils {
   ): SQL | undefined {
     if (!cursor) return undefined;
 
-    if (timestampColumn) {
+    if (timestampColumn && cursor.timestamp !== undefined) {
+      const cursorDate = new Date(cursor.timestamp);
+      
       if (direction === 'forward') {
         return or(
-          lt(timestampColumn, sql`to_timestamp(${cursor.timestamp! / 1000})`),
+          lt(timestampColumn, cursorDate),
           and(
-            sql`${timestampColumn} = to_timestamp(${cursor.timestamp! / 1000})`,
+            sql`${timestampColumn} = ${cursorDate}`,
             gt(idColumn, cursor.id)
           )
         );
       } else {
         return or(
-          gt(timestampColumn, sql`to_timestamp(${cursor.timestamp! / 1000})`),
+          gt(timestampColumn, cursorDate),
           and(
-            sql`${timestampColumn} = to_timestamp(${cursor.timestamp! / 1000})`,
+            sql`${timestampColumn} = ${cursorDate}`,
             lt(idColumn, cursor.id)
           )
         );
@@ -121,71 +123,99 @@ export class PaginationUtils {
     }
   }
 
-  static buildResponse<T extends { id: string; createdAt?: Date }>(
+  static buildResponse<T>(
     items: T[],
     limit: number,
-    direction: 'forward' | 'backward'
+    direction: 'forward' | 'backward',
+    cursorFields: string[] = ['createdAt', 'id'],
+    hasPreviousPage: boolean = false
   ): PaginatedResponse<T> {
     const hasMore = items.length > limit;
-    const data = hasMore ? items.slice(0, limit) : items;
+    
+    // Slice to limit
+    let slicedItems = items.slice(0, limit);
+    
+    // For backward navigation with hasMore, reverse the dataset
+    if (direction === 'backward' && hasMore) {
+      slicedItems = slicedItems.reverse();
+    }
 
     let nextCursor: string | null = null;
     let prevCursor: string | null = null;
 
-    if (data.length > 0) {
-      if (direction === 'forward' && hasMore) {
-        const lastItem = data[data.length - 1];
+    if (slicedItems.length > 0) {
+      const timestampField = cursorFields[0];
+      const idField = cursorFields[1];
+      
+      // Build nextCursor from last item if there are more results
+      if (hasMore) {
+        const lastItem = slicedItems[slicedItems.length - 1] as any;
         nextCursor = this.encodeCursor({
-          id: lastItem.id,
-          timestamp: lastItem.createdAt?.getTime(),
+          id: lastItem[idField],
+          timestamp: lastItem[timestampField]?.getTime ? lastItem[timestampField].getTime() : undefined,
         });
       }
 
-      if (direction === 'backward' || data.length === limit) {
-        const firstItem = data[0];
+      // Only set prevCursor if we actually came from a previous page
+      if (hasPreviousPage) {
+        const firstItem = slicedItems[0] as any;
         prevCursor = this.encodeCursor({
-          id: firstItem.id,
-          timestamp: firstItem.createdAt?.getTime(),
+          id: firstItem[idField],
+          timestamp: firstItem[timestampField]?.getTime ? firstItem[timestampField].getTime() : undefined,
         });
       }
     }
 
     return {
-      data,
+      data: slicedItems,
       pagination: {
         hasMore,
         nextCursor,
         prevCursor,
-        totalReturned: data.length,
+        totalReturned: slicedItems.length,
       },
     };
   }
 
-  static async executePaginatedQuery<T extends { id: string; createdAt?: Date }>(
-    queryFn: (limit: number, cursorCondition?: SQL) => Promise<T[]>,
-    params: PaginationParams
-  ): Promise<PaginatedResponse<T>> {
-    const { limit, cursor, direction } = this.validateParams(params);
-
-    const cursorCondition = cursor
-      ? this.buildCursorCondition(
-          {} as any,
-          cursor,
-          direction,
-          sql`id`,
-          sql`created_at`
-        )
-      : undefined;
-
-    const items = await queryFn(limit + 1, cursorCondition);
-
-    return this.buildResponse(items, limit, direction);
+  static async executePaginatedQuery<T extends Record<string, any>>(
+    query: any,
+    table: T,
+    options: {
+      cursor?: string;
+      limit?: number;
+      direction?: 'forward' | 'backward';
+      idColumn?: string;
+      timestampColumn?: string;
+    }
+  ): Promise<PaginatedResponse<any>> {
+    const { cursor, limit = 50, direction = 'forward', idColumn = 'id', timestampColumn = 'createdAt' } = options;
+    
+    let modifiedQuery = query;
+    
+    if (cursor) {
+      const cursorData = this.decodeCursor(cursor);
+      const condition = this.buildCursorCondition(
+        table,
+        cursorData,
+        direction,
+        table[idColumn],
+        table[timestampColumn]
+      );
+      if (condition) {
+        modifiedQuery = modifiedQuery.where(condition);
+      }
+    }
+    
+    // Use timestamp column parameter for ORDER BY
+    // Both directions use DESC for consistent cursor logic
+    modifiedQuery = direction === 'forward'
+      ? modifiedQuery.orderBy(desc(table[timestampColumn]), desc(table[idColumn]))
+      : modifiedQuery.orderBy(desc(table[timestampColumn]), desc(table[idColumn]));
+    
+    modifiedQuery = modifiedQuery.limit(limit + 1);
+    
+    const items = await modifiedQuery;
+    
+    return this.buildResponse(items, limit, direction, [timestampColumn, idColumn], !!cursor);
   }
-}
-
-function or(...conditions: (SQL | undefined)[]): SQL | undefined {
-  const validConditions = conditions.filter((c): c is SQL => c !== undefined);
-  if (validConditions.length === 0) return undefined;
-  if (validConditions.length === 1) return validConditions[0];
-  return sql`(${sql.join(validConditions, sql` OR `)})`;
 }
