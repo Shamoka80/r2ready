@@ -2434,3 +2434,31 @@ export const refreshClientOrgStatsSQL = `REFRESH MATERIALIZED VIEW CONCURRENTLY 
 
 // SQL to drop the materialized view (for migrations/cleanup)
 export const dropClientOrgStatsViewSQL = `DROP MATERIALIZED VIEW IF EXISTS client_org_stats;`;
+
+// Materialized view for assessment stats (performance optimization)
+// This eliminates multiple queries in getDashboardKPIs by pre-aggregating stats per tenant
+export const assessmentStatsViewSQL = `
+CREATE MATERIALIZED VIEW IF NOT EXISTS assessment_stats AS
+SELECT 
+  "tenantId" as tenant_id,
+  COUNT(*) as total_assessments,
+  COUNT(CASE WHEN status = 'IN_PROGRESS' THEN 1 END) as in_progress_count,
+  COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END) as completed_count,
+  COUNT(CASE WHEN status = 'UNDER_REVIEW' THEN 1 END) as under_review_count,
+  COUNT(CASE WHEN status = 'DRAFT' THEN 1 END) as draft_count,
+  AVG(CASE WHEN status = 'COMPLETED' AND "overallScore" IS NOT NULL THEN "overallScore" END) as avg_readiness_score,
+  COUNT(CASE WHEN status = 'COMPLETED' AND "overallScore" >= 90 THEN 1 END) as certification_ready_count
+FROM "Assessment"
+GROUP BY "tenantId";
+`;
+
+// Indexes for the assessment_stats materialized view
+export const assessmentStatsIndexSQL = [
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_assessment_stats_tenant_id ON assessment_stats (tenant_id);`
+];
+
+// SQL to refresh the assessment_stats materialized view
+export const refreshAssessmentStatsSQL = `REFRESH MATERIALIZED VIEW CONCURRENTLY assessment_stats;`;
+
+// SQL to drop the assessment_stats materialized view (for migrations/cleanup)
+export const dropAssessmentStatsViewSQL = `DROP MATERIALIZED VIEW IF EXISTS assessment_stats;`;

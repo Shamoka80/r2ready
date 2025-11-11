@@ -23,7 +23,7 @@ import { QueryOptimizationService } from '../services/queryOptimizationService';
 import { cacheService } from '../services/cachingService';
 import { ConsistentLogService } from '../services/consistentLogService';
 import { IntakeProcessor } from './intakeLogic';
-import { refreshClientOrgStats } from '../services/materializedViews';
+import { refreshClientOrgStats, refreshAssessmentStats } from '../services/materializedViews';
 
 const router = Router();
 
@@ -391,7 +391,11 @@ router.post("/",
       auditDetails
     );
 
-    // Refresh materialized view for consultant stats (non-blocking)
+    // Refresh materialized views (non-blocking)
+    refreshAssessmentStats().catch(err => {
+      console.error('[Assessment] Failed to refresh assessment stats after creation:', err);
+    });
+    
     if (assessment.clientOrganizationId) {
       refreshClientOrgStats().catch(err => {
         console.error('[Assessment] Failed to refresh client org stats after creation:', err);
@@ -857,9 +861,17 @@ router.put("/:id",
       { title: updatedAssessment.title, status: updatedAssessment.status }
     );
 
-    // Refresh materialized view if status changed (affects stats) and for consultant clients
-    if (updatedAssessment.clientOrganizationId && 
-        existingAssessment.status !== updatedAssessment.status) {
+    // Refresh materialized views if status or overallScore changed (affects stats)
+    const statusChanged = existingAssessment.status !== updatedAssessment.status;
+    const scoreChanged = existingAssessment.overallScore !== updatedAssessment.overallScore;
+    
+    if (statusChanged || scoreChanged) {
+      refreshAssessmentStats().catch(err => {
+        console.error('[Assessment] Failed to refresh assessment stats after update:', err);
+      });
+    }
+    
+    if (updatedAssessment.clientOrganizationId && statusChanged) {
       refreshClientOrgStats().catch(err => {
         console.error('[Assessment] Failed to refresh client org stats after update:', err);
       });
@@ -1208,7 +1220,11 @@ router.delete("/:id",
       { status: 'ARCHIVED' }
     );
 
-    // Refresh materialized view for consultant stats (archiving affects counts)
+    // Refresh materialized views (archiving affects counts)
+    refreshAssessmentStats().catch(err => {
+      console.error('[Assessment] Failed to refresh assessment stats after deletion:', err);
+    });
+    
     if (existingAssessment.clientOrganizationId) {
       refreshClientOrgStats().catch(err => {
         console.error('[Assessment] Failed to refresh client org stats after deletion:', err);
