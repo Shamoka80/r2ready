@@ -10,7 +10,12 @@ export type FeatureFlag =
   | 'security_hardening'
   | 'training_center'
   | 'aws_s3_storage'
-  | 'enable_email_verification';
+  | 'enable_email_verification'
+  // Phase 5: R2v3 Algorithm Enhancement Flags
+  | 'use_config_weights'
+  | 'enforce_must_pass'
+  | 'separate_maturity'
+  | 'exclude_na_from_denominator';
 
 export interface FeatureFlagConfig {
   name: FeatureFlag;
@@ -84,6 +89,35 @@ export const FEATURE_FLAGS: Record<FeatureFlag, FeatureFlagConfig> = {
     defaultValue: true,
     scope: 'global',
     rolloutStrategy: 'percentage'
+  },
+  // Phase 5: R2v3 Algorithm Enhancement Feature Flags
+  use_config_weights: {
+    name: 'use_config_weights',
+    description: 'Enable database-driven scoring configuration with externalized category weights and thresholds instead of hardcoded values',
+    defaultValue: false,
+    scope: 'global',
+    rolloutStrategy: 'gradual'
+  },
+  enforce_must_pass: {
+    name: 'enforce_must_pass',
+    description: 'Enable critical gate enforcement requiring all 8 must-pass R2v3 requirements (EHSMS, legal plan, focus materials, DSV, data security, closure plan, financial assurance, SERI license) before assessment completion',
+    defaultValue: false,
+    scope: 'global',
+    rolloutStrategy: 'gradual'
+  },
+  separate_maturity: {
+    name: 'separate_maturity',
+    description: 'Calculate and store separate operational maturity scores (BCP, CI, Stakeholder) alongside readiness scoring',
+    defaultValue: false,
+    scope: 'global',
+    rolloutStrategy: 'gradual'
+  },
+  exclude_na_from_denominator: {
+    name: 'exclude_na_from_denominator',
+    description: 'Exclude N/A responses from scoring denominator calculation (count only answered questions)',
+    defaultValue: false,
+    scope: 'global',
+    rolloutStrategy: 'gradual'
   }
 };
 

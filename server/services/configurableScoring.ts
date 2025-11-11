@@ -55,7 +55,8 @@ export class ConfigurableScoring {
    */
   static async calculateScore(
     assessmentId: string, 
-    configId?: string
+    configId?: string,
+    naHandlingOverride?: 'EXCLUDE' | 'COUNT_AS_100' | 'COUNT_AS_0'
   ): Promise<ScoringResult> {
     const config = configId 
       ? await this.getScoringConfig(configId)
@@ -65,24 +66,30 @@ export class ConfigurableScoring {
       throw new Error('No scoring configuration found');
     }
 
+    // Apply naHandling override if provided (for feature flag control)
+    const effectiveNaHandling = naHandlingOverride || config.naHandling;
+
     const assessmentAnswers = await this.getAssessmentAnswers(assessmentId);
     
     if (assessmentAnswers.length === 0) {
       return this.createEmptyResult(config.configName);
     }
 
+    // Use effectiveNaHandling instead of config.naHandling
+    const configWithOverride = { ...config, naHandling: effectiveNaHandling };
+
     const categoryScores = await this.calculateCategoryScores(
       assessmentAnswers,
-      config
+      configWithOverride
     );
 
-    const weightedScore = this.calculateWeightedScore(categoryScores, config);
+    const weightedScore = this.calculateWeightedScore(categoryScores, configWithOverride);
 
     const naCount = assessmentAnswers.filter(a => 
       this.isNAResponse(a.value)
     ).length;
 
-    const effectiveQuestions = config.naHandling === 'EXCLUDE' 
+    const effectiveQuestions = effectiveNaHandling === 'EXCLUDE' 
       ? assessmentAnswers.length - naCount 
       : assessmentAnswers.length;
 
@@ -90,13 +97,13 @@ export class ConfigurableScoring {
       overallScore: weightedScore,
       weightedScore,
       categoryScores,
-      isPassing: weightedScore >= config.readinessThresholds.passing,
-      isReady: weightedScore >= config.readinessThresholds.ready,
+      isPassing: weightedScore >= configWithOverride.readinessThresholds.passing,
+      isReady: weightedScore >= configWithOverride.readinessThresholds.ready,
       totalQuestions: assessmentAnswers.length,
       answeredQuestions: assessmentAnswers.length,
       naQuestions: naCount,
       effectiveQuestions,
-      scoringConfigUsed: config.configName
+      scoringConfigUsed: configWithOverride.configName
     };
   }
 
@@ -214,6 +221,7 @@ export class ConfigurableScoring {
     for (const answer of assessmentAnswers) {
       const questionObj = Array.isArray(answer.question) ? answer.question[0] : answer.question;
       const category = questionObj?.category || 'UNKNOWN';
+      const isNA = this.isNAResponse(answer.value);
       const score = this.calculateAnswerScore(answer.value, config.naHandling);
       const weight = questionObj?.weightOverride ?? 1.0;
 
@@ -222,6 +230,13 @@ export class ConfigurableScoring {
       }
 
       const categoryData = categoriesMap.get(category)!;
+      
+      // When EXCLUDE mode and answer is N/A, skip adding to denominator
+      if (config.naHandling === 'EXCLUDE' && isNA) {
+        // Don't increment maxScore or count for N/A when excluding
+        continue;
+      }
+      
       categoryData.totalScore += score * weight;
       categoryData.maxScore += 100 * weight;
       categoryData.count += 1;

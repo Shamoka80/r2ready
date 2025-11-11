@@ -1,5 +1,5 @@
 import { sql, eq } from "drizzle-orm";
-import { pgTable, text, varchar, boolean, real, timestamp, json, pgEnum, uuid, index, serial, integer, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, boolean, real, timestamp, json, pgEnum, uuid, index, serial, integer, uniqueIndex, jsonb, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -1052,6 +1052,41 @@ export const maturityScores: any = pgTable("MaturityScore", {
   createdAt: timestamp("createdAt").default(sql`now()`).notNull(),
   updatedAt: timestamp("updatedAt").default(sql`now()`).notNull(),
 });
+
+// Feature flags table - Phase 5 Integration (tenant-aware with hierarchical resolution)
+export const featureFlags = pgTable("FeatureFlag", {
+  // Primary key
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Tenant reference (nullable for global flags)
+  tenantId: varchar("tenantId").references(() => tenants.id, { onDelete: "cascade" }),
+  key: text("key").notNull(),
+  
+  // Flag state
+  isEnabled: boolean("isEnabled").notNull().default(false),
+  defaultValue: boolean("defaultValue").notNull().default(false),
+  
+  // Rollout configuration (supports percentage rollouts, whitelists, etc.)
+  rolloutLevel: jsonb("rolloutLevel").notNull().default(sql`'{}'::jsonb`),
+  
+  // Metadata for admin UI
+  description: text("description"),
+  
+  // Audit trail
+  createdAt: timestamp("createdAt").notNull().default(sql`now()`),
+  updatedAt: timestamp("updatedAt").notNull().default(sql`now()`),
+  createdBy: varchar("createdBy").references(() => users.id),
+}, (table) => ({
+  // Unique constraint on (tenantId, key) for tenant-specific flags
+  uniqueTenantFlag: uniqueIndex("FeatureFlag_tenant_key_idx")
+    .on(table.tenantId, table.key)
+    .where(sql`"tenantId" IS NOT NULL`),
+  
+  // Unique constraint on key for global flags (where tenantId IS NULL)
+  uniqueGlobalFlag: uniqueIndex("FeatureFlag_key_global_idx")
+    .on(table.key)
+    .where(sql`"tenantId" IS NULL`),
+}));
 
 // === INTAKE SYSTEM ===
 
@@ -2302,6 +2337,15 @@ export type InsertQuestionDependency = z.infer<typeof insertQuestionDependencySc
 export type MaturityScore = typeof maturityScores.$inferSelect;
 export type NewMaturityScore = typeof maturityScores.$inferInsert;
 export type InsertMaturityScore = z.infer<typeof insertMaturityScoreSchema>;
+
+// Feature flag schemas and types
+export const insertFeatureFlagSchema = createInsertSchema(featureFlags).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+export type FeatureFlag = typeof featureFlags.$inferSelect;
+export type NewFeatureFlag = typeof featureFlags.$inferInsert;
+export type InsertFeatureFlag = z.infer<typeof insertFeatureFlagSchema>;
 
 // === PHASE 5 SECURITY TYPE EXPORTS ===
 

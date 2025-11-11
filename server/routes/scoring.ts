@@ -5,6 +5,7 @@ import { db } from "../db";
 import { assessments, questions, answers, clauses } from "../../shared/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { requireFacilityPermissionFromAssessment, type AuthenticatedRequest } from "../services/authService";
+import { ScoringOrchestrator } from "../services/scoringOrchestrator";
 
 const router = Router();
 
@@ -106,17 +107,16 @@ router.get('/:id/scoring',
       }
     }
 
-    // Calculate comprehensive scoring
-    const scoringResult = await calculateAssessmentScore(id, intakeScope);
+    // Calculate comprehensive scoring with Phase 5 enhancements
+    const scoringResult = await ScoringOrchestrator.calculateEnhancedScore(
+      id,
+      calculateAssessmentScore,
+      intakeScope
+    );
 
     // Update assessment record with latest score (if not realtime)
     if (!realtime) {
-      await db.update(assessments)
-        .set({
-          progress: scoringResult.scorePercentage,
-          updatedAt: new Date()
-        })
-        .where(eq(assessments.id, id));
+      await ScoringOrchestrator.updateAssessmentWithResults(id, scoringResult);
     }
 
     res.json(scoringResult);
@@ -140,14 +140,18 @@ router.post('/:id/scoring/refresh',
       intakeScope = await IntakeProcessor.generateAssessmentScope(intakeFormId);
     }
 
-    const scoringResult = await calculateAssessmentScore(id, intakeScope);
+    // Calculate scoring with Phase 5 enhancements
+    const scoringResult = await ScoringOrchestrator.calculateEnhancedScore(
+      id,
+      calculateAssessmentScore,
+      intakeScope
+    );
 
     // Update assessment with fresh scoring
+    await ScoringOrchestrator.updateAssessmentWithResults(id, scoringResult);
     await db.update(assessments)
       .set({
-        progress: scoringResult.scorePercentage,
         status: scoringResult.complianceStatus === 'COMPLIANT' ? 'COMPLETED' : 'IN_PROGRESS',
-        updatedAt: new Date(),
         ...(scoringResult.complianceStatus === 'COMPLIANT' && { completedAt: new Date() })
       })
       .where(eq(assessments.id, id));
