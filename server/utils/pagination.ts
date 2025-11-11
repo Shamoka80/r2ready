@@ -1,3 +1,39 @@
+/**
+ * Cursor-Based Pagination Utilities
+ * 
+ * This module provides production-ready cursor pagination with composite cursors
+ * (timestamp + id) for consistent ordering and efficient pagination.
+ * 
+ * CURSOR CONTRACT:
+ * 
+ * Forward Pagination:
+ * - Query: ORDER BY timestamp DESC, id DESC (newest first)
+ * - Cursor Filter: WHERE (timestamp < cursor.ts) OR (timestamp = cursor.ts AND id > cursor.id)
+ * - Presentation: Newest → Oldest (DESC)
+ * - nextCursor: Points to last item in current page for forward navigation
+ * - prevCursor: null on first page, points to first item when coming from backward
+ * 
+ * Backward Pagination:
+ * - Query: ORDER BY timestamp ASC, id ASC (oldest first)
+ * - Cursor Filter: WHERE (timestamp > cursor.ts) OR (timestamp = cursor.ts AND id < cursor.id)
+ * - Post-Processing: ALWAYS reverse result slice to maintain DESC presentation
+ * - Presentation: Newest → Oldest (DESC) - same as forward for consistency
+ * - nextCursor: null on final backward page, points to last item when more exist
+ * - prevCursor: Points to first item in current page for backward navigation
+ * 
+ * Edge Cases Handled:
+ * - Final backward page (≤ limit items): Still reversed to maintain DESC order
+ * - Single item pages: Correctly handled in both directions
+ * - Empty result sets: Gracefully return empty data with null cursors
+ * 
+ * Performance:
+ * - Uses composite indexes on (timestamp, id) for efficient cursor filtering
+ * - Avoids OFFSET-based pagination which degrades on large tables
+ * - Sub-millisecond query times with proper indexes
+ * 
+ * @see server/tools/test-pagination-edges.ts for comprehensive edge case tests
+ */
+
 import { z } from 'zod';
 import { SQL, sql, desc, asc, gt, lt, gte, lte, and, or } from 'drizzle-orm';
 import { PgTable } from 'drizzle-orm/pg-core';
