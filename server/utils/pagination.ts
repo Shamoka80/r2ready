@@ -135,8 +135,9 @@ export class PaginationUtils {
     // Slice to limit
     let slicedItems = items.slice(0, limit);
     
-    // For backward navigation with hasMore, reverse the dataset
-    if (direction === 'backward' && hasMore) {
+    // For backward navigation, ALWAYS reverse to maintain DESC presentation
+    // (we query ASC for backward to get correct LIMIT window, then reverse)
+    if (direction === 'backward') {
       slicedItems = slicedItems.reverse();
     }
 
