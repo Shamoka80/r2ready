@@ -160,16 +160,6 @@ export default function QuestionsTab({ assessmentId, intakeFormId, filteringInfo
         questionIdToUuidMap.current = idMap;
         setAnswers(initialAnswers);
 
-        // Debug logging for answer retrieval
-        console.log(`📊 [QuestionsTab] Loaded answers for assessment ${currentAssessmentId}:`, {
-          totalGroups: response.groups.length,
-          totalQuestions: Object.keys(idMap).length,
-          questionsWithAnswers: Object.keys(initialAnswers).length,
-          sampleIdMap: Object.entries(idMap).slice(0, 3),
-          sampleAnswers: Object.entries(initialAnswers).slice(0, 3),
-          allAnswers: initialAnswers
-        });
-
         setError(null);
       } catch (_err) {
         setError(_err instanceof Error ? _err.message : 'Failed to load questions');
@@ -188,27 +178,14 @@ export default function QuestionsTab({ assessmentId, intakeFormId, filteringInfo
     // Use ref to get latest answers state (avoid stale closure)
     const currentAnswers = currentAnswersRef.current;
 
-    console.log(`📝 [savePendingAnswers] Starting batch save. Pending keys:`, Array.from(pendingAnswers.current.keys()));
-    console.log(`📝 [savePendingAnswers] Current answers from ref:`, currentAnswers);
-
     // Snapshot the pending queue with revisions for this batch
     const batchToSave = new Map(pendingAnswers.current);
-    const beforeFilter = Array.from(batchToSave.keys());
     const answersToSave: Answer[] = Array.from(batchToSave.keys())
-      .filter(questionId => {
-        const hasAnswer = currentAnswers[questionId] !== undefined;
-        if (!hasAnswer) {
-          console.warn(`⚠️ [savePendingAnswers] Filtering out ${questionId} - no value in answers ref`);
-        }
-        return hasAnswer;
-      })
+      .filter(questionId => currentAnswers[questionId] !== undefined)
       .map(questionId => ({
         questionId: questionIdToUuidMap.current[questionId] || questionId, // Use UUID from map
         value: currentAnswers[questionId]!
       }));
-
-    console.log(`📝 [savePendingAnswers] Filtered ${beforeFilter.length} -> ${answersToSave.length} answers`);
-    console.log(`📝 [savePendingAnswers] Answers to save:`, answersToSave);
 
     // Mark all pending as saving (use original questionId for status tracking)
     const statusUpdates: Record<string, SaveStatus> = {};
@@ -378,17 +355,11 @@ export default function QuestionsTab({ assessmentId, intakeFormId, filteringInfo
 
   // Handle answer change with debouncing
   const handleAnswerChange = useCallback((questionId: string, value: string) => {
-    console.log(`📝 [handleAnswerChange] Question ${questionId} = "${value}"`);
-    setAnswers(prev => {
-      const updated = { ...prev, [questionId]: value };
-      console.log(`📝 [handleAnswerChange] Updated answers state:`, Object.keys(updated));
-      return updated;
-    });
+    setAnswers(prev => ({ ...prev, [questionId]: value }));
 
     // Add to pending queue with new revision
     revisionCounter.current++;
     pendingAnswers.current.set(questionId, revisionCounter.current);
-    console.log(`📝 [handleAnswerChange] Pending queue size: ${pendingAnswers.current.size}, keys:`, Array.from(pendingAnswers.current.keys()));
 
     // Cancel any existing retry timer for this question to prevent stale data overwrites
     if (retryTimeouts.current.has(questionId)) {
@@ -456,8 +427,6 @@ export default function QuestionsTab({ assessmentId, intakeFormId, filteringInfo
       const queryParams = `?intakeFormId=${intakeFormId}&refreshFiltering=true`;
       const data = await apiGet<QuestionsResponse>(`/api/assessments/${currentAssessmentId}/questions${queryParams}`);
       setQuestionsData(data);
-
-      console.log('🔄 Question filtering refreshed successfully');
     } catch (error) {
       console.error('Failed to refresh filtering:', error);
     } finally {
