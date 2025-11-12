@@ -370,13 +370,19 @@ function calculateQuestionScore(value: any, question: any, compliance?: string):
   // Basic scoring algorithm - can be enhanced based on business rules
   let baseScore = 0;
   
+  // Normalize value: handle JSON-encoded strings and convert to lowercase for comparison
+  let normalizedValue = value;
+  if (typeof value === 'string') {
+    normalizedValue = value.toLowerCase().trim();
+  }
+  
   if (compliance) {
     switch (compliance) {
       case "COMPLIANT":
         baseScore = 100;
         break;
       case "PARTIALLY_COMPLIANT":
-        baseScore = 60;
+        baseScore = 50;
         break;
       case "NON_COMPLIANT":
         baseScore = 0;
@@ -388,10 +394,12 @@ function calculateQuestionScore(value: any, question: any, compliance?: string):
         baseScore = 0;
     }
   } else if (question.responseType === "yes_no") {
-    if (value === "Yes" || value === true) baseScore = 100;
-    else if (value === "No" || value === false) baseScore = 0;
-    else if (value === "Partial") baseScore = 60;
-    else if (value === "N/A") baseScore = 100;
+    // Case-insensitive matching for answer values
+    if (normalizedValue === "yes" || value === true) baseScore = 100;
+    else if (normalizedValue === "no" || value === false) baseScore = 0;
+    else if (normalizedValue === "partial") baseScore = 50;
+    else if (normalizedValue === "n/a") baseScore = 100;
+    else if (normalizedValue === "in progress") baseScore = 25;
   } else if (question.responseType === "scale") {
     // Assume scale of 1-5, normalize to 0-100
     const numValue = typeof value === 'number' ? value : parseInt(value) || 0;

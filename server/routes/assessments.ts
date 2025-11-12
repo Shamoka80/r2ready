@@ -1060,6 +1060,23 @@ router.get("/:id/questions",
     // Apply answered filter if specified
     const questionResults = await questionsQuery;
 
+    // Debug logging for answer retrieval
+    const questionsWithAnswers = questionResults.filter(q => q.answerValue !== null);
+    console.log(`📊 [Questions Endpoint] Assessment ${id}:`, {
+      totalQuestions: questionResults.length,
+      questionsWithAnswers: questionsWithAnswers.length,
+      sampleWithAnswer: questionsWithAnswers.slice(0, 2).map(q => ({
+        questionId: q.questionId,
+        id: q.id,
+        answerValue: q.answerValue,
+        answerScore: q.answerScore
+      })),
+      sampleWithoutAnswer: questionResults.filter(q => q.answerValue === null).slice(0, 2).map(q => ({
+        questionId: q.questionId,
+        id: q.id
+      }))
+    });
+
     let filteredQuestions = questionResults;
     if (answered === 'true') {
       filteredQuestions = questionResults.filter(q => q.answerValue !== null);
