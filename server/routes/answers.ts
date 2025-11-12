@@ -142,6 +142,11 @@ router.post("/:assessmentId/answers/batch", async (req: AuthenticatedRequest, re
     const savedAnswers = [];
     const questionIds = answerData.map(a => a.questionId);
     
+    console.log(`📝 [Batch Save] Processing ${answerData.length} answers for assessment ${assessmentId}:`, {
+      questionIds,
+      assessmentStdId: assessment.stdId
+    });
+    
     // Get all questions for validation and scoring
     const assessmentQuestions = await db.query.questions.findMany({
       where: inArray(questions.id, questionIds),
@@ -150,12 +155,32 @@ router.post("/:assessmentId/answers/batch", async (req: AuthenticatedRequest, re
       }
     });
 
+    console.log(`📝 [Batch Save] Found ${assessmentQuestions.length} questions in database:`, 
+      assessmentQuestions.map(q => ({ 
+        id: q.id, 
+        questionId: q.questionId,
+        hasClause: !!q.clause,
+        clauseStdId: (q.clause as any)?.stdId 
+      }))
+    );
+
     // Process each answer
     for (const answerItem of answerData) {
       const question = assessmentQuestions.find(q => q.id === answerItem.questionId);
       
-      if (!question || !question.clause || (question.clause as any).stdId !== assessment.stdId) {
-        continue; // Skip invalid questions
+      if (!question) {
+        console.warn(`⚠️ [Batch Save] Question not found: ${answerItem.questionId}`);
+        continue;
+      }
+      
+      if (!question.clause) {
+        console.warn(`⚠️ [Batch Save] Question ${question.questionId} has no clause`);
+        continue;
+      }
+      
+      if ((question.clause as any).stdId !== assessment.stdId) {
+        console.warn(`⚠️ [Batch Save] Question ${question.questionId} stdId mismatch: ${(question.clause as any).stdId} !== ${assessment.stdId}`);
+        continue;
       }
 
       const score = calculateQuestionScore(answerItem.value, question, answerItem.compliance);

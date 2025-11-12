@@ -183,16 +183,32 @@ export default function QuestionsTab({ assessmentId, intakeFormId, filteringInfo
 
   // Debounced batch save function
   const savePendingAnswers = useCallback(async () => {
-    if (!currentAssessmentId || pendingAnswers.current.size === 0) return;
+    if (!currentAssessmentIdRef.current || pendingAnswers.current.size === 0) return;
+
+    // Use ref to get latest answers state (avoid stale closure)
+    const currentAnswers = currentAnswersRef.current;
+
+    console.log(`📝 [savePendingAnswers] Starting batch save. Pending keys:`, Array.from(pendingAnswers.current.keys()));
+    console.log(`📝 [savePendingAnswers] Current answers from ref:`, currentAnswers);
 
     // Snapshot the pending queue with revisions for this batch
     const batchToSave = new Map(pendingAnswers.current);
+    const beforeFilter = Array.from(batchToSave.keys());
     const answersToSave: Answer[] = Array.from(batchToSave.keys())
-      .filter(questionId => answers[questionId] !== undefined)
+      .filter(questionId => {
+        const hasAnswer = currentAnswers[questionId] !== undefined;
+        if (!hasAnswer) {
+          console.warn(`⚠️ [savePendingAnswers] Filtering out ${questionId} - no value in answers ref`);
+        }
+        return hasAnswer;
+      })
       .map(questionId => ({
         questionId: questionIdToUuidMap.current[questionId] || questionId, // Use UUID from map
-        value: answers[questionId]!
+        value: currentAnswers[questionId]!
       }));
+
+    console.log(`📝 [savePendingAnswers] Filtered ${beforeFilter.length} -> ${answersToSave.length} answers`);
+    console.log(`📝 [savePendingAnswers] Answers to save:`, answersToSave);
 
     // Mark all pending as saving (use original questionId for status tracking)
     const statusUpdates: Record<string, SaveStatus> = {};
@@ -203,7 +219,7 @@ export default function QuestionsTab({ assessmentId, intakeFormId, filteringInfo
     setSaveStatuses(prev => ({ ...prev, ...statusUpdates }));
 
     try {
-      await apiPost<{ upserted: number }>(`/api/answers/${currentAssessmentId}/answers/batch`, {
+      await apiPost<{ upserted: number }>(`/api/answers/${currentAssessmentIdRef.current}/answers/batch`, {
         answers: answersToSave
       });
 
@@ -282,7 +298,7 @@ export default function QuestionsTab({ assessmentId, intakeFormId, filteringInfo
         }
       });
     }
-  }, [currentAssessmentId, answers]);
+  }, []); // No dependencies - uses refs to avoid stale closures
 
   // Exponential backoff retry logic
   const scheduleRetry = useCallback((questionId: string, retryCount: number, originalRevision: number) => {
@@ -358,15 +374,21 @@ export default function QuestionsTab({ assessmentId, intakeFormId, filteringInfo
     }, delay);
 
     retryTimeouts.current.set(questionId, timeoutId);
-  }, [answers, currentAssessmentId]);
+  }, []); // No dependencies - uses refs to avoid stale closures
 
   // Handle answer change with debouncing
   const handleAnswerChange = useCallback((questionId: string, value: string) => {
-    setAnswers(prev => ({ ...prev, [questionId]: value }));
+    console.log(`📝 [handleAnswerChange] Question ${questionId} = "${value}"`);
+    setAnswers(prev => {
+      const updated = { ...prev, [questionId]: value };
+      console.log(`📝 [handleAnswerChange] Updated answers state:`, Object.keys(updated));
+      return updated;
+    });
 
     // Add to pending queue with new revision
     revisionCounter.current++;
     pendingAnswers.current.set(questionId, revisionCounter.current);
+    console.log(`📝 [handleAnswerChange] Pending queue size: ${pendingAnswers.current.size}, keys:`, Array.from(pendingAnswers.current.keys()));
 
     // Cancel any existing retry timer for this question to prevent stale data overwrites
     if (retryTimeouts.current.has(questionId)) {
