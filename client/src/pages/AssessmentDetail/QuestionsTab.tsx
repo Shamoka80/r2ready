@@ -409,8 +409,8 @@ export default function QuestionsTab({ assessmentId, intakeFormId, filteringInfo
       clearTimeout(debounceTimeout.current);
     }
 
-    // Set new timeout
-    debounceTimeout.current = setTimeout(savePendingAnswers, 600);
+    // Set new timeout (2s allows better batching of rapid edits)
+    debounceTimeout.current = setTimeout(savePendingAnswers, 2000);
   }, [savePendingAnswers]);
 
   // Progress refresh functionality
