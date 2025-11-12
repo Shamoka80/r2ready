@@ -30,7 +30,7 @@ interface QuestionsResponse {
 }
 
 /**
- * Login and get session cookie
+ * Login and get auth token
  */
 async function login(): Promise<string> {
   console.log('🔐 Logging in...');
@@ -47,25 +47,24 @@ async function login(): Promise<string> {
     throw new Error(`Login failed: ${response.statusText}`);
   }
 
-  // Get session cookie from response
-  const cookies = response.headers.get('set-cookie');
-  if (!cookies) {
-    throw new Error('No session cookie received');
+  const data = await response.json() as { token: string };
+  if (!data.token) {
+    throw new Error('No auth token received');
   }
 
   console.log('✅ Logged in successfully');
-  return cookies;
+  return data.token;
 }
 
 /**
  * Fetch all questions for an assessment
  */
-async function fetchQuestions(assessmentId: string, cookie: string): Promise<Question[]> {
+async function fetchQuestions(assessmentId: string, token: string): Promise<Question[]> {
   console.log(`📋 Fetching questions for assessment ${assessmentId}...`);
   
   const response = await fetch(`${BASE_URL}/api/assessments/${assessmentId}/questions`, {
     headers: {
-      'Cookie': cookie,
+      'Authorization': `Bearer ${token}`,
     },
   });
 
@@ -86,7 +85,7 @@ async function fetchQuestions(assessmentId: string, cookie: string): Promise<Que
 async function uploadAnswers(
   assessmentId: string,
   answers: Array<{ questionId: string; value: string }>,
-  cookie: string
+  token: string
 ): Promise<void> {
   const BATCH_SIZE = 50;
   const batches: Array<Array<{ questionId: string; value: string }>> = [];
@@ -105,7 +104,7 @@ async function uploadAnswers(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': cookie,
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({ answers: batch }),
     });
@@ -193,10 +192,10 @@ async function main() {
     console.log(`   Scenario: ${scenario}\n`);
 
     // Login
-    const cookie = await login();
+    const token = await login();
 
     // Fetch questions
-    const questions = await fetchQuestions(assessmentId, cookie);
+    const questions = await fetchQuestions(assessmentId, token);
 
     if (questions.length === 0) {
       console.log('⚠️  No questions found. Make sure the assessment exists and has questions.');
@@ -217,7 +216,7 @@ async function main() {
     }
 
     // Upload answers
-    await uploadAnswers(assessmentId, answers, cookie);
+    await uploadAnswers(assessmentId, answers, token);
 
     console.log('\n🎉 Bulk upload complete!');
     console.log(`   Total questions answered: ${answers.length}`);

@@ -299,12 +299,22 @@ function calculateCategoryScore(categoryKey: string, questions: any[], intakeSco
   const criticalGaps: string[] = [];
 
   for (const question of questions) {
-    const answerValue = question.answerValue;
+    // Normalize answer value (handle JSON-encoded values from database)
+    let answerValue = question.answerValue;
+    if (answerValue) {
+      // Remove JSON encoding if present (e.g., """Yes""" -> "Yes")
+      answerValue = typeof answerValue === 'string' ? answerValue.replace(/^"+|"+$/g, '') : answerValue;
+    }
+    
     maxScore += 100; // Each question worth 100 points
 
     if (answerValue) {
       answeredQuestions++;
-      const score = ANSWER_SCORES[answerValue as string] ?? 0;
+      // Case-insensitive lookup for robustness
+      const normalizedValue = Object.keys(ANSWER_SCORES).find(
+        key => key.toLowerCase() === answerValue.toLowerCase()
+      );
+      const score = normalizedValue ? ANSWER_SCORES[normalizedValue] : 0;
       totalScore += score;
 
       // Check for critical gaps

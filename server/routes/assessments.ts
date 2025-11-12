@@ -1313,4 +1313,58 @@ router.get("/:id/progress",
   }
 });
 
+// GET /api/assessments/:id/analytics - Get comprehensive analytics
+router.get("/:id/analytics", 
+  rateLimitMiddleware.general,
+  async (req: AuthenticatedRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { intakeFormId } = req.query;
+
+    // Verify assessment exists and user has access
+    const assessment = await db.query.assessments.findFirst({
+      where: and(
+        eq(assessments.id, id),
+        eq(assessments.tenantId, req.tenant!.id)
+      ),
+    });
+
+    if (!assessment) {
+      return res.status(404).json({ error: 'Assessment not found' });
+    }
+
+    // Import scoring function
+    const { calculateAssessmentScore } = await import('./scoring');
+    
+    // Get intake-based scope if provided
+    let intakeScope = null;
+    if (intakeFormId && typeof intakeFormId === 'string') {
+      try {
+        const { IntakeProcessor } = await import('./intakeLogic');
+        intakeScope = await IntakeProcessor.generateAssessmentScope(intakeFormId);
+      } catch (error) {
+        console.warn('Failed to get intake scope for analytics:', error);
+      }
+    }
+
+    const scoringData = await calculateAssessmentScore(id, intakeScope);
+
+    res.json({
+      assessmentId: id,
+      overallScore: scoringData.scorePercentage,
+      complianceStatus: scoringData.complianceStatus,
+      readinessLevel: scoringData.readinessLevel,
+      estimatedAuditSuccess: scoringData.estimatedAuditSuccess,
+      categoryScores: scoringData.categoryScores,
+      criticalIssues: scoringData.criticalIssues,
+      recommendations: scoringData.recommendations,
+      lastCalculated: scoringData.lastCalculated,
+      intakeBasedAnalytics: scoringData.intakeBasedScoring
+    });
+  } catch (error) {
+    console.error('Error generating analytics:', error);
+    res.status(500).json({ error: 'Failed to generate analytics' });
+  }
+});
+
 export default router;
