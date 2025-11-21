@@ -1,5 +1,4 @@
-import { db } from '../db';
-import { sql } from 'drizzle-orm';
+import { db, sql } from '../db';
 
 /**
  * Query Monitoring Service
@@ -15,7 +14,7 @@ import { sql } from 'drizzle-orm';
  * 
  * Guardrails:
  * - 30-day retention window for slow query logs
- * - Neon pg_stat_statements quota monitoring
+ * - pg_stat_statements quota monitoring
  * - Automatic cleanup to prevent unbounded growth
  */
 
@@ -55,13 +54,14 @@ export class QueryMonitoringService {
    */
   static async isPgStatStatementsAvailable(): Promise<boolean> {
     try {
-      const { rows } = await db.execute<{ available: boolean }>(sql`
+      // Use sql directly with postgres-js - it returns rows as an array
+      const result = await sql<{ available: boolean }>`
         SELECT EXISTS(
           SELECT 1 FROM pg_available_extensions 
           WHERE name = 'pg_stat_statements'
         ) as available
-      `);
-      return rows[0]?.available === true;
+      `;
+      return result[0]?.available === true;
     } catch (error) {
       console.warn('pg_stat_statements availability check failed:', error);
       return false;
@@ -70,30 +70,31 @@ export class QueryMonitoringService {
 
   /**
    * Enable pg_stat_statements extension if not already enabled
-   * Note: This may fail on Neon free tier or if extension quota is exceeded
+   * Note: This may fail if extension permissions are restricted or quota is exceeded
    */
   static async enablePgStatStatements(): Promise<{ success: boolean; message: string }> {
     try {
-      // Check if already enabled
-      const { rows: checkRows } = await db.execute<{ enabled: boolean }>(sql`
+      // Check if already enabled - use sql directly with postgres-js
+      const checkRows = await sql<{ enabled: boolean }>`
         SELECT EXISTS(
           SELECT 1 FROM pg_extension WHERE extname = 'pg_stat_statements'
         ) as enabled
-      `);
+      `;
       
       if (checkRows[0]?.enabled) {
         return { success: true, message: 'pg_stat_statements already enabled' };
       }
 
-      // Try to enable (may fail on Neon free tier)
-      await db.execute(sql`CREATE EXTENSION IF NOT EXISTS pg_stat_statements`);
+      // Try to enable (may fail if permissions are restricted)
+      await sql`CREATE EXTENSION IF NOT EXISTS pg_stat_statements`;
       return { success: true, message: 'pg_stat_statements enabled successfully' };
     } catch (error: any) {
-      // Expected to fail on Neon free tier or quota limits
-      console.warn('pg_stat_statements enablement failed (may be quota/tier limited):', error.message);
+      // Expected to fail on restricted database tiers or quota limits
+      // This is normal for many PostgreSQL setups where extensions require superuser privileges
+      // Don't log as warning - this is expected behavior
       return { 
         success: false, 
-        message: `pg_stat_statements not available: ${error.message}. This is normal on Neon free tier.` 
+        message: `pg_stat_statements not available: ${error.message}. This is normal if your database user lacks extension creation privileges.` 
       };
     }
   }
@@ -104,7 +105,8 @@ export class QueryMonitoringService {
    */
   static async getTopQueries(limit: number = 10): Promise<QueryStats[]> {
     try {
-      const { rows } = await db.execute<QueryStats>(sql`
+      // Use sql directly with postgres-js - it returns rows as an array
+      const rows = await sql<QueryStats>`
         SELECT 
           query,
           calls,
@@ -117,7 +119,7 @@ export class QueryMonitoringService {
           AND query NOT LIKE '%pg_catalog%'
         ORDER BY total_exec_time DESC
         LIMIT ${limit}
-      `);
+      `;
       
       return rows;
     } catch (error) {
@@ -131,16 +133,16 @@ export class QueryMonitoringService {
    */
   static async getPerformanceMetrics(): Promise<PerformanceMetrics> {
     try {
-      // Active connections
-      const { rows: connectionRows } = await db.execute<{ count: string }>(sql`
+      // Active connections - use sql directly with postgres-js
+      const connectionRows = await sql<{ count: string }>`
         SELECT count(*) as count 
         FROM pg_stat_activity 
         WHERE state = 'active'
-      `);
+      `;
       const activeConnections = Number(connectionRows[0]?.count || 0);
 
-      // Cache hit ratio (from pg_statio_user_tables)
-      const { rows: cacheRows } = await db.execute<{ hit_ratio: number }>(sql`
+      // Cache hit ratio (from pg_statio_user_tables) - use sql directly
+      const cacheRows = await sql<{ hit_ratio: number }>`
         SELECT 
           CASE 
             WHEN sum(heap_blks_hit) + sum(heap_blks_read) > 0 THEN
@@ -148,17 +150,17 @@ export class QueryMonitoringService {
             ELSE 0
           END as hit_ratio
         FROM pg_statio_user_tables
-      `);
+      `;
       const cacheHitRatio = Number(cacheRows[0]?.hit_ratio || 0);
 
-      // Database size
-      const { rows: sizeRows } = await db.execute<{ size: string }>(sql`
+      // Database size - use sql directly
+      const sizeRows = await sql<{ size: string }>`
         SELECT pg_size_pretty(pg_database_size(current_database())) as size
-      `);
+      `;
       const databaseSize = sizeRows[0]?.size || 'Unknown';
 
-      // Index usage statistics
-      const { rows: indexUsage } = await db.execute<{ tableName: string; indexName: string; scans: number }>(sql`
+      // Index usage statistics - use sql directly
+      const indexUsage = await sql<{ tableName: string; indexName: string; scans: number }>`
         SELECT 
           schemaname || '.' || tablename as "tableName",
           indexname as "indexName",
@@ -167,7 +169,7 @@ export class QueryMonitoringService {
         WHERE idx_scan > 0
         ORDER BY idx_scan DESC
         LIMIT 20
-      `);
+      `;
 
       // Slowest queries (from pg_stat_statements if available)
       const slowestQueries = await this.getTopQueries(10);
@@ -175,10 +177,11 @@ export class QueryMonitoringService {
       // Query throughput (approximate from pg_stat_statements if available)
       let queryThroughput = 0;
       try {
-        const { rows: throughputRows } = await db.execute<{ total_calls: number }>(sql`
+        // Use sql directly with postgres-js
+        const throughputRows = await sql<{ total_calls: number }>`
           SELECT sum(calls) as total_calls
           FROM pg_stat_statements
-        `);
+        `;
         const totalCalls = Number(throughputRows[0]?.total_calls || 0);
         // Rough estimate: calls per minute (pg_stat_statements tracks since last reset)
         queryThroughput = Math.round(totalCalls / 60);
@@ -207,7 +210,8 @@ export class QueryMonitoringService {
    */
   static async resetStatistics(): Promise<void> {
     try {
-      await db.execute(sql`SELECT pg_stat_statements_reset()`);
+      // Use sql directly with postgres-js
+      await sql`SELECT pg_stat_statements_reset()`;
     } catch (error) {
       console.warn('pg_stat_statements reset failed (extension may not be enabled)');
     }
@@ -218,7 +222,9 @@ export class QueryMonitoringService {
    */
   static async getSlowQueries(days: number = 7): Promise<SlowQuery[]> {
     try {
-      const { rows } = await db.execute<SlowQuery>(sql`
+      // Use sql directly with postgres-js - it returns rows as an array
+      // Note: INTERVAL requires string interpolation, so we use sql.unsafe for the dynamic part
+      const rows = await sql.unsafe<SlowQuery[]>(`
         SELECT 
           id,
           query,
@@ -226,7 +232,7 @@ export class QueryMonitoringService {
           timestamp,
           caller
         FROM slow_query_log
-        WHERE timestamp > NOW() - INTERVAL '${sql.raw(days.toString())} days'
+        WHERE timestamp > NOW() - INTERVAL '${days} days'
         ORDER BY duration DESC
         LIMIT 100
       `);
@@ -242,7 +248,8 @@ export class QueryMonitoringService {
    */
   static async logSlowQuery(query: string, duration: number, caller?: string): Promise<void> {
     try {
-      await db.execute(sql`
+      // Use sql directly with postgres-js
+      await sql`
         INSERT INTO slow_query_log (id, query, duration, timestamp, caller)
         VALUES (
           gen_random_uuid(),
@@ -251,7 +258,7 @@ export class QueryMonitoringService {
           NOW(),
           ${caller || null}
         )
-      `);
+      `;
     } catch (error) {
       // Fail silently - don't break application on logging errors
       console.error('Failed to log slow query:', error);
@@ -264,14 +271,15 @@ export class QueryMonitoringService {
    */
   static async purgeOldSlowQueryLogs(): Promise<{ deleted: number }> {
     try {
-      const { rows } = await db.execute<{ count: string }>(sql`
+      // Use sql directly with postgres-js - it returns rows as an array
+      const rows = await sql<{ count: string }>`
         WITH deleted AS (
           DELETE FROM slow_query_log
           WHERE timestamp < NOW() - INTERVAL '30 days'
           RETURNING *
         )
         SELECT count(*) as count FROM deleted
-      `);
+      `;
       const deleted = Number(rows[0]?.count || 0);
       console.log(`Purged ${deleted} slow query log entries older than 30 days`);
       return { deleted };
@@ -287,7 +295,8 @@ export class QueryMonitoringService {
    */
   static async getIndexBloat(): Promise<Array<{ tableName: string; indexName: string; bloatPercent: number }>> {
     try {
-      const { rows } = await db.execute<{ tableName: string; indexName: string; bloatPercent: number }>(sql`
+      // Use sql directly with postgres-js - it returns rows as an array
+      const rows = await sql<{ tableName: string; indexName: string; bloatPercent: number }>`
         SELECT 
           schemaname || '.' || tablename as "tableName",
           indexname as "indexName",
@@ -298,7 +307,7 @@ export class QueryMonitoringService {
         WHERE pg_relation_size(indexrelid) > 1000000  -- Only indexes > 1MB
         ORDER BY "bloatPercent" DESC NULLS LAST
         LIMIT 20
-      `);
+      `;
       return rows;
     } catch (error) {
       console.error('Failed to calculate index bloat:', error);
@@ -312,7 +321,8 @@ export class QueryMonitoringService {
    */
   static async getUnusedIndexes(): Promise<Array<{ tableName: string; indexName: string; indexSize: string }>> {
     try {
-      const { rows } = await db.execute<{ tableName: string; indexName: string; indexSize: string }>(sql`
+      // Use sql directly with postgres-js - it returns rows as an array
+      const rows = await sql<{ tableName: string; indexName: string; indexSize: string }>`
         SELECT 
           schemaname || '.' || tablename as "tableName",
           indexname as "indexName",
@@ -324,7 +334,7 @@ export class QueryMonitoringService {
           )
         ORDER BY pg_relation_size(indexrelid) DESC
         LIMIT 20
-      `);
+      `;
       return rows;
     } catch (error) {
       console.error('Failed to find unused indexes:', error);

@@ -118,5 +118,4 @@ args = "echo \"Build verification complete\""
 [userenv]
 
 [userenv.shared]
-TESTING_VITE_STRIPE_PUBLIC_KEY = "pk_test_51S6OJKPwDmPrlv3Gjs6unXjlkYNRWGlfACAj2NYSZj7J5M2WhSVOQuCxyztkaEEJg5D5tVbgyeUWSra5YG0Oq6fg00p7RFsl9R"
 TESTING_STRIPE_SECRET_KEY = "sk_test_51S6OJKPwDmPrlv3GJTZqxHOqZn6gFB2X25iUoa2KsqL37VCudkk4WcfWsi3qHjDMcjxdraGVCVddMWLgDA3Bf76n00I6MoZL6N"

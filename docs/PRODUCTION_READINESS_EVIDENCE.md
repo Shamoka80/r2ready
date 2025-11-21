@@ -294,13 +294,11 @@ Missing: libglib-2.0.so.0, libnss3.so, libX11.so.6, libgbm.so.1, etc.
 DATABASE_URL=postgresql://...
 
 # JWT (auto-generated for dev, set for prod)
-JWT_ACCESS_SECRET=<secure-random-secret>
-JWT_REFRESH_SECRET=<secure-random-secret>
-JWT_KEY_ID=<key-identifier>
+JWT_SECRET=<secure-random-secret>
+JWT_ACTIVE_KID=<key-identifier>  # Optional: for key rotation
 
 # Stripe (optional, for payment flows)
 STRIPE_SECRET_KEY=<stripe-secret-key>
-VITE_STRIPE_PUBLIC_KEY=<stripe-publishable-key>
 
 # Cloud Storage (optional)
 AWS_ACCESS_KEY_ID=<aws-key>

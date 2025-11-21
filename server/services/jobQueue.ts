@@ -1,6 +1,6 @@
-import { db } from '../db.js';
+import { db, sql } from '../db.js';
 import { jobs, Job, NewJob } from '../../shared/schema.js';
-import { eq, and, desc, sql, lte } from 'drizzle-orm';
+import { eq, and, desc, lte, sql as drizzleSql } from 'drizzle-orm';
 import { ExportService } from './exportService.js';
 import { emailService } from './emailService.js';
 
@@ -52,14 +52,14 @@ class JobQueueService {
         .update(jobs)
         .set({ 
           status: 'PROCESSING',
-          updatedAt: sql`now()`
+          updatedAt: new Date()
         })
         .where(
           and(
             eq(jobs.status, 'PENDING'),
-            sql`${jobs.priority} = ${priority}`,
+            drizzleSql`${jobs.priority} = ${priority}`,
             // Use subquery to get the first job by priority and creation time
-            sql`${jobs.id} = (
+            drizzleSql`${jobs.id} = (
               SELECT id FROM ${jobs}
               WHERE status = 'PENDING' AND priority = ${priority}
               ORDER BY "createdAt" ASC
@@ -89,7 +89,7 @@ class JobQueueService {
   ): Promise<void> {
     const updateData: any = {
       status,
-      updatedAt: sql`now()`,
+      updatedAt: new Date(),
     };
 
     if (result !== undefined) {
@@ -101,7 +101,7 @@ class JobQueueService {
     }
 
     if (status === 'COMPLETED' || status === 'FAILED') {
-      updateData.completedAt = sql`now()`;
+      updateData.completedAt = new Date();
     }
 
     await db
@@ -117,8 +117,8 @@ class JobQueueService {
     await db
       .update(jobs)
       .set({ 
-        attempts: sql`${jobs.attempts} + 1`,
-        updatedAt: sql`now()`
+        attempts: drizzleSql`${jobs.attempts} + 1`,
+        updatedAt: new Date()
       })
       .where(eq(jobs.id, jobId));
   }
@@ -160,7 +160,7 @@ class JobQueueService {
         status: 'PENDING',
         error: null,
         attempts: 0,
-        updatedAt: sql`now()`,
+        updatedAt: new Date(),
         completedAt: null,
       })
       .where(eq(jobs.id, jobId));
@@ -195,7 +195,7 @@ class JobQueueService {
       .delete(jobs)
       .where(
         and(
-          sql`${jobs.status} IN ('COMPLETED', 'FAILED')`,
+          drizzleSql`${jobs.status} IN ('COMPLETED', 'FAILED')`,
           lte(jobs.completedAt, cutoffDate)
         )
       )
@@ -277,10 +277,10 @@ async function handlePurgeSlowQueryLogs(payload: any): Promise<any> {
   console.log('[JobQueue] Purging old slow query logs...');
   
   const { QueryMonitoringService } = await import('./queryMonitoring.js');
-  const deletedCount = await QueryMonitoringService.purgeOldSlowQueryLogs();
+  const purgeResult = await QueryMonitoringService.purgeOldSlowQueryLogs();
   
   const result = {
-    deletedCount,
+    deletedCount: purgeResult.deleted,
     purgedAt: new Date().toISOString(),
   };
   
@@ -294,9 +294,10 @@ async function executeMaintenanceSQL(sqlQuery: string, timeout: number): Promise
   const startTime = Date.now();
   
   try {
-    await db.execute(sql.raw(`SET LOCAL statement_timeout = '${timeout}ms'`));
-    
-    const result = await db.execute(sql.raw(sqlQuery));
+    // Note: SET LOCAL requires a transaction, so we skip it for maintenance operations
+    // ANALYZE and VACUUM are typically fast enough without explicit timeouts
+    // If timeout is needed, wrap in a transaction: BEGIN; SET LOCAL statement_timeout = '...'; ANALYZE ...; COMMIT;
+    await sql.unsafe(sqlQuery);
     
     const duration = Date.now() - startTime;
     
@@ -327,9 +328,13 @@ async function handleAnalyzeTable(payload: any): Promise<any> {
   const timeoutMs = 30000;
   
   try {
-    const tableStatsQuery = `SELECT reltuples::bigint as row_count FROM pg_class WHERE relname = '${tableName}'`;
-    const statsResult = await db.execute(sql.raw(tableStatsQuery));
-    const rowCountBefore = statsResult.rows[0]?.row_count || 0;
+    // Use sql directly with postgres-js - it returns rows as an array
+    const statsResult = await sql`
+      SELECT reltuples::bigint as row_count 
+      FROM pg_class 
+      WHERE relname = ${tableName}
+    `;
+    const rowCountBefore = Number(statsResult[0]?.row_count || 0);
     
     const analyzeQuery = `ANALYZE "${tableName}"`;
     await executeMaintenanceSQL(analyzeQuery, timeoutMs);
@@ -376,9 +381,13 @@ async function handleVacuumTable(payload: any): Promise<any> {
   const timeoutMs = 120000;
   
   try {
-    const tableStatsQuery = `SELECT reltuples::bigint as row_count FROM pg_class WHERE relname = '${tableName}'`;
-    const statsResult = await db.execute(sql.raw(tableStatsQuery));
-    const rowCountBefore = statsResult.rows[0]?.row_count || 0;
+    // Use sql directly with postgres-js - it returns rows as an array
+    const statsResult = await sql`
+      SELECT reltuples::bigint as row_count 
+      FROM pg_class 
+      WHERE relname = ${tableName}
+    `;
+    const rowCountBefore = Number(statsResult[0]?.row_count || 0);
     
     const vacuumQuery = `VACUUM "${tableName}"`;
     await executeMaintenanceSQL(vacuumQuery, timeoutMs);

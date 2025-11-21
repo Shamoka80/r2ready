@@ -93,7 +93,7 @@ shared/
 - **PascalCase**: React components (`AssessmentDetail.tsx`)
 - **camelCase**: Service files (`authService.ts`)
 - **kebab-case**: Route files (`client-facilities.ts`)
-- **UPPER_SNAKE_CASE**: Constants (`MAX_FILE_SIZE`)
+- **UPPER_SNAKE_CASE**: Constants and environment variables
 
 ### Code Conventions
 - **Interfaces**: PascalCase with 'I' prefix (`IUserData`)

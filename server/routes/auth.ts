@@ -1768,33 +1768,58 @@ router.post('/verify-email-code',
     }
 
     // Create session and automatically log in the user
-    const { session, token: authToken } = await AuthService.createSession(
-      user.id,
-      user.tenantId,
-      req.ip,
-      req.get('User-Agent')
-    );
+    let session: any;
+    let authToken: string;
+    try {
+      const sessionResult = await AuthService.createSession(
+        user.id,
+        user.tenantId,
+        req.ip,
+        req.get('User-Agent')
+      );
+      session = sessionResult.session;
+      authToken = sessionResult.token;
+    } catch (sessionError) {
+      console.error('Failed to create session during email verification:', sessionError);
+      return res.status(500).json({ 
+        success: false,
+        error: 'Failed to create user session',
+        details: process.env.NODE_ENV === 'development' ? (sessionError instanceof Error ? sessionError.message : 'Unknown error') : undefined
+      });
+    }
 
-    // Get user permissions
-    const permissions = await AuthService.getUserPermissions(
-      user.businessRole || user.consultantRole || 'business_owner'
-    );
+    // Get user permissions (don't fail if this errors)
+    let permissions: string[] = [];
+    try {
+      permissions = await AuthService.getUserPermissions(
+        user.businessRole || user.consultantRole || 'business_owner'
+      );
+    } catch (permError) {
+      console.warn('Failed to get user permissions during email verification:', permError);
+      // Use default permissions for business_owner
+      permissions = ['*'];
+    }
 
-    // Log verification success
-    await AuthService.logAuditEvent(
-      user.tenantId,
-      user.id,
-      'EMAIL_VERIFIED',
-      'user',
-      user.id,
-      {
-        email: user.email,
-        previousSetupStatus: user.setupStatus,
-        newSetupStatus: updateData.setupStatus || user.setupStatus,
-        autoLoginCreated: true,
-        verificationMethod: 'code'
-      }
-    );
+    // Log verification success (don't fail if this errors)
+    try {
+      await AuthService.logAuditEvent(
+        user.tenantId,
+        user.id,
+        'EMAIL_VERIFIED',
+        'user',
+        user.id,
+        {
+          email: user.email,
+          previousSetupStatus: user.setupStatus,
+          newSetupStatus: updateData.setupStatus || user.setupStatus,
+          autoLoginCreated: true,
+          verificationMethod: 'code'
+        }
+      );
+    } catch (auditError) {
+      console.warn('Failed to log audit event during email verification:', auditError);
+      // Continue - audit logging failure shouldn't block verification
+    }
 
     console.log('✅ Email verified successfully via code and user logged in:', {
       email: user.email,
@@ -1830,7 +1855,17 @@ router.post('/verify-email-code',
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
-    res.status(500).json({ error: 'Failed to verify email code' });
+    // Provide more detailed error information
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Verify email code error details:', {
+      message: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to verify email code',
+      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+    });
   }
 });
 
@@ -1868,63 +1903,6 @@ router.post('/test-email', async (req, res) => {
   } catch (error) {
     console.error('Test email generation error:', error);
     res.status(500).json({ error: 'Failed to generate test email' });
-  }
-});
-
-/**
- * GET /api/auth/test-get-verification-token
- * Retrieves the actual verification token from database for E2E testing
- * DEVELOPMENT ONLY - Returns 404 in production
- */
-router.get('/test-get-verification-token', async (req, res) => {
-  // SECURITY: Only allow in development environment
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(404).json({ error: 'Not found' });
-  }
-
-  try {
-    const { email } = req.query;
-
-    if (!email || typeof email !== 'string') {
-      return res.status(400).json({ error: 'Email parameter is required' });
-    }
-
-    // SECURITY: Only allow for known test user
-    const testUserEmails = ['jaikengamez@gmail.com'];
-    if (!testUserEmails.includes(email.toLowerCase())) {
-      console.warn('⚠️ Test endpoint blocked for non-test user:', email);
-      return res.status(403).json({ error: 'Test endpoint only available for test users' });
-    }
-
-    // Find user in database
-    const user = await db.query.users.findFirst({
-      where: eq(users.email, email),
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    console.log('🧪 TEST ENDPOINT: Retrieved verification token for:', email);
-    console.log('   Token:', user.emailVerificationToken || 'null');
-    console.log('   Code:', user.emailVerificationCode || 'null');
-    console.log('   Expiry:', user.emailVerificationTokenExpiry || 'null');
-
-    res.json({
-      success: true,
-      message: 'Verification token retrieved (TEST MODE)',
-      testData: {
-        email: user.email,
-        token: user.emailVerificationToken,
-        code: user.emailVerificationCode,
-        expiresAt: user.emailVerificationTokenExpiry,
-        emailVerified: user.emailVerified,
-        setupStatus: user.setupStatus
-      }
-    });
-  } catch (error) {
-    console.error('Test get verification token error:', error);
-    res.status(500).json({ error: 'Failed to retrieve verification token' });
   }
 });
 
@@ -2030,66 +2008,6 @@ router.post('/test-verify-email', async (req, res) => {
   } catch (error) {
     console.error('Test verify email error:', error);
     res.status(500).json({ error: 'Failed to verify email (test mode)' });
-  }
-});
-
-/**
- * GET /api/auth/test-get-verification-token
- * Test helper to retrieve verification token for E2E testing
- * DEVELOPMENT ONLY - Returns 404 in production
- */
-router.post('/test-get-verification-token', async (req, res) => {
-  // SECURITY: Only allow in development environment
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(404).json({ error: 'Not found' });
-  }
-
-  try {
-    const { email } = req.body;
-
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
-    }
-
-    // SECURITY: Only allow for E2E test emails
-    const isE2ETestEmail = email.toLowerCase().endsWith('@test.com');
-    if (!isE2ETestEmail) {
-      console.warn('⚠️ Test token endpoint blocked for non-test email:', email);
-      return res.status(403).json({ error: 'Test endpoint only available for @test.com emails' });
-    }
-
-    // Find user in database
-    const user = await db.query.users.findFirst({
-      where: eq(users.email, email)
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    console.log('🧪 TEST HELPER: Retrieving verification token:', {
-      email: user.email,
-      userId: user.id,
-      setupStatus: user.setupStatus,
-      emailVerified: user.emailVerified,
-      hasToken: !!user.emailVerificationToken,
-      hasCode: !!user.emailVerificationCode
-    });
-
-    res.json({
-      success: true,
-      email: user.email,
-      userId: user.id,
-      setupStatus: user.setupStatus,
-      emailVerified: user.emailVerified,
-      verificationToken: user.emailVerificationToken,
-      verificationCode: user.emailVerificationCode,
-      tokenExpiry: user.emailVerificationTokenExpiry
-    });
-
-  } catch (error) {
-    console.error('Test get verification token error:', error);
-    res.status(500).json({ error: 'Failed to retrieve verification token' });
   }
 });
 

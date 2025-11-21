@@ -233,11 +233,9 @@ npx tsx scripts/comprehensive-health-check.ts
 ```bash
 # Set environment variables in Replit Secrets
 DATABASE_URL=postgresql://...
-JWT_ACCESS_SECRET=<secure-random-32-chars>
-JWT_REFRESH_SECRET=<secure-random-32-chars>
-JWT_KEY_ID=rur2-prod-2024
+JWT_SECRET=<secure-random-32-chars>
+JWT_ACTIVE_KID=rur2-prod-2024  # Optional: for key rotation
 STRIPE_SECRET_KEY=sk_live_...
-VITE_STRIPE_PUBLIC_KEY=pk_live_...
 ```
 
 ### 3. Deploy to Production

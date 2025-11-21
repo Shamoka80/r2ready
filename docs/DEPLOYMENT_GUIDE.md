@@ -31,12 +31,11 @@ DATABASE_URL="postgresql://username:password@host:port/database?sslmode=require"
 
 # JWT Configuration
 JWT_SECRET="your-super-secure-jwt-secret-key-here"
-JWT_EXPIRES_IN="7d"
 
 # Application Configuration
 NODE_ENV="production"
 PORT=5000
-CORS_ORIGIN="https://your-repl-name.replit.app"
+CLIENT_URL="https://your-repl-name.replit.app"
 
 # Stripe Configuration (Optional)
 STRIPE_SECRET_KEY="sk_live_your_stripe_secret_key"
@@ -46,20 +45,8 @@ STRIPE_WEBHOOK_SECRET="whsec_your_webhook_secret"
 SMTP_HOST="smtp.gmail.com"
 SMTP_PORT=587
 SMTP_USER="your-email@gmail.com"
-SMTP_PASS="your-app-password"
-
-# File Upload Configuration
-MAX_FILE_SIZE="10485760"  # 10MB
-ALLOWED_FILE_TYPES="pdf,doc,docx,jpg,jpeg,png"
-
-# Rate Limiting
-RATE_LIMIT_WINDOW_MS="900000"  # 15 minutes
-RATE_LIMIT_MAX_REQUESTS="100"
-
-# Security
-BCRYPT_ROUNDS="12"
-SESSION_SECRET="your-session-secret"
-ENABLE_2FA="true"
+SMTP_PASSWORD="your-app-password"
+SMTP_FROM_EMAIL="your-email@gmail.com"
 ```
 
 ## Database Setup
@@ -297,7 +284,7 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: process.env.CORS_ORIGIN,
+  origin: process.env.CLIENT_URL || process.env.FRONTEND_URL,
   credentials: true,
 }));
 ```

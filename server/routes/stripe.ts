@@ -14,16 +14,21 @@ const router = Router();
 const getBaseUrl = (): string => {
   // Production or explicit CLIENT_URL
   if (process.env.CLIENT_URL) {
+    console.log('🔗 Using CLIENT_URL for Stripe redirects:', process.env.CLIENT_URL);
     return process.env.CLIENT_URL;
   }
   
   // Replit development environment
   if (process.env.REPLIT_DOMAINS) {
-    return `https://${process.env.REPLIT_DOMAINS}`;
+    const url = `https://${process.env.REPLIT_DOMAINS}`;
+    console.log('🔗 Using REPLIT_DOMAINS for Stripe redirects:', url);
+    return url;
   }
   
-  // Local development fallback
-  return 'http://localhost:5000';
+  // Local development fallback - use frontend port (5173) not backend port (5000)
+  const devUrl = 'http://localhost:5173';
+  console.log('🔗 Using local development URL for Stripe redirects:', devUrl);
+  return devUrl;
 };
 
 // Get Stripe secret key (supports testing key for development)
@@ -74,6 +79,17 @@ router.post("/create-license",
       // Calculate pricing based on tier
       const pricing = calculateLicensePricing(data);
 
+      // Get base URL for redirects
+      const baseUrl = getBaseUrl();
+      const successUrl = `${baseUrl}/licenses/success?session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${baseUrl}/pricing`;
+      
+      console.log('💳 Creating Stripe checkout session with redirects:', {
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        baseUrl
+      });
+
       // Create Stripe checkout session
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
@@ -89,8 +105,8 @@ router.post("/create-license",
           quantity: 1,
         }],
         mode: 'payment',
-        success_url: `${getBaseUrl()}/licenses/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${getBaseUrl()}/pricing`,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
         customer_email: data.billingEmail,
         metadata: {
           tenantId: req.tenant!.id,

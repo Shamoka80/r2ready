@@ -1,8 +1,31 @@
+// CRITICAL: Load environment variables BEFORE any other imports
+// This ensures process.env is populated before db.ts and other modules read it
+import { config } from 'dotenv';
+import { fileURLToPath } from 'url';
+import path from 'path';
+import fs from "fs";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env file - check both server directory and root directory
+const serverEnvPath = path.resolve(__dirname, '.env');
+const rootEnvPath = path.resolve(__dirname, '..', '.env');
+
+// Try server directory first, then root directory
+const envPath = fs.existsSync(serverEnvPath) ? serverEnvPath : rootEnvPath;
+if (fs.existsSync(envPath)) {
+  config({ path: envPath });
+  console.log(`📄 Loaded environment variables from: ${envPath}`);
+} else {
+  console.warn(`⚠️  No .env file found in ${serverEnvPath} or ${rootEnvPath}`);
+  // Still try to load from default location (current working directory)
+  config();
+}
+
+// Now safe to import modules that use process.env
 import express, { type Request, Response, NextFunction } from "express";
 import cors from 'cors';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from "fs";
 import { Socket } from 'net';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { registerRoutes } from "./routes.js";
@@ -23,9 +46,6 @@ import { handleStripeWebhook } from './routes/stripe-webhooks.js';
 import { jobWorker } from './workers/jobWorker.js';
 import { jobQueueService } from './services/jobQueue.js';
 import { QueryMonitoringService } from './services/queryMonitoring.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 export async function createApp() {
   const app = express();
@@ -194,8 +214,16 @@ async function scheduleDailyPurgeJob() {
         maxAttempts: 2,
       });
       console.log(`📅 Scheduled daily purge job: ${jobId}`);
-    } catch (error) {
-      console.error('Failed to enqueue purge job:', error);
+    } catch (error: any) {
+      // Only log connection errors as warnings, not full stack traces
+      const isConnectionError = error?.code === 'ECONNREFUSED' || 
+        error?.message?.includes('Error connecting to database') ||
+        error?.message?.includes('fetch failed');
+      if (isConnectionError) {
+        // Suppress repeated connection errors - they're expected when DB is down
+      } else {
+        console.error('Failed to enqueue purge job:', error);
+      }
     }
   }
 
@@ -225,8 +253,16 @@ async function scheduleDailyAnalyzeJobs() {
             maxAttempts: 2,
           });
           console.log(`📊 Scheduled ANALYZE job for ${tableName}: ${jobId}`);
-        } catch (error) {
-          console.error(`Failed to enqueue ANALYZE job for ${tableName}:`, error);
+        } catch (error: any) {
+          // Only log connection errors as warnings, not full stack traces
+          const isConnectionError = error?.code === 'ECONNREFUSED' || 
+            error?.message?.includes('Error connecting to database') ||
+            error?.message?.includes('fetch failed');
+          if (isConnectionError) {
+            // Suppress repeated connection errors - they're expected when DB is down
+          } else {
+            console.error(`Failed to enqueue ANALYZE job for ${tableName}:`, error);
+          }
         }
       }, i * 5000);
     }
@@ -269,8 +305,16 @@ async function scheduleWeeklyVacuumJobs() {
             maxAttempts: 2,
           });
           console.log(`🧹 Scheduled VACUUM job for ${tableName}: ${jobId}`);
-        } catch (error) {
-          console.error(`Failed to enqueue VACUUM job for ${tableName}:`, error);
+        } catch (error: any) {
+          // Only log connection errors as warnings, not full stack traces
+          const isConnectionError = error?.code === 'ECONNREFUSED' || 
+            error?.message?.includes('Error connecting to database') ||
+            error?.message?.includes('fetch failed');
+          if (isConnectionError) {
+            // Suppress repeated connection errors - they're expected when DB is down
+          } else {
+            console.error(`Failed to enqueue VACUUM job for ${tableName}:`, error);
+          }
         }
       }, i * 10000);
     }
@@ -289,10 +333,13 @@ async function enablePgStatStatements() {
     if (result.success) {
       console.log('✅ pg_stat_statements enabled successfully');
     } else {
-      console.warn('⚠️  pg_stat_statements not available:', result.message);
+      // This is expected for many PostgreSQL setups - extensions require superuser privileges
+      // Log as info (not warning) since this is normal behavior
+      console.log('ℹ️  pg_stat_statements not available (this is normal):', result.message);
     }
   } catch (error) {
-    console.warn('⚠️  pg_stat_statements enablement error (expected on Neon free tier)');
+    // This is expected for many PostgreSQL setups - extensions require superuser privileges
+    console.log('ℹ️  pg_stat_statements enablement error (this is normal):', error instanceof Error ? error.message : 'Unknown error');
   }
 }
 
@@ -313,31 +360,45 @@ async function startServer() {
   }
 
   // Validate database schema consistency (fail-fast on critical errors)
+  // Skip validation if database is not connected
   try {
     const schemaValidation = await validateSchemaConsistency();
 
     if (!schemaValidation.isValid) {
-      console.error('\n' + '='.repeat(80));
-      console.error('❌ DATABASE SCHEMA VALIDATION FAILED');
-      console.error('='.repeat(80));
-      console.error('\nThe database schema is out of sync with the application code.');
-      console.error('This will cause runtime errors. Please fix the schema issues below:\n');
+      // Check if the error is due to connection issues
+      const isConnectionError = schemaValidation.errors.some(error => 
+        error.includes('Error connecting to database') || 
+        error.includes('ECONNREFUSED') ||
+        error.includes('fetch failed')
+      );
 
-      schemaValidation.errors.forEach(error => console.error(error));
+      if (isConnectionError) {
+        console.warn('⚠️  Schema validation skipped - database not available');
+        console.warn('   The server will start but database features will be unavailable until the database is running.');
+      } else {
+        // Actual schema validation errors
+        console.error('\n' + '='.repeat(80));
+        console.error('❌ DATABASE SCHEMA VALIDATION FAILED');
+        console.error('='.repeat(80));
+        console.error('\nThe database schema is out of sync with the application code.');
+        console.error('This will cause runtime errors. Please fix the schema issues below:\n');
 
-      if (schemaValidation.warnings.length > 0) {
-        console.warn('\nWarnings:');
-        schemaValidation.warnings.forEach(warning => console.warn(warning));
+        schemaValidation.errors.forEach(error => console.error(error));
+
+        if (schemaValidation.warnings.length > 0) {
+          console.warn('\nWarnings:');
+          schemaValidation.warnings.forEach(warning => console.warn(warning));
+        }
+
+        console.error('\n' + '='.repeat(80));
+        console.error('💡 To fix schema issues:');
+        console.error('   1. Run: npm run db:push --force');
+        console.error('   2. Or manually add missing columns using SQL');
+        console.error('   3. Ensure shared/schema.ts matches your database structure');
+        console.error('='.repeat(80) + '\n');
+
+        throw new SchemaValidationError(schemaValidation);
       }
-
-      console.error('\n' + '='.repeat(80));
-      console.error('💡 To fix schema issues:');
-      console.error('   1. Run: npm run db:push --force');
-      console.error('   2. Or manually add missing columns using SQL');
-      console.error('   3. Ensure shared/schema.ts matches your database structure');
-      console.error('='.repeat(80) + '\n');
-
-      throw new SchemaValidationError(schemaValidation);
     }
   } catch (error) {
     if (error instanceof SchemaValidationError) {

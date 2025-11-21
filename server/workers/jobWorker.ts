@@ -1,13 +1,14 @@
 import { jobQueueService } from '../services/jobQueue.js';
 import { Job, jobs } from '../../shared/schema.js';
-import { db } from '../db.js';
-import { eq, sql } from 'drizzle-orm';
+import { db, sql } from '../db.js';
+import { eq } from 'drizzle-orm';
 
 class JobWorker {
   private isRunning = false;
   private pollingInterval: NodeJS.Timeout | null = null;
   private processingJobs: Set<string> = new Set();
   private readonly POLL_INTERVAL_MS = 2000;
+  private lastConnectionErrorLog: number | null = null;
 
   async start(): Promise<void> {
     if (this.isRunning) {
@@ -72,8 +73,22 @@ class JobWorker {
           this.processingJobs.delete(job.id);
         });
 
-    } catch (error) {
-      console.error('[JobWorker] Error polling queue:', error);
+    } catch (error: any) {
+      // Only log connection errors as warnings, not full stack traces
+      const isConnectionError = error?.code === 'ECONNREFUSED' || 
+        error?.message?.includes('Error connecting to database') ||
+        error?.message?.includes('fetch failed');
+      if (isConnectionError) {
+        // Suppress repeated connection errors - they're expected when DB is down
+        // Only log once per minute to avoid spam
+        const now = Date.now();
+        if (!this.lastConnectionErrorLog || (now - this.lastConnectionErrorLog) > 60000) {
+          console.warn('[JobWorker] Database not available - job processing paused');
+          this.lastConnectionErrorLog = now;
+        }
+      } else {
+        console.error('[JobWorker] Error polling queue:', error);
+      }
     }
   }
 
@@ -116,7 +131,7 @@ class JobWorker {
           .set({ 
             attempts: currentAttempts,
             status: 'PENDING',
-            updatedAt: sql`now()`
+            updatedAt: new Date()
           })
           .where(eq(jobs.id, job.id));
 

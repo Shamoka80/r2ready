@@ -104,7 +104,7 @@ certbot certonly --dns-route53 -d yourdomain.com -d *.yourdomain.com
 DOMAIN=rur2-dev.{username}.repl.co
 PROTOCOL=https
 PORT=5000
-CORS_ORIGIN=https://rur2-dev.{username}.repl.co
+CLIENT_URL=https://rur2-dev.{username}.repl.co
 ```
 
 ### Staging Environment
@@ -113,7 +113,7 @@ CORS_ORIGIN=https://rur2-dev.{username}.repl.co
 DOMAIN=rur2-staging.{username}.repl.co
 PROTOCOL=https
 PORT=5000
-CORS_ORIGIN=https://rur2-staging.{username}.repl.co
+CLIENT_URL=https://rur2-staging.{username}.repl.co
 ```
 
 ### Production Environment
@@ -122,7 +122,7 @@ CORS_ORIGIN=https://rur2-staging.{username}.repl.co
 DOMAIN=rur2.{username}.repl.co
 PROTOCOL=https
 PORT=5000
-CORS_ORIGIN=https://rur2.{username}.repl.co
+CLIENT_URL=https://rur2.{username}.repl.co
 ```
 
 ## Security Requirements

@@ -3,6 +3,7 @@
  *
  * Provides a flexible email service with support for multiple providers:
  * - Resend: Production mode (sends via Resend API)
+ * - Microsoft 365: Production mode (sends via Microsoft Graph API)
  * - SendGrid: Production mode (sends via SendGrid API)
  * - SMTP: Production mode (sends via SMTP - Office 365, Gmail, etc.)
  * - Console: Development mode (logs to console)
@@ -11,6 +12,7 @@
 import { Resend } from 'resend';
 import { ConsistentLogService } from './consistentLogService';
 import { jobQueueService } from './jobQueue';
+import { microsoft365EmailService } from './microsoft365EmailService.js';
 
 interface EmailOptions {
   to: string;
@@ -25,6 +27,7 @@ interface EmailProvider {
   transporter: any | null;
   isConfigured: boolean;
   resendClient?: any;
+  microsoft365Client?: any;
 }
 
 class EmailService {
@@ -48,13 +51,27 @@ class EmailService {
           resendClient
         });
         this.logger.info('Email service initialized with Resend provider');
-        return;
       } catch (error) {
         this.logger.error('Failed to initialize Resend provider', error as any);
       }
     }
 
-    // Priority 2: SendGrid (Fallback #1) - If SENDGRID_API_KEY and SENDGRID_FROM_EMAIL exist
+    // Priority 2: Microsoft 365 (Fallback #1) - If Microsoft 365 credentials exist
+    if (microsoft365EmailService.configured) {
+      try {
+        this.providers.push({
+          name: 'Microsoft365',
+          transporter: null,
+          isConfigured: true,
+          microsoft365Client: microsoft365EmailService
+        });
+        this.logger.info('Email service initialized with Microsoft 365 provider');
+      } catch (error) {
+        this.logger.warn('Failed to initialize Microsoft 365 provider', error as any);
+      }
+    }
+
+    // Priority 3: SendGrid (Fallback #2) - If SENDGRID_API_KEY and SENDGRID_FROM_EMAIL exist
     if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_FROM_EMAIL) {
       try {
         // Note: SendGrid provider is kept for compatibility but Resend is prioritized.
@@ -71,7 +88,7 @@ class EmailService {
       }
     }
 
-    // Priority 3: SMTP (Fallback #2) - If SMTP credentials exist
+    // Priority 4: SMTP (Fallback #3) - If SMTP credentials exist
     if (process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.SMTP_USER && process.env.SMTP_PASSWORD && process.env.SMTP_FROM_EMAIL) {
       try {
         const nodemailer = require('nodemailer'); // Import nodemailer only if needed
@@ -87,9 +104,15 @@ class EmailService {
       }
     }
 
-    // Priority 4: Console (Development fallback)
-    if (this.providers.length === 0 || !this.providers.some(p => p.isConfigured)) {
-      this.logger.warn('No production email providers configured - emails will be logged to console');
+    // Priority 5: Console (ALWAYS add as final fallback, even if other providers are configured)
+    // This ensures emails always work in development, even if production providers fail
+    const hasConsoleProvider = this.providers.some(p => p.name === 'Console');
+    if (!hasConsoleProvider) {
+      if (this.providers.length === 0 || !this.providers.some(p => p.isConfigured)) {
+        this.logger.warn('No production email providers configured - emails will be logged to console');
+      } else {
+        this.logger.info('Adding Console provider as fallback for development');
+      }
       this.providers.push({
         name: 'Console',
         transporter: null,
@@ -106,7 +129,7 @@ class EmailService {
     this.logger.info('Email service provider initialization complete', { metadata });
   }
 
-  async sendEmail(options: EmailOptions): Promise<boolean> {
+  async sendEmail(options: EmailOptions & { verificationCode?: string; verificationToken?: string }): Promise<boolean> {
     const maxAttempts = this.providers.length;
     let lastError: Error | null = null;
 
@@ -138,6 +161,12 @@ class EmailService {
         };
 
         if (provider.name === 'Console') {
+          // Extract verification link from HTML if it's a verification email
+          const verificationLinkMatch = emailData.html.match(/href="([^"]*\/verify-email\?token=[^"]*)"/);
+          const verificationLink = verificationLinkMatch ? verificationLinkMatch[1] : null;
+          // Use verification code from options if available, otherwise try to extract from HTML
+          const verificationCode = options.verificationCode || emailData.html.match(/(?:code|Code):\s*<strong[^>]*>(\d{6})<\/strong>/)?.[1];
+
           console.log('\n╔════════════════════════════════════════════════════════════╗');
           console.log('║           📧 EMAIL: Logged to Console (Development)         ║');
           console.log('╠════════════════════════════════════════════════════════════╣');
@@ -145,6 +174,18 @@ class EmailService {
           console.log(`  To: ${emailData.to}`);
           console.log(`  Subject: ${emailData.subject}`);
           console.log('────────────────────────────────────────────────────────────');
+          
+          // Display verification link prominently if it's a verification email
+          if (verificationLink) {
+            console.log('\n  🔗 VERIFICATION LINK:');
+            console.log(`  ${verificationLink}`);
+            if (verificationCode) {
+              console.log(`\n  🔢 VERIFICATION CODE: ${verificationCode}`);
+            }
+            console.log('\n────────────────────────────────────────────────────────────');
+          }
+          
+          console.log('\n  Full Email HTML:');
           console.log(emailData.html);
           console.log('╚════════════════════════════════════════════════════════════╝\n');
           // Reset index if successful
@@ -173,6 +214,23 @@ class EmailService {
 
           this.currentProviderIndex = 0;
           return true;
+        }
+
+        if (provider.name === 'Microsoft365' && provider.microsoft365Client) {
+          const success = await provider.microsoft365Client.sendEmail({
+            to: emailData.to,
+            subject: emailData.subject,
+            html: emailData.html,
+            text: emailData.text,
+            from: emailData.from
+          });
+
+          if (success) {
+            this.currentProviderIndex = 0;
+            return true;
+          } else {
+            throw new Error('Microsoft 365 email send returned false');
+          }
         }
 
         // Fallback to Nodemailer for SendGrid and SMTP if they are configured
@@ -325,6 +383,8 @@ If you didn't request this password reset, please ignore this email.
       to,
       subject: 'Verify your RuR2 account',
       from: 'no-reply@wrekdtech.com', // Use verified wrekdtech.com domain
+      verificationCode, // Pass verification code so it can be displayed in console
+      verificationToken: token, // Pass token for reference
       html: `
         <!DOCTYPE html>
         <html>
@@ -450,6 +510,20 @@ If you didn't request this password reset, please ignore this email.
       }
     }
 
+    if (primaryProvider.name === 'Microsoft365' && primaryProvider.microsoft365Client) {
+      try {
+        const isHealthy = await primaryProvider.microsoft365Client.healthCheck();
+        if (isHealthy) {
+          this.logger.info('Microsoft 365 service health check passed.');
+          return true;
+        }
+        return false;
+      } catch (error: any) {
+        this.logger.error('Microsoft 365 service health check failed', error as any);
+        return false;
+      }
+    }
+
     // Placeholder for SendGrid/SMTP health check if needed and transporters were stored
     // if ((primaryProvider.name === 'SendGrid' || primaryProvider.name === 'SMTP') && primaryProvider.transporter) {
     //   try {
@@ -508,6 +582,7 @@ If you didn't request this password reset, please ignore this email.
    */
   private getDefaultSender(): string {
     return process.env.RESEND_FROM_EMAIL || 
+           process.env.MICROSOFT_365_FROM_EMAIL ||
            process.env.SENDGRID_FROM_EMAIL || 
            process.env.SMTP_FROM_EMAIL || 
            'noreply@example.com';

@@ -1,3 +1,43 @@
+// CRITICAL: Load environment variables BEFORE importing route modules
+// Route modules import db.ts which requires DATABASE_URL
+import { config } from 'dotenv';
+import { fileURLToPath } from 'url';
+import path from 'path';
+import fs from 'fs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env file - check both server directory and root directory
+const serverEnvPath = path.resolve(__dirname, '.env');
+const rootEnvPath = path.resolve(__dirname, '..', '.env');
+
+// Try server directory first, then root directory
+const envPath = fs.existsSync(serverEnvPath) ? serverEnvPath : rootEnvPath;
+if (fs.existsSync(envPath)) {
+  const result = config({ path: envPath });
+  if (result.error) {
+    console.warn(`⚠️  Error loading .env from ${envPath}:`, result.error);
+  } else {
+    console.log(`📄 [routes.ts] Loaded environment variables from: ${envPath}`);
+  }
+} else {
+  console.warn(`⚠️  [routes.ts] No .env file found in ${serverEnvPath} or ${rootEnvPath}`);
+  // Fallback to default location
+  const result = config();
+  if (result.error) {
+    console.warn(`⚠️  Error loading .env from default location:`, result.error);
+  }
+}
+
+// Verify DATABASE_URL is loaded (for debugging)
+if (!process.env.DATABASE_URL) {
+  console.error(`❌ [routes.ts] DATABASE_URL not found after loading .env`);
+  console.error(`   Checked paths: ${serverEnvPath}, ${rootEnvPath}`);
+} else {
+  console.log(`✅ [routes.ts] DATABASE_URL is set`);
+}
+
 import express, { Express } from 'express';
 import { createServer } from 'http';
 
@@ -39,9 +79,6 @@ import calendarRoutes from './routes/calendar.js';
 
 // Import cache metrics routes
 import cacheMetricsRoutes from './routes/cache-metrics.js';
-
-// Import testing routes (development/test only)
-import testingRoutes from './routes/testing.js';
 
 // Import Phase 4: Configuration Layer routes
 import configurationRoutes from './routes/configuration.js';
@@ -149,9 +186,6 @@ export async function registerRoutes(app: Express) {
 
   // Phase 3 Track 1: Performance Observability (Admin-only)
   app.use('/api/admin/performance', adminPerformanceRoutes);
-
-  // Testing helpers (development/test only)
-  app.use('/api/testing', testingRoutes);
 
   // Error handling middleware
   app.use((err: any, req: any, res: any, next: any) => {

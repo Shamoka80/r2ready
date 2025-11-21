@@ -34,6 +34,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.901.0",
     "@aws-sdk/s3-request-presigner": "^3.901.0",
+    "@azure/msal-node": "^2.16.3",
     "@azure/storage-blob": "^12.28.0",
     "@eslint/js": "^9.36.0",
     "@faker-js/faker": "^10.0.0",
@@ -84,6 +85,7 @@
     "@types/pdfkit": "^0.17.3",
     "@typescript-eslint/eslint-plugin": "^8.44.1",
     "@typescript-eslint/parser": "^8.44.1",
+    "axios": "^1.7.9",
     "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.0",
     "chalk": "^5.6.2",

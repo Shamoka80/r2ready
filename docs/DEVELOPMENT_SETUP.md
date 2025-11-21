@@ -37,7 +37,6 @@ Create `server/.env`:
 ```env
 DATABASE_URL="postgresql://username:password@localhost:5432/r2v3app"
 JWT_SECRET="your-development-jwt-secret"
-JWT_EXPIRES_IN="7d"
 NODE_ENV="development"
 PORT=5000
 ```
@@ -199,12 +198,11 @@ DATABASE_URL="postgresql://username:password@localhost:5432/r2v3app_dev"
 
 # Authentication
 JWT_SECRET="dev-jwt-secret-change-in-production"
-JWT_EXPIRES_IN="24h"
 
 # Application
 NODE_ENV="development"
 PORT=5000
-CORS_ORIGIN="http://localhost:5173"
+CLIENT_URL="http://localhost:5173"
 
 # Development Features
 ENABLE_DEBUG_LOGS="true"

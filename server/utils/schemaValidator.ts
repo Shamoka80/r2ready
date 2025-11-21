@@ -1,5 +1,4 @@
-import { db } from '../db';
-import { sql } from 'drizzle-orm';
+import { db, sql } from '../db';
 
 interface ColumnDefinition {
   name: string;
@@ -104,15 +103,16 @@ export async function validateSchemaConsistency(): Promise<SchemaValidationResul
       const { tableName, columns } = tableDefinition;
 
       // Check if table exists
-      const tableExistsQuery = await db.execute(sql`
+      // Use sql directly with postgres-js - it returns rows as an array
+      const tableExistsResult = await sql`
         SELECT EXISTS (
           SELECT FROM information_schema.tables 
           WHERE table_schema = 'public' 
           AND table_name = ${tableName}
-        );
-      `);
+        ) as exists;
+      `;
 
-      const tableExists = (tableExistsQuery.rows[0] as any).exists;
+      const tableExists = tableExistsResult[0]?.exists;
 
       if (!tableExists) {
         errors.push(`❌ Critical table '${tableName}' does not exist in the database`);
@@ -120,15 +120,14 @@ export async function validateSchemaConsistency(): Promise<SchemaValidationResul
       }
 
       // Get actual columns from database
-      const columnsQuery = await db.execute(sql`
+      // Use sql directly with postgres-js - it returns rows as an array
+      const actualColumns = await sql`
         SELECT column_name, data_type, is_nullable
         FROM information_schema.columns
         WHERE table_schema = 'public' 
         AND table_name = ${tableName}
         ORDER BY ordinal_position;
-      `);
-
-      const actualColumns = columnsQuery.rows as Array<{
+      ` as Array<{
         column_name: string;
         data_type: string;
         is_nullable: string;
