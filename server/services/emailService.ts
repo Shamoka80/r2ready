@@ -9,6 +9,7 @@
  */
 
 import { Resend } from 'resend';
+import nodemailer, { type Transporter } from 'nodemailer';
 import { ConsistentLogService } from './consistentLogService';
 import { jobQueueService } from './jobQueue';
 
@@ -22,7 +23,7 @@ interface EmailOptions {
 
 interface EmailProvider {
   name: string;
-  transporter: any | null;
+  transporter: Transporter | null;
   isConfigured: boolean;
   resendClient?: any;
 }
@@ -37,7 +38,64 @@ class EmailService {
   }
 
   private initializeProviders() {
-    // Priority 1: Resend (Primary)
+    // Priority 1: SMTP (Primary) - Microsoft 365, Office 365, Gmail, etc.
+    // SMTP is prioritized to keep email functionality internal
+    if (process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.SMTP_USER && process.env.SMTP_PASSWORD && process.env.SMTP_FROM_EMAIL) {
+      try {
+        const smtpPort = parseInt(process.env.SMTP_PORT);
+        const isSecure = process.env.SMTP_SECURE === 'true' || smtpPort === 465;
+        
+        // Create SMTP transporter
+        const transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST,
+          port: smtpPort,
+          secure: isSecure, // true for 465, false for other ports (587 uses STARTTLS)
+          auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASSWORD,
+          },
+          tls: {
+            rejectUnauthorized: process.env.SMTP_TLS_REJECT_UNAUTHORIZED !== 'false', // Default to true for security
+          },
+          // Connection pool settings for better performance
+          pool: true,
+          maxConnections: 5,
+          maxMessages: 100,
+        });
+
+        // Verify connection on startup (async, non-blocking)
+        // Note: Verification failure doesn't prevent sending - it's just a warning
+        // Some SMTP servers may reject verification but still allow sending
+        transporter.verify((error, success) => {
+          if (error) {
+            // Only log as warning - don't fail initialization
+            // The actual sending might still work even if verification fails
+            console.warn(`⚠️  SMTP verification warning: ${error.message}`);
+            console.warn(`   This is non-blocking - emails will still be attempted`);
+            this.logger.warn(`SMTP connection verification failed (non-blocking): ${error.message}`, { metadata: { host: process.env.SMTP_HOST } } as any);
+          } else {
+            console.log(`✅ SMTP connection verified successfully (${process.env.SMTP_HOST}:${smtpPort})`);
+            this.logger.info('SMTP connection verified successfully', { metadata: { host: process.env.SMTP_HOST } } as any);
+          }
+        });
+
+        // Detect provider type based on host
+        const providerType = process.env.SMTP_HOST?.includes('gmail') ? 'Gmail' : 
+                            process.env.SMTP_HOST?.includes('office365') ? 'Microsoft 365' : 
+                            'SMTP';
+
+        this.providers.push({
+          name: 'SMTP',
+          transporter: transporter,
+          isConfigured: true
+        });
+        this.logger.info(`✅ Email service initialized with SMTP provider (${process.env.SMTP_HOST}:${smtpPort}) - ${providerType}`);
+      } catch (error) {
+        this.logger.error('Failed to initialize SMTP provider', error as any);
+      }
+    }
+
+    // Priority 2: Resend (Fallback #1)
     if (process.env.RESEND_API_KEY) {
       try {
         const resendClient = new Resend(process.env.RESEND_API_KEY);
@@ -47,14 +105,13 @@ class EmailService {
           isConfigured: true,
           resendClient
         });
-        this.logger.info('Email service initialized with Resend provider');
-        return;
+        this.logger.info('Email service configured with Resend provider (fallback)');
       } catch (error) {
         this.logger.error('Failed to initialize Resend provider', error as any);
       }
     }
 
-    // Priority 2: SendGrid (Fallback #1) - If SENDGRID_API_KEY and SENDGRID_FROM_EMAIL exist
+    // Priority 3: SendGrid (Fallback #2) - If SENDGRID_API_KEY and SENDGRID_FROM_EMAIL exist
     if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_FROM_EMAIL) {
       try {
         // Note: SendGrid provider is kept for compatibility but Resend is prioritized.
@@ -71,21 +128,6 @@ class EmailService {
       }
     }
 
-    // Priority 3: SMTP (Fallback #2) - If SMTP credentials exist
-    if (process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.SMTP_USER && process.env.SMTP_PASSWORD && process.env.SMTP_FROM_EMAIL) {
-      try {
-        const nodemailer = require('nodemailer'); // Import nodemailer only if needed
-        // Note: SMTP provider is kept for compatibility but Resend is prioritized.
-        this.providers.push({
-          name: 'SMTP',
-          transporter: null,
-          isConfigured: true
-        });
-        this.logger.info(`Email service configured with SMTP provider (${process.env.SMTP_HOST}) (Resend is prioritized)`);
-      } catch (error) {
-        this.logger.warn('Failed to initialize SMTP provider', error as any);
-      }
-    }
 
     // Priority 4: Console (Development fallback)
     if (this.providers.length === 0 || !this.providers.some(p => p.isConfigured)) {
@@ -130,7 +172,7 @@ class EmailService {
         } as any);
 
         const emailData = {
-          from: options.from || process.env.RESEND_FROM_EMAIL || 'no-reply@wrekdtech.com',
+          from: options.from || this.getDefaultSender(),
           to: options.to,
           subject: options.subject,
           html: options.html,
@@ -175,44 +217,121 @@ class EmailService {
           return true;
         }
 
-        // Fallback to Nodemailer for SendGrid and SMTP if they are configured
-        // This requires nodemailer to be imported and configured transporters to be available.
-        // For simplicity and due to the interface change, these are currently marked as configured
-        // but the actual sending logic using nodemailer is commented out.
-        // If SendGrid/SMTP are to be used, the EmailProvider interface and initialization
-        // would need to be re-evaluated to store transporters.
+        // SMTP sending (Microsoft 365, Office 365, Gmail, etc.)
+        if (provider.name === 'SMTP' && provider.transporter) {
+          const fromAddress = options.from || process.env.SMTP_FROM_EMAIL || 'noreply@example.com';
+          const fromName = process.env.SMTP_FROM_NAME || 'RuR2 Platform';
+          const from = fromName ? `${fromName} <${fromAddress}>` : fromAddress;
 
-        // Placeholder for SendGrid/SMTP sending logic using Nodemailer if needed:
-        // Example (requires nodemailer and transporter setup):
-        // if ((provider.name === 'SendGrid' || provider.name === 'SMTP') && provider.transporter) {
-        //   const result = await provider.transporter.sendMail(emailData);
-        //   this.logger.info(`Email sent successfully via ${provider.name}`, { messageId: result.messageId, to: options.to });
-        //   this.currentProviderIndex = 0;
-        //   return true;
-        // }
+          try {
+            const result = await provider.transporter.sendMail({
+              from: from,
+              to: emailData.to,
+              subject: emailData.subject,
+              html: emailData.html,
+              text: emailData.text
+            });
 
-        // If we reach here, it means the provider is marked configured but doesn't have active sending logic implemented in this simplified version.
+            console.log(`✅ Email sent successfully via SMTP to ${emailData.to}`);
+            this.logger.info(`Email sent successfully via ${provider.name}`, {
+              metadata: {
+                messageId: result.messageId,
+                to: options.to,
+                from: from
+              }
+            } as any);
+
+            this.currentProviderIndex = 0;
+            return true;
+          } catch (smtpError: any) {
+            // Re-throw with more context for better error logging
+            throw new Error(`SMTP send failed: ${smtpError.message} (Code: ${smtpError.code || 'N/A'})`);
+          }
+        }
+
+        // SendGrid via SMTP using nodemailer
+        if (provider.name === 'SendGrid' && process.env.SENDGRID_API_KEY && process.env.SENDGRID_FROM_EMAIL) {
+          try {
+            const sendGridTransporter = nodemailer.createTransport({
+              host: 'smtp.sendgrid.net',
+              port: 587,
+              secure: false,
+              auth: {
+                user: 'apikey',
+                pass: process.env.SENDGRID_API_KEY,
+              },
+            });
+
+            const result = await sendGridTransporter.sendMail({
+              from: process.env.SENDGRID_FROM_EMAIL,
+              to: emailData.to,
+              subject: emailData.subject,
+              html: emailData.html,
+              text: emailData.text
+            });
+
+            this.logger.info(`Email sent successfully via ${provider.name}`, {
+              metadata: {
+                messageId: result.messageId,
+                to: options.to
+              }
+            } as any);
+
+            this.currentProviderIndex = 0;
+            return true;
+          } catch (sendGridError: any) {
+            throw new Error(`SendGrid error: ${sendGridError.message}`);
+          }
+        }
+
+        // If we reach here, the provider is configured but sending logic is not implemented
         this.logger.warn(`Sending logic not fully implemented for provider: ${provider.name}`);
         lastError = new Error(`Sending logic not fully implemented for provider: ${provider.name}`);
-        this.currentProviderIndex = (this.currentProviderIndex + 1) % this.providers.length; // Move to next provider
+        this.currentProviderIndex = (this.currentProviderIndex + 1) % this.providers.length;
 
 
       } catch (error: any) {
         lastError = error as Error;
 
+        // Log detailed error information
+        const errorDetails = {
+          provider: provider.name,
+          error: lastError.message,
+          errorCode: error.code,
+          errorResponse: error.response,
+          errorResponseCode: error.responseCode,
+          errorCommand: error.command,
+          attempt: attempt + 1,
+          to: options.to
+        };
+
         this.logger.error('Email send failed', {
-          metadata: {
-            provider: provider.name,
-            error: lastError.message,
-            attempt: attempt + 1,
-            to: options.to
-          }
+          metadata: errorDetails
         } as any);
+
+        // Also log to console for immediate visibility with full error details
+        console.error('\n❌ [EmailService] Failed to send email via', provider.name);
+        console.error('   Error Message:', lastError.message);
+        if (error.code) console.error('   Error Code:', error.code);
+        if (error.response) console.error('   SMTP Response:', error.response);
+        if (error.responseCode) console.error('   Response Code:', error.responseCode);
+        if (error.command) console.error('   Command:', error.command);
+        if (error.stack) {
+          console.error('   Stack Trace:');
+          console.error(error.stack.split('\n').slice(0, 5).join('\n')); // First 5 lines of stack
+        }
+        console.error('');
 
         // Move to next provider for failover
         this.currentProviderIndex = (this.currentProviderIndex + 1) % this.providers.length;
       }
     }
+
+    console.error('\n❌❌❌ ALL EMAIL PROVIDERS FAILED ❌❌❌');
+    console.error(`   Attempted ${maxAttempts} providers`);
+    console.error(`   Last error: ${lastError?.message || 'Unknown error'}`);
+    console.error(`   Recipient: ${options.to}`);
+    console.error('');
 
     this.logger.error('All email providers failed to send email', {
       metadata: {
@@ -507,10 +626,16 @@ If you didn't request this password reset, please ignore this email.
    * Get default sender email from environment
    */
   private getDefaultSender(): string {
-    return process.env.RESEND_FROM_EMAIL || 
-           process.env.SENDGRID_FROM_EMAIL || 
-           process.env.SMTP_FROM_EMAIL || 
-           'noreply@example.com';
+    const fromName = process.env.SMTP_FROM_NAME || 'RuR2 Platform';
+    const fromEmail = process.env.SMTP_FROM_EMAIL || 
+                      process.env.RESEND_FROM_EMAIL || 
+                      process.env.SENDGRID_FROM_EMAIL || 
+                      'noreply@example.com';
+    
+    // Return formatted sender if name is provided
+    return fromName && fromEmail !== 'noreply@example.com' 
+      ? `${fromName} <${fromEmail}>` 
+      : fromEmail;
   }
 
   private stripHtml(html: string): string {

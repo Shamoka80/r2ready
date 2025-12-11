@@ -1586,7 +1586,6 @@ export const securityAuditLog = pgTable("SecurityAuditLog", {
 // Cloud storage provider enum for user-owned storage
 export const cloudStorageProviderEnum = pgEnum("CloudStorageProvider", [
   "google_drive",
-  "onedrive",
   "dropbox",
   "azure_blob"
 ]);
@@ -2439,7 +2438,7 @@ export type NewSecurityAuditLog = typeof securityAuditLog.$inferInsert;
 // User Cloud Storage Connection types
 export type UserCloudStorageConnection = typeof userCloudStorageConnections.$inferSelect;
 export type NewUserCloudStorageConnection = typeof userCloudStorageConnections.$inferInsert;
-export type CloudStorageProvider = "google_drive" | "onedrive" | "dropbox" | "azure_blob";
+export type CloudStorageProvider = "google_drive" | "dropbox" | "azure_blob";
 
 // Intake Facility types
 export type IntakeFacility = typeof intakeFacilities.$inferSelect;

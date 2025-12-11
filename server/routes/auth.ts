@@ -484,7 +484,24 @@ router.post('/login',
       expiresAt: session.expiresAt,
     });
 
-  } catch (error) {
+  } catch (error: any) {
+    // Check if this is a database connection error
+    const errorMessage = error?.message || String(error);
+    const isConnectionError = 
+      errorMessage.includes('ECONNREFUSED') ||
+      errorMessage.includes('fetch failed') ||
+      errorMessage.includes('connect') ||
+      errorMessage.includes('Error connecting to database');
+    
+    if (isConnectionError) {
+      console.error('Database connection unavailable during login');
+      return res.status(503).json({ 
+        error: 'Service temporarily unavailable',
+        message: 'Database connection is currently unavailable. Please try again in a moment.',
+        code: 'DATABASE_UNAVAILABLE'
+      });
+    }
+    
     console.error('Login error:', error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid request data', details: error.errors });
@@ -499,7 +516,7 @@ router.post('/login',
  * Supports dual-mode registration based on enable_email_verification feature flag
  * RECOVERY MODE: Allows re-registration if user is stuck in incomplete state
  */
-router.post('/register-tenant', rateLimitMiddleware.login, blockTestUserRegistration, async (req, res) => {
+router.post('/register-tenant', rateLimitMiddleware.register, blockTestUserRegistration, async (req, res) => {
   try {
     // Check feature flag for email verification flow
     const emailVerificationEnabled = await flagService.isEnabled('enable_email_verification');
@@ -507,10 +524,43 @@ router.post('/register-tenant', rateLimitMiddleware.login, blockTestUserRegistra
     // Validate input data
     const data = registerTenantSchema.parse(req.body);
 
-    // Check if email already exists
-    const existingUser = await db.query.users.findFirst({
-      where: eq(users.email, data.ownerEmail),
-    });
+    // Check if email already exists (with error handling for DB connection issues)
+    let existingUser = null;
+    try {
+      existingUser = await db.query.users.findFirst({
+        where: eq(users.email, data.ownerEmail),
+      });
+    } catch (dbError: any) {
+      // Check if this is a connection error
+      const errorMessage = dbError?.message || String(dbError);
+      const isConnectionError = 
+        errorMessage.includes('ECONNREFUSED') ||
+        errorMessage.includes('fetch failed') ||
+        errorMessage.includes('connect') ||
+        errorMessage.includes('Error connecting to database');
+      
+      if (isConnectionError) {
+        // Database unavailable - can't check for existing users, but also can't create new ones
+        console.error('Database connection unavailable during registration - cannot check for existing users');
+        return res.status(503).json({ 
+          error: 'Service temporarily unavailable',
+          message: 'Database connection is currently unavailable. Cannot create new accounts. Please check your database connection and try again.',
+          code: 'DATABASE_UNAVAILABLE',
+          troubleshooting: {
+            issue: 'Database connection refused',
+            steps: [
+              '1. Verify your DATABASE_URL in server/.env is correct',
+              '2. If using localhost, ensure PostgreSQL is running',
+              '3. If using a cloud database (Neon, etc.), verify the endpoint is enabled',
+              '4. Check network/firewall settings',
+              '5. Verify database credentials are correct'
+            ]
+          }
+        });
+      }
+      // For other DB errors, re-throw to be handled by outer catch
+      throw dbError;
+    }
 
     if (existingUser) {
       // RECOVERY LOGIC: Allow re-registration if user is stuck in incomplete state
@@ -573,12 +623,22 @@ router.post('/register-tenant', rateLimitMiddleware.login, blockTestUserRegistra
 
       // Send verification email synchronously (critical path)
       try {
-        await emailService.sendVerificationEmail(
+        const emailSent = await emailService.sendVerificationEmail(
           data.ownerEmail,
           verificationToken,
           verificationCode,
           data.ownerFirstName
         );
+        
+        if (!emailSent) {
+          console.error(`[Auth] Failed to send verification email to ${data.ownerEmail}`);
+          return res.status(500).json({
+            success: false,
+            error: 'Failed to send verification email. Please try again or contact support.',
+            details: 'Email service returned false'
+          });
+        }
+        
         console.log(`[Auth] Sent verification email to ${data.ownerEmail}`);
       } catch (emailError) {
         // Log error and surface to user - verification is critical
@@ -646,12 +706,22 @@ router.post('/register-tenant', rateLimitMiddleware.login, blockTestUserRegistra
 
       // Send verification email synchronously (critical path)
       try {
-        await emailService.sendVerificationEmail(
+        const emailSent = await emailService.sendVerificationEmail(
           data.ownerEmail,
           verificationToken,
           verificationCode,
           data.ownerFirstName
         );
+        
+        if (!emailSent) {
+          console.error(`[Auth] Failed to send verification email to ${data.ownerEmail}`);
+          return res.status(500).json({
+            success: false,
+            error: 'Failed to send verification email. Please try again or contact support.',
+            details: 'Email service returned false'
+          });
+        }
+        
         console.log(`[Auth] Sent verification email to ${data.ownerEmail}`);
       } catch (emailError) {
         // Log error and surface to user - verification is critical
@@ -724,11 +794,61 @@ router.post('/register-tenant', rateLimitMiddleware.login, blockTestUserRegistra
       });
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Registration error:', error);
+    
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
+    
+    // Check if this is a database connection error
+    const errorMessage = error?.message || String(error);
+    const isConnectionError = 
+      errorMessage.includes('ECONNREFUSED') ||
+      errorMessage.includes('fetch failed') ||
+      errorMessage.includes('connect') ||
+      errorMessage.includes('Error connecting to database');
+    
+    if (isConnectionError) {
+      console.error('Database connection unavailable during registration');
+      
+      // Extract DATABASE_URL info for troubleshooting (masked for security)
+      const dbUrl = process.env.DATABASE_URL || '';
+      const urlInfo = dbUrl.length > 0 
+        ? {
+            host: dbUrl.includes('@') 
+              ? dbUrl.split('@')[1]?.split('/')[0]?.split(':')[0] || 'unknown'
+              : 'unknown',
+            isLocalhost: dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1'),
+            preview: dbUrl.substring(0, Math.min(50, dbUrl.indexOf('@') > 0 ? dbUrl.indexOf('@') : 50)) + '...'
+          }
+        : null;
+      
+      return res.status(503).json({ 
+        error: 'Service temporarily unavailable',
+        message: 'Database connection is currently unavailable. Cannot create new accounts without database access.',
+        code: 'DATABASE_UNAVAILABLE',
+        troubleshooting: {
+          issue: 'Database connection refused (ECONNREFUSED)',
+          databaseUrl: urlInfo,
+          steps: [
+            urlInfo?.isLocalhost 
+              ? '1. PostgreSQL is not running locally - start PostgreSQL service'
+              : '1. Verify your DATABASE_URL in server/.env is correct',
+            '2. Check if the database server is running and accessible',
+            '3. If using a cloud database (Neon, Supabase, etc.), verify:',
+            '   - The endpoint is enabled in your cloud dashboard',
+            '   - The connection string is correct',
+            '   - Your IP is not blocked by firewall',
+            '4. Verify database credentials (username/password) are correct',
+            '5. Check network connectivity and firewall settings',
+            '6. For Neon: Database may be suspended - check your Neon dashboard'
+          ],
+          exampleFormat: 'postgresql://username:password@host:port/database?sslmode=require'
+        }
+      });
+    }
+    
     res.status(500).json({ error: 'Registration failed' });
   }
 });

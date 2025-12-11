@@ -1,3 +1,6 @@
+// Load environment variables from .env file BEFORE any other imports
+import "dotenv/config";
+
 import express, { type Request, Response, NextFunction } from "express";
 import cors from 'cors';
 import path from 'path';
@@ -194,7 +197,18 @@ async function scheduleDailyPurgeJob() {
         maxAttempts: 2,
       });
       console.log(`📅 Scheduled daily purge job: ${jobId}`);
-    } catch (error) {
+    } catch (error: any) {
+      const errorMessage = error?.message || String(error);
+      const isConnectionError = 
+        errorMessage.includes('ECONNREFUSED') ||
+        errorMessage.includes('fetch failed') ||
+        errorMessage.includes('connect') ||
+        errorMessage.includes('Database connection unavailable');
+      
+      if (isConnectionError) {
+        // Silently skip - database unavailable, will retry when available
+        return;
+      }
       console.error('Failed to enqueue purge job:', error);
     }
   }
@@ -225,8 +239,19 @@ async function scheduleDailyAnalyzeJobs() {
             maxAttempts: 2,
           });
           console.log(`📊 Scheduled ANALYZE job for ${tableName}: ${jobId}`);
-        } catch (error) {
-          console.error(`Failed to enqueue ANALYZE job for ${tableName}:`, error);
+        } catch (error: any) {
+          const errorMessage = error?.message || String(error);
+          const isConnectionError = 
+            errorMessage.includes('ECONNREFUSED') ||
+            errorMessage.includes('fetch failed') ||
+            errorMessage.includes('connect') ||
+            errorMessage.includes('Database connection unavailable');
+          
+          if (!isConnectionError) {
+            // Only log non-connection errors
+            console.error(`Failed to enqueue ANALYZE job for ${tableName}:`, error);
+          }
+          // Silently skip connection errors - database unavailable
         }
       }, i * 5000);
     }
@@ -269,8 +294,19 @@ async function scheduleWeeklyVacuumJobs() {
             maxAttempts: 2,
           });
           console.log(`🧹 Scheduled VACUUM job for ${tableName}: ${jobId}`);
-        } catch (error) {
-          console.error(`Failed to enqueue VACUUM job for ${tableName}:`, error);
+        } catch (error: any) {
+          const errorMessage = error?.message || String(error);
+          const isConnectionError = 
+            errorMessage.includes('ECONNREFUSED') ||
+            errorMessage.includes('fetch failed') ||
+            errorMessage.includes('connect') ||
+            errorMessage.includes('Database connection unavailable');
+          
+          if (!isConnectionError) {
+            // Only log non-connection errors
+            console.error(`Failed to enqueue VACUUM job for ${tableName}:`, error);
+          }
+          // Silently skip connection errors - database unavailable
         }
       }, i * 10000);
     }
@@ -317,27 +353,45 @@ async function startServer() {
     const schemaValidation = await validateSchemaConsistency();
 
     if (!schemaValidation.isValid) {
-      console.error('\n' + '='.repeat(80));
-      console.error('❌ DATABASE SCHEMA VALIDATION FAILED');
-      console.error('='.repeat(80));
-      console.error('\nThe database schema is out of sync with the application code.');
-      console.error('This will cause runtime errors. Please fix the schema issues below:\n');
+      // Check if the errors are connection-related (not actual schema errors)
+      const hasConnectionErrors = schemaValidation.errors.some(err => 
+        err.includes('ECONNREFUSED') || 
+        err.includes('fetch failed') || 
+        err.includes('connection')
+      );
 
-      schemaValidation.errors.forEach(error => console.error(error));
+      if (hasConnectionErrors) {
+        console.warn('\n⚠️  Database connection unavailable - schema validation skipped');
+        console.warn('💡 Please check your DATABASE_URL in server/.env');
+        console.warn('💡 Ensure your database is running and accessible\n');
+      } else {
+        // Only fail on actual schema errors, not connection errors
+        console.error('\n' + '='.repeat(80));
+        console.error('❌ DATABASE SCHEMA VALIDATION FAILED');
+        console.error('='.repeat(80));
+        console.error('\nThe database schema is out of sync with the application code.');
+        console.error('This will cause runtime errors. Please fix the schema issues below:\n');
 
-      if (schemaValidation.warnings.length > 0) {
-        console.warn('\nWarnings:');
-        schemaValidation.warnings.forEach(warning => console.warn(warning));
+        schemaValidation.errors.forEach(error => console.error(error));
+
+        if (schemaValidation.warnings.length > 0) {
+          console.warn('\nWarnings:');
+          schemaValidation.warnings.forEach(warning => console.warn(warning));
+        }
+
+        console.error('\n' + '='.repeat(80));
+        console.error('💡 To fix schema issues:');
+        console.error('   1. Run: npm run db:push --force');
+        console.error('   2. Or manually add missing columns using SQL');
+        console.error('   3. Ensure shared/schema.ts matches your database structure');
+        console.error('='.repeat(80) + '\n');
+
+        throw new SchemaValidationError(schemaValidation);
       }
-
-      console.error('\n' + '='.repeat(80));
-      console.error('💡 To fix schema issues:');
-      console.error('   1. Run: npm run db:push --force');
-      console.error('   2. Or manually add missing columns using SQL');
-      console.error('   3. Ensure shared/schema.ts matches your database structure');
-      console.error('='.repeat(80) + '\n');
-
-      throw new SchemaValidationError(schemaValidation);
+    } else if (schemaValidation.warnings.length > 0) {
+      // Show warnings but don't fail
+      console.warn('\n⚠️  Schema validation warnings:');
+      schemaValidation.warnings.forEach(warning => console.warn(`  ${warning}`));
     }
   } catch (error) {
     if (error instanceof SchemaValidationError) {

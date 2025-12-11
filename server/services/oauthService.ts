@@ -46,23 +46,7 @@ export class OAuthService {
         authorizationUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
         tokenUrl: 'https://oauth2.googleapis.com/token'
       });
-    }
-
-    // OneDrive (Microsoft) OAuth
-    if (process.env.MICROSOFT_OAUTH_CLIENT_ID && process.env.MICROSOFT_OAUTH_CLIENT_SECRET) {
-      this.configs.set('onedrive', {
-        clientId: process.env.MICROSOFT_OAUTH_CLIENT_ID,
-        clientSecret: process.env.MICROSOFT_OAUTH_CLIENT_SECRET,
-        redirectUri: `${baseRedirectUri}/onedrive`,
-        scopes: [
-          'Files.ReadWrite',
-          'Files.ReadWrite.All',
-          'User.Read',
-          'offline_access'
-        ],
-        authorizationUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-        tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token'
-      });
+      console.log('✅ Google Drive OAuth configured');
     }
 
     // Dropbox OAuth
@@ -79,6 +63,9 @@ export class OAuthService {
 
     // Azure Blob Storage OAuth (same as OneDrive, but different scopes)
     if (process.env.AZURE_OAUTH_CLIENT_ID && process.env.AZURE_OAUTH_CLIENT_SECRET) {
+      // Use tenant ID if provided, otherwise use 'common' for multi-tenant
+      // Can use AZURE_OAUTH_TENANT_ID or fall back to MICROSOFT_OAUTH_TENANT_ID
+      const tenantId = process.env.AZURE_OAUTH_TENANT_ID || process.env.MICROSOFT_OAUTH_TENANT_ID || 'common';
       this.configs.set('azure_blob', {
         clientId: process.env.AZURE_OAUTH_CLIENT_ID,
         clientSecret: process.env.AZURE_OAUTH_CLIENT_SECRET,
@@ -88,8 +75,8 @@ export class OAuthService {
           'User.Read',
           'offline_access'
         ],
-        authorizationUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-        tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token'
+        authorizationUrl: `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize`,
+        tokenUrl: `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`
       });
     }
   }
@@ -109,10 +96,21 @@ export class OAuthService {
       redirect_uri: config.redirectUri,
       response_type: 'code',
       scope: config.scopes.join(' '),
-      state,
-      access_type: 'offline', // For Google to get refresh token
-      prompt: 'consent' // Force consent to ensure refresh token
+      state
     });
+
+    // Provider-specific parameters
+    if (provider === 'google_drive') {
+      // Google-specific parameters
+      params.append('access_type', 'offline'); // For Google to get refresh token
+      params.append('prompt', 'consent'); // Force consent to ensure refresh token
+    } else if (provider === 'azure_blob') {
+      // Microsoft Azure Blob Storage-specific parameters
+      params.append('prompt', 'consent'); // Force consent to ensure refresh token
+      params.append('response_mode', 'query'); // Use query string for response
+    } else if (provider === 'dropbox') {
+      // Dropbox doesn't need additional parameters
+    }
 
     return `${config.authorizationUrl}?${params.toString()}`;
   }
@@ -220,7 +218,6 @@ export class OAuthService {
       case 'google_drive':
         url = 'https://www.googleapis.com/oauth2/v2/userinfo';
         break;
-      case 'onedrive':
       case 'azure_blob':
         url = 'https://graph.microsoft.com/v1.0/me';
         break;
@@ -248,9 +245,12 @@ export class OAuthService {
     switch (provider) {
       case 'google_drive':
         return { id: data.id, email: data.email };
-      case 'onedrive':
       case 'azure_blob':
-        return { id: data.id, email: data.mail || data.userPrincipalName };
+        // Microsoft Graph API returns 'id' and 'mail' or 'userPrincipalName'
+        return { 
+          id: data.id, 
+          email: data.mail || data.userPrincipalName || data.email || '' 
+        };
       case 'dropbox':
         return { id: data.account_id, email: data.email };
       default:

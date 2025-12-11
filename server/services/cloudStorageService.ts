@@ -5,7 +5,7 @@ import { randomUUID } from 'crypto';
 import { cloudStorageMetadataCache, cloudStorageUrlCache, cacheInvalidation } from './dataCache';
 
 export interface CloudStorageConfig {
-  provider: 'google_drive' | 'onedrive' | 'dropbox' | 'aws_s3' | 'azure_blob';
+  provider: 'google_drive' | 'dropbox' | 'aws_s3' | 'azure_blob';
   credentials: {
     clientId?: string;
     clientSecret?: string;
@@ -456,8 +456,6 @@ export class CloudStorageService {
     switch (config.provider) {
       case 'google_drive':
         return await this.uploadToGoogleDrive(config, buffer, options);
-      case 'onedrive':
-        return await this.uploadToOneDrive(config, buffer, options);
       case 'dropbox':
         return await this.uploadToDropbox(config, buffer, options);
       case 'aws_s3':
@@ -658,22 +656,6 @@ export class CloudStorageService {
     };
   }
 
-  // OneDrive implementation (placeholder)
-  private async uploadToOneDrive(
-    config: CloudStorageConfig,
-    buffer: Buffer,
-    options: UploadOptions
-  ): Promise<{ success: boolean; fileId?: string; url?: string; downloadUrl?: string; error?: string }> {
-    const mockFileId = `od_${Date.now()}_${randomUUID()}`;
-    await new Promise(resolve => setTimeout(resolve, 100)); // Simulate API call
-    return {
-      success: true,
-      fileId: mockFileId,
-      url: `https://1drv.ms/u/s!${mockFileId}`,
-      downloadUrl: `https://api.onedrive.com/v1.0/shares/s!${mockFileId}/root/content`
-    };
-  }
-
   // Dropbox implementation (placeholder)
   private async uploadToDropbox(
     config: CloudStorageConfig,
@@ -747,11 +729,6 @@ export class CloudStorageService {
           return { valid: false, error: 'Google Drive requires clientId and clientSecret' };
         }
         break;
-      case 'onedrive':
-        if (!config.credentials.clientId) {
-          return { valid: false, error: 'OneDrive requires clientId' };
-        }
-        break;
       case 'aws_s3':
         if (!config.credentials.bucketName || !config.credentials.region || !config.credentials.accessKeyId || !config.credentials.secretAccessKey) {
           return { valid: false, error: 'AWS S3 requires bucketName, region, accessKeyId, and secretAccessKey' };
@@ -821,7 +798,7 @@ export class CloudStorageService {
     details: any;
   }> {
     const configuredTenants = this.configs.size;
-    const supportedProviders = ['google_drive', 'onedrive', 'dropbox', 'aws_s3', 'azure_blob'];
+    const supportedProviders = ['google_drive', 'dropbox', 'aws_s3', 'azure_blob'];
     const activeConnections = Array.from(this.configs.values()).filter(config => config.provider === 'aws_s3').length; // Example for active S3 connections
 
     let status: 'healthy' | 'warning' | 'critical' = 'healthy';

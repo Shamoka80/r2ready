@@ -72,8 +72,19 @@ class JobWorker {
           this.processingJobs.delete(job.id);
         });
 
-    } catch (error) {
-      console.error('[JobWorker] Error polling queue:', error);
+    } catch (error: any) {
+      // Check if this is a connection error - if so, silently skip (database unavailable)
+      const errorMessage = error?.message || String(error);
+      const isConnectionError = 
+        errorMessage.includes('ECONNREFUSED') ||
+        errorMessage.includes('fetch failed') ||
+        errorMessage.includes('connect');
+      
+      if (!isConnectionError) {
+        // Only log non-connection errors
+        console.error('[JobWorker] Error polling queue:', error);
+      }
+      // Silently skip connection errors - database is unavailable, will retry when available
     }
   }
 
@@ -116,7 +127,7 @@ class JobWorker {
           .set({ 
             attempts: currentAttempts,
             status: 'PENDING',
-            updatedAt: sql`now()`
+            updatedAt: new Date()
           })
           .where(eq(jobs.id, job.id));
 

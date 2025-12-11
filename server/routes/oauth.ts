@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { oauthService } from '../services/oauthService';
+import { AuthService, type AuthenticatedRequest } from '../services/authService';
 import type { CloudStorageProvider } from '@shared/schema';
 
 const router = Router();
@@ -8,7 +9,7 @@ const router = Router();
  * Get OAuth authorization URL for a provider
  * GET /api/oauth/authorize/:provider
  */
-router.get('/authorize/:provider', async (req, res) => {
+router.get('/authorize/:provider', AuthService.authMiddleware, async (req: AuthenticatedRequest, res) => {
   try {
     const provider = req.params.provider as CloudStorageProvider;
     const userId = req.user?.id;
@@ -60,34 +61,6 @@ router.get('/callback/google', async (req, res) => {
     res.redirect('/?oauth_success=google_drive');
   } catch (error) {
     console.error('Google OAuth callback error:', error);
-    res.redirect(`/?oauth_error=${encodeURIComponent((error as Error).message)}`);
-  }
-});
-
-// OneDrive callback
-router.get('/callback/onedrive', async (req, res) => {
-  try {
-    const { code, state, error } = req.query;
-
-    if (error) {
-      return res.redirect(`/?oauth_error=${encodeURIComponent(error as string)}`);
-    }
-
-    if (!code || !state) {
-      return res.redirect('/?oauth_error=missing_parameters');
-    }
-
-    const { userId, tokens } = await oauthService.exchangeCodeForTokens(
-      'onedrive',
-      code as string,
-      state as string
-    );
-
-    await oauthService.storeTokens(userId, 'onedrive', tokens);
-
-    res.redirect('/?oauth_success=onedrive');
-  } catch (error) {
-    console.error('OneDrive OAuth callback error:', error);
     res.redirect(`/?oauth_error=${encodeURIComponent((error as Error).message)}`);
   }
 });
@@ -154,7 +127,11 @@ router.get('/callback/azure', async (req, res) => {
  */
 router.get('/providers', (req, res) => {
   const providers = oauthService.getConfiguredProviders();
-  res.json({ providers });
+  const providerDetails = providers.map(provider => ({
+    provider,
+    configured: oauthService.isProviderConfigured(provider)
+  }));
+  res.json({ providers, providerDetails });
 });
 
 export default router;

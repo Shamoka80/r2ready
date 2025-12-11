@@ -49,13 +49,6 @@ router.post('/upload/:provider', authenticateUser as any, upload.single('file'),
         );
         break;
       
-      case 'onedrive':
-        result = await cloudStorageService.uploadToOneDrive(
-          file.buffer, 
-          file.originalname
-        );
-        break;
-      
       case 'dropbox':
         result = await cloudStorageService.uploadToDropbox(
           file.buffer, 
@@ -157,13 +150,6 @@ router.post('/upload/bulk', authenticateUser as any, upload.array('files', 10), 
                 file.buffer, 
                 file.originalname, 
                 file.mimetype
-              );
-              break;
-            
-            case 'onedrive':
-              result = await cloudStorageService.uploadToOneDrive(
-                file.buffer, 
-                file.originalname
               );
               break;
             

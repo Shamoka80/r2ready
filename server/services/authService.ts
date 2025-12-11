@@ -432,7 +432,21 @@ export class AuthService {
         token,
         permissions,
       };
-    } catch (error) {
+    } catch (error: any) {
+      // Check if this is a connection error
+      const errorMessage = error?.message || String(error);
+      const isConnectionError = 
+        errorMessage.includes('ECONNREFUSED') ||
+        errorMessage.includes('fetch failed') ||
+        errorMessage.includes('connect') ||
+        errorMessage.includes('Error connecting to database');
+      
+      if (isConnectionError) {
+        // Re-throw connection errors so routes can return 503 instead of 401
+        throw error;
+      }
+      
+      // Log and return null for other errors (invalid credentials, etc.)
       console.error('Authentication error:', error);
       return null;
     }
