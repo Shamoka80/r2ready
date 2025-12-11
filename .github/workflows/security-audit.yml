@@ -14,10 +14,12 @@ jobs:
   dependency-audit:
     runs-on: ubuntu-latest
     name: Dependency Security Audit
+    timeout-minutes: 15
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      continue-on-error: false
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -26,13 +28,13 @@ jobs:
         cache: 'npm'
 
     - name: Install dependencies (root)
-      run: npm ci
+      run: npm ci || (echo "⚠️  npm ci failed, trying npm install" && npm install)
 
     - name: Install dependencies (server)
-      run: cd server && npm ci
+      run: cd server && (npm ci || (echo "⚠️  npm ci failed, trying npm install" && npm install))
 
     - name: Install dependencies (client)
-      run: cd client && npm ci
+      run: cd client && (npm ci || (echo "⚠️  npm ci failed, trying npm install" && npm install))
 
     - name: Run npm audit (root)
       run: npm audit --audit-level=high
@@ -81,11 +83,13 @@ jobs:
   snyk-scan:
     runs-on: ubuntu-latest
     name: Snyk Security Scan
+    timeout-minutes: 15
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      continue-on-error: false
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -94,7 +98,7 @@ jobs:
         cache: 'npm'
 
     - name: Install dependencies
-      run: npm ci
+      run: npm ci || (echo "⚠️  npm ci failed, trying npm install" && npm install)
 
     - name: Run Snyk to check for vulnerabilities
       uses: snyk/actions/node@master
@@ -120,6 +124,7 @@ jobs:
   codeql-analysis:
     runs-on: ubuntu-latest
     name: CodeQL Security Analysis
+    timeout-minutes: 30
     
     permissions:
       security-events: write
@@ -129,6 +134,7 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      continue-on-error: false
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
@@ -144,6 +150,7 @@ jobs:
   security-scorecard:
     runs-on: ubuntu-latest
     name: OSSF Security Scorecard
+    timeout-minutes: 10
     if: github.event_name != 'pull_request'
     
     permissions:
@@ -155,6 +162,7 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      continue-on-error: false
       with:
         persist-credentials: false
 
@@ -173,10 +181,15 @@ jobs:
   notify-security-team:
     runs-on: ubuntu-latest
     name: Notify Security Team
+    timeout-minutes: 5
     needs: [dependency-audit, snyk-scan, codeql-analysis]
     if: failure() && github.event_name != 'pull_request'
     
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      continue-on-error: false
+      
     - name: Send notification
       run: |
         echo "Security audit failed - notifying security team"

@@ -572,19 +572,63 @@ async function startServer() {
     }
 
     jobWorker.start().catch(error => {
-      console.error('❌ Failed to start job worker:', error);
+      const errorMessage = error?.message || String(error);
+      const isBillingError = 
+        errorMessage.includes('account payments have failed') ||
+        errorMessage.includes('spending limit') ||
+        errorMessage.includes('billing') ||
+        errorMessage.includes('payment') ||
+        errorMessage.includes('Billing & plans');
+      
+      if (isBillingError) {
+        console.warn('⚠️  Job worker cannot start due to billing/payment issue. Application will continue to function, but background jobs will be unavailable.');
+        console.warn('⚠️  Please check your billing settings in the platform dashboard.');
+        console.warn('⚠️  Core application features will continue to work normally.');
+      } else {
+        console.error('❌ Failed to start job worker:', error);
+      }
     });
 
     scheduleDailyPurgeJob().catch(error => {
-      console.error('❌ Failed to schedule daily purge job:', error);
+      const errorMessage = error?.message || String(error);
+      const isBillingError = 
+        errorMessage.includes('account payments have failed') ||
+        errorMessage.includes('spending limit') ||
+        errorMessage.includes('billing') ||
+        errorMessage.includes('payment');
+      
+      if (!isBillingError) {
+        console.error('❌ Failed to schedule daily purge job:', error);
+      }
+      // Silently skip billing errors - already logged in job worker startup
     });
 
     scheduleDailyAnalyzeJobs().catch(error => {
-      console.error('❌ Failed to schedule daily ANALYZE jobs:', error);
+      const errorMessage = error?.message || String(error);
+      const isBillingError = 
+        errorMessage.includes('account payments have failed') ||
+        errorMessage.includes('spending limit') ||
+        errorMessage.includes('billing') ||
+        errorMessage.includes('payment');
+      
+      if (!isBillingError) {
+        console.error('❌ Failed to schedule daily ANALYZE jobs:', error);
+      }
+      // Silently skip billing errors - already logged in job worker startup
     });
 
     scheduleWeeklyVacuumJobs().catch(error => {
-      console.error('❌ Failed to schedule weekly VACUUM jobs:', error);
+      const errorMessage = error?.message || String(error);
+      const isBillingError = 
+        errorMessage.includes('account payments have failed') ||
+        errorMessage.includes('spending limit') ||
+        errorMessage.includes('billing') ||
+        errorMessage.includes('payment');
+      
+      if (!isBillingError) {
+        console.error('❌ Failed to schedule weekly VACUUM jobs:', error);
+      }
+      // Silently skip billing errors - already logged in job worker startup
     });
 
     enablePgStatStatements().catch(error => {
