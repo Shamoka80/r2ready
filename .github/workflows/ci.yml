@@ -56,36 +56,57 @@ jobs:
           python3 --version
           which python3
           
-          # Create venv with explicit path
-          python3 -m venv .venv
+          # Create venv - use --clear to ensure clean state
+          python3 -m venv .venv --clear || {
+            echo "❌ Failed to create venv with python3 -m venv"
+            python3 -m virtualenv .venv || {
+              echo "❌ Failed to create venv with virtualenv"
+              exit 1
+            }
+          }
           
-          # Wait a moment for venv to be created
-          sleep 2
-          
-          # Verify venv was created
+          # Verify venv directory exists
           if [ ! -d ".venv" ]; then
             echo "❌ Virtual environment directory not created"
             exit 1
           fi
           
-          # Use venv python directly (more reliable than activation)
-          VENV_PYTHON=".venv/bin/python"
-          if [ ! -f "$VENV_PYTHON" ]; then
-            VENV_PYTHON=".venv/bin/python3"
-          fi
+          # List venv contents for debugging
+          echo "==> venv directory contents:"
+          ls -la .venv/ || true
+          echo "==> venv/bin contents:"
+          ls -la .venv/bin/ || true
           
-          if [ ! -f "$VENV_PYTHON" ]; then
+          # Find Python executable in venv (try multiple possible names)
+          VENV_PYTHON=""
+          for py in ".venv/bin/python" ".venv/bin/python3" ".venv/Scripts/python.exe" ".venv/Scripts/python3.exe"; do
+            if [ -f "$py" ]; then
+              VENV_PYTHON="$py"
+              break
+            fi
+          done
+          
+          if [ -z "$VENV_PYTHON" ] || [ ! -f "$VENV_PYTHON" ]; then
             echo "❌ Python executable not found in venv"
-            ls -la .venv/bin/ || echo "venv/bin directory listing failed"
+            echo "Searched for: .venv/bin/python, .venv/bin/python3, .venv/Scripts/python.exe, .venv/Scripts/python3.exe"
             exit 1
           fi
           
           echo "==> Using Python: $VENV_PYTHON"
-          "$VENV_PYTHON" --version
+          "$VENV_PYTHON" --version || {
+            echo "❌ Python executable not working"
+            exit 1
+          }
           
           # Install packages using venv python directly
-          "$VENV_PYTHON" -m pip install --upgrade pip setuptools wheel
-          "$VENV_PYTHON" -m pip install pandas openpyxl PyPDF2
+          "$VENV_PYTHON" -m pip install --upgrade pip setuptools wheel || {
+            echo "❌ Failed to upgrade pip"
+            exit 1
+          }
+          "$VENV_PYTHON" -m pip install pandas openpyxl PyPDF2 || {
+            echo "❌ Failed to install Python packages"
+            exit 1
+          }
           echo "✓ Python virtual environment ready"
 
       - name: Run Phase 0-3 QA
