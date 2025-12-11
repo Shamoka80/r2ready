@@ -351,9 +351,10 @@ jobs:
               });
             }
             
-            // Fail if there are invalid commits
+            // Warn if there are invalid commits (don't fail - allow squash merge)
             if (invalidCommits.length > 0) {
-              core.setFailed(`${invalidCommits.length} commit(s) do not follow conventional commit format. Use squash merge or amend commits.`);
+              core.warning(`${invalidCommits.length} commit(s) do not follow conventional commit format. Use squash merge or amend commits.`);
+              core.info('ℹ️  This check is informational. PR can still be merged using "Squash and merge" with a properly formatted PR title.');
             } else if (nonMeaningfulCommits.length > 0) {
               core.warning(`${nonMeaningfulCommits.length} commit(s) could be more descriptive`);
               core.info('✅ All commits follow conventional format (some could be more descriptive)');

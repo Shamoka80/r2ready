@@ -53,10 +53,29 @@ jobs:
       - name: Setup Python virtual environment for QA
         run: |
           echo "==> Setting up Python virtual environment"
-          python3 -m venv .venv
-          source .venv/bin/activate
-          python -m pip install --upgrade pip setuptools wheel
-          python -m pip install pandas openpyxl PyPDF2
+          python3 -m venv .venv || {
+            echo "❌ Failed to create venv"
+            exit 1
+          }
+          
+          # Verify venv was created
+          if [ ! -d ".venv" ] || [ ! -f ".venv/bin/python" ] && [ ! -f ".venv/bin/python3" ]; then
+            echo "❌ Virtual environment not created properly"
+            exit 1
+          fi
+          
+          # Use venv python directly (more reliable than activation)
+          VENV_PYTHON=".venv/bin/python"
+          if [ ! -f "$VENV_PYTHON" ]; then
+            VENV_PYTHON=".venv/bin/python3"
+          fi
+          
+          echo "==> Using Python: $VENV_PYTHON"
+          "$VENV_PYTHON" --version
+          
+          # Install packages using venv python directly
+          "$VENV_PYTHON" -m pip install --upgrade pip setuptools wheel
+          "$VENV_PYTHON" -m pip install pandas openpyxl PyPDF2
           echo "✓ Python virtual environment ready"
 
       - name: Run Phase 0-3 QA
