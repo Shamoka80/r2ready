@@ -4,20 +4,39 @@ set -euo pipefail
 # venv (works in Nix/PEP668 envs)
 VENV=".venv"
 PY="$VENV/bin/python"
-if [ ! -x "$PY" ]; then
+PY3="$VENV/bin/python3"
+
+# Create venv if it doesn't exist
+if [ ! -d "$VENV" ] || [ ! -x "$PY" ] && [ ! -x "$PY3" ]; then
+  echo "==> Creating Python virtual environment"
   python3 -m venv "$VENV"
 fi
+
+# Use python3 if python doesn't exist in venv
+if [ -x "$PY3" ] && [ ! -x "$PY" ]; then
+  PY="$PY3"
+fi
+
 # ensure pip usable inside venv
 set +u
-. "$VENV/bin/activate"
+if [ -f "$VENV/bin/activate" ]; then
+  . "$VENV/bin/activate"
+else
+  echo "⚠️  Warning: venv activation script not found, continuing anyway"
+fi
 set -u
 export PIP_USER=0
 export PIP_CONFIG_FILE=/dev/null
 unset PYTHONPATH PIP_TARGET
-"$PY" -m pip -q install --upgrade pip setuptools wheel >/dev/null
-"$PY" -m pip -q install --no-user pandas openpyxl PyPDF2 >/dev/null
+
+# Install dependencies
 echo "==> Ensuring venv"
 echo "==> Installing deps (venv)"
+"$PY" -m pip -q install --upgrade pip setuptools wheel >/dev/null 2>&1 || echo "⚠️  pip upgrade warning (continuing)"
+"$PY" -m pip -q install --no-user pandas openpyxl PyPDF2 >/dev/null 2>&1 || {
+  echo "⚠️  Package installation had issues, trying verbose mode"
+  "$PY" -m pip install --no-user pandas openpyxl PyPDF2
+}
 
 echo "==> Running QA (perpetual license model)"
 "$PY" - <<'PY'

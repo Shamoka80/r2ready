@@ -50,9 +50,19 @@ jobs:
           ls -la Fixes/email_temp_export.pdf
           echo "✓ Required templates found"
 
+      - name: Setup Python virtual environment for QA
+        run: |
+          echo "==> Setting up Python virtual environment"
+          python3 -m venv .venv
+          source .venv/bin/activate
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install pandas openpyxl PyPDF2
+          echo "✓ Python virtual environment ready"
+
       - name: Run Phase 0-3 QA
         run: |
           echo "==> Running Phase 0-3 QA"
+          chmod +x QA_runner.sh
           bash QA_runner.sh
 
       - name: Run Phase 4 smoke tests
