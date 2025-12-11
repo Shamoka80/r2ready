@@ -206,19 +206,19 @@ jobs:
         echo "✅ Build artifacts cleaned"
 
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v4
+      uses: github/codeql-action/init@v3
       continue-on-error: true
       with:
         languages: javascript
         config-file: .github/codeql/codeql-config.yml
 
     - name: Autobuild
-      uses: github/codeql-action/autobuild@v4
+      uses: github/codeql-action/autobuild@v3
       continue-on-error: true
       # CodeQL will analyze what it can even if some files have syntax errors
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v4
+      uses: github/codeql-action/analyze@v3
       continue-on-error: true
       # Upload results even if there are warnings/errors - don't block the workflow
 
@@ -244,34 +244,15 @@ jobs:
 
     - name: Run analysis
       uses: ossf/scorecard-action@v2.3.1
-      continue-on-error: true
       with:
         results_file: results.sarif
         results_format: sarif
         publish_results: true
 
     - name: Upload SARIF results
-      if: always() && hashFiles('results.sarif') != ''
-      uses: github/codeql-action/upload-sarif@v4
-      continue-on-error: true
+      uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: results.sarif
-
-    - name: Scorecard upload summary
-      if: always()
-      run: |
-        if [ -f "results.sarif" ]; then
-          echo "✅ Security scorecard analysis completed"
-          echo "ℹ️  SARIF file generated: results.sarif"
-          if [ "${{ job.status }}" != "success" ]; then
-            echo "⚠️  Upload may have failed - code scanning might not be enabled"
-            echo "💡 To enable code scanning:"
-            echo "   1. Go to repository Settings → Code security and analysis"
-            echo "   2. Enable 'Code scanning'"
-          fi
-        else
-          echo "⚠️  Security scorecard analysis did not generate results file"
-        fi
 
   notify-security-team:
     runs-on: ubuntu-latest
