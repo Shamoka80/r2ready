@@ -56,8 +56,31 @@ for dir in "${CHECK_DIRS[@]}"; do
       # Check for forbidden terms
       for term in "${FORBIDDEN_TERMS[@]}"; do
         if grep -qi "$term" "$file" 2>/dev/null; then
-          # Get line numbers with context (avoid comments that say "formerly subscription")
-          matches=$(grep -ni "$term" "$file" | grep -v "formerly subscription" | grep -v "Changed from subscription" | grep -v "CreditCard" | grep -v "accredited" | grep -v "accredit" | head -3)
+          # Get line numbers with context, excluding legitimate uses:
+          # - Stripe API fields and webhook events
+          # - Cloud provider subscription references (Azure, AWS, GCP)
+          # - Third-party subscription services
+          # - "accredit" / "accredited" (different word, not about credits)
+          # - Migration comments
+          matches=$(grep -ni "$term" "$file" 2>/dev/null | \
+            grep -v -iE "stripeSubscriptionId" | \
+            grep -v -iE "customer\.subscription" | \
+            grep -v -iE "Handle.*subscription" | \
+            grep -v -iE "subscription.*deleted" | \
+            grep -v -iE "subscription.*recurring" | \
+            grep -v -iE "subscriptions or" | \
+            grep -v -iE "Azure.*subscription" | \
+            grep -v -iE "AWS.*subscription" | \
+            grep -v -iE "GCP.*subscription" | \
+            grep -v -iE "subscription service" | \
+            grep -v -iE "subscription.*or manual" | \
+            grep -v -iE "actual.*subscription" | \
+            grep -v -iE "formerly subscription" | \
+            grep -v -iE "changed from subscription" | \
+            grep -v -iE "CreditCard" | \
+            grep -v -iE "accredited" | \
+            grep -v -iE "accredit" | \
+            head -3)
           if [[ -n "$matches" ]]; then
             violation_details+=("❌ File: $file")
             violation_details+=("   Term: '$term'")

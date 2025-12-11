@@ -53,14 +53,18 @@ jobs:
       - name: Setup Python virtual environment for QA
         run: |
           echo "==> Setting up Python virtual environment"
-          python3 -m venv .venv || {
-            echo "❌ Failed to create venv"
-            exit 1
-          }
+          python3 --version
+          which python3
+          
+          # Create venv with explicit path
+          python3 -m venv .venv
+          
+          # Wait a moment for venv to be created
+          sleep 2
           
           # Verify venv was created
-          if [ ! -d ".venv" ] || [ ! -f ".venv/bin/python" ] && [ ! -f ".venv/bin/python3" ]; then
-            echo "❌ Virtual environment not created properly"
+          if [ ! -d ".venv" ]; then
+            echo "❌ Virtual environment directory not created"
             exit 1
           fi
           
@@ -68,6 +72,12 @@ jobs:
           VENV_PYTHON=".venv/bin/python"
           if [ ! -f "$VENV_PYTHON" ]; then
             VENV_PYTHON=".venv/bin/python3"
+          fi
+          
+          if [ ! -f "$VENV_PYTHON" ]; then
+            echo "❌ Python executable not found in venv"
+            ls -la .venv/bin/ || echo "venv/bin directory listing failed"
+            exit 1
           fi
           
           echo "==> Using Python: $VENV_PYTHON"

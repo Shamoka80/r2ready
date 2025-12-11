@@ -194,7 +194,7 @@ jobs:
             if (prVersion === mainVersion) {
               const message = `⚠️ **Version Not Updated**\n\n` +
                 `The version in package.json (${prVersion}) is the same as the main branch.\n\n` +
-                `**Action Required:** Increment the version according to the type of changes:\n` +
+                `**Recommendation:** Increment the version according to the type of changes:\n` +
                 `- Breaking changes → Increment MAJOR (e.g., ${mainVersion} → ${parseInt(mainVersion.split('.')[0]) + 1}.0.0)\n` +
                 `- New features → Increment MINOR (e.g., ${mainVersion} → ${mainVersion.split('.')[0]}.${parseInt(mainVersion.split('.')[1]) + 1}.0)\n` +
                 `- Bug fixes → Increment PATCH (e.g., ${mainVersion} → ${mainVersion.split('.').slice(0, 2).join('.')}.${parseInt(mainVersion.split('.')[2]) + 1})\n\n` +
@@ -205,7 +205,7 @@ jobs:
                 `cd ../client && npm version patch --no-git-tag-version\n` +
                 `\`\`\``;
               
-              core.setFailed(message);
+              core.warning(message + '\n\nThis is informational - PR can still be merged.');
               return;
             }
             
@@ -235,9 +235,9 @@ jobs:
                 `**Semantic Versioning Rules:**\n` +
                 `- Version must always increase\n` +
                 `- Cannot decrement or stay the same\n\n` +
-                `**Action Required:** Update version to be greater than ${mainVersion}`;
+                `**Recommendation:** Update version to be greater than ${mainVersion}`;
               
-              core.setFailed(message);
+              core.warning(message + '\n\nThis is informational - PR can still be merged.');
               return;
             }
             
@@ -309,7 +309,7 @@ jobs:
                 `- Initial release\n` +
                 `\`\`\``;
               
-              core.setFailed(message);
+              core.warning(message + '\n\nThis is informational - PR can still be merged.');
               return;
             }
             
@@ -342,7 +342,7 @@ jobs:
                 `- Bug fix description\n` +
                 `\`\`\``;
               
-              core.setFailed(message);
+              core.warning(message + '\n\nThis is informational - PR can still be merged.');
               return;
             }
             

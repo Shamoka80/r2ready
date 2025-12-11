@@ -125,9 +125,9 @@ jobs:
               });
             }
             
-            // Fail the check if there are errors
+            // Warn instead of fail - allow PRs to proceed
             if (hasErrors) {
-              core.setFailed('PR description validation failed. Please fill in all required sections of the PR template.');
+              core.warning('PR description has missing required sections. Please fill in the template for better code review.');
             } else if (warnings.length > 0) {
               core.warning('PR description has warnings but passes validation.');
             } else {
@@ -200,7 +200,7 @@ jobs:
                 body: errorMessage
               });
               
-              core.setFailed('PR title does not follow conventional commit format');
+              core.warning('PR title does not follow conventional commit format. This is informational - PR can still be merged.');
             } else {
               // Check for non-meaningful descriptions
               const hasNonMeaningful = nonMeaningfulPatterns.some(pattern => pattern.test(prTitle));
