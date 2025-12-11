@@ -99,7 +99,7 @@ jobs:
     name: Snyk Security Scan
     timeout-minutes: 15
     continue-on-error: true  # Don't block workflow if Snyk token is missing or scan fails
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    # Run on all events (push, PR, schedule, manual)
     
     steps:
     - name: Checkout code
@@ -226,7 +226,8 @@ jobs:
     runs-on: ubuntu-latest
     name: OSSF Security Scorecard
     timeout-minutes: 10
-    if: github.event_name != 'pull_request'
+    continue-on-error: true  # Don't block workflow on scorecard issues
+    # Run on all events (push, PR, schedule, manual)
     
     permissions:
       security-events: write
@@ -258,7 +259,7 @@ jobs:
     name: Notify Security Team
     timeout-minutes: 5
     needs: [dependency-audit, snyk-scan, codeql-analysis]
-    if: failure() && github.event_name != 'pull_request'
+    if: failure()  # Run if any security job fails (on any event type)
     
     steps:
     - name: Checkout code
