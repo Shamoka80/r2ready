@@ -206,19 +206,19 @@ jobs:
         echo "✅ Build artifacts cleaned"
 
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
+      uses: github/codeql-action/init@v4
       continue-on-error: true
       with:
         languages: javascript
         config-file: .github/codeql/codeql-config.yml
 
     - name: Autobuild
-      uses: github/codeql-action/autobuild@v3
+      uses: github/codeql-action/autobuild@v4
       continue-on-error: true
       # CodeQL will analyze what it can even if some files have syntax errors
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
+      uses: github/codeql-action/analyze@v4
       continue-on-error: true
       # Upload results even if there are warnings/errors - don't block the workflow
 
@@ -250,9 +250,12 @@ jobs:
         publish_results: true
 
     - name: Upload SARIF results
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4
+      continue-on-error: true
       with:
         sarif_file: results.sarif
+      # Note: Code scanning must be enabled in repository settings for upload to work
+      # If not enabled, this step will fail but won't block the workflow
 
   notify-security-team:
     runs-on: ubuntu-latest
