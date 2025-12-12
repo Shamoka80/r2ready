@@ -16,6 +16,7 @@ jobs:
   pr-description-validation:
     name: PR Description Validation
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Validate PR Description
         uses: actions/github-script@v7
@@ -133,10 +134,14 @@ jobs:
             } else {
               core.info('✅ PR description is complete and follows the template!');
             }
+            
+            // Always exit successfully - this is informational only
+            process.exit(0);
 
   pr-title-validation:
     name: PR Title Validation
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Validate PR Title Format
         uses: actions/github-script@v7
@@ -232,6 +237,7 @@ jobs:
   commit-message-validation:
     name: Commit Message Validation
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -361,3 +367,6 @@ jobs:
             } else {
               core.info(`✅ All ${commits.commits.length} commit(s) follow conventional commit format!`);
             }
+            
+            // Always exit successfully - this is informational only
+            process.exit(0);

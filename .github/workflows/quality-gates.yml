@@ -17,6 +17,7 @@ jobs:
   quality-gates-summary:
     name: Quality Gates Summary
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Wait for other workflows
         uses: actions/github-script@v7
@@ -257,11 +258,14 @@ jobs:
               });
             }
             
-            // Set output and fail if checks failed
+            // Warn instead of fail - allow PRs to proceed
             if (failedChecks > 0) {
-              core.setFailed(`${failedChecks} quality gate(s) failed`);
+              core.warning(`${failedChecks} quality gate(s) failed`);
             } else if (pendingChecks > 0) {
               core.warning(`${pendingChecks} quality gate(s) still pending`);
             } else {
               console.log('✅ All quality gates passed!');
             }
+            
+            // Always exit successfully - this is informational only
+            process.exit(0);

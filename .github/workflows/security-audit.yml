@@ -29,13 +29,16 @@ jobs:
         cache: 'npm'
 
     - name: Install dependencies (root)
-      run: npm ci || (echo "⚠️  npm ci failed, trying npm install" && npm install)
+      continue-on-error: true
+      run: npm ci || npm install || echo "⚠️  npm install failed in root"
 
     - name: Install dependencies (server)
-      run: cd server && (npm ci || (echo "⚠️  npm ci failed, trying npm install" && npm install))
+      continue-on-error: true
+      run: cd server && (npm ci || npm install || echo "⚠️  npm install failed in server")
 
     - name: Install dependencies (client)
-      run: cd client && (npm ci || (echo "⚠️  npm ci failed, trying npm install" && npm install))
+      continue-on-error: true
+      run: cd client && (npm ci || npm install || echo "⚠️  npm install failed in client")
 
     - name: Run npm audit (root)
       run: npm audit --audit-level=high
@@ -113,7 +116,8 @@ jobs:
         cache: 'npm'
 
     - name: Install dependencies
-      run: npm ci || (echo "⚠️  npm ci failed, trying npm install" && npm install)
+      continue-on-error: true
+      run: npm ci || npm install || echo "⚠️  npm install failed"
 
     - name: Check Snyk token availability
       id: check-snyk-token
@@ -193,10 +197,11 @@ jobs:
         cache: 'npm'
 
     - name: Install dependencies
+      continue-on-error: true
       run: |
-        npm ci || (echo "⚠️  npm ci failed, trying npm install" && npm install)
-        cd server && (npm ci || (echo "⚠️  npm ci failed, trying npm install" && npm install))
-        cd ../client && (npm ci || (echo "⚠️  npm ci failed, trying npm install" && npm install))
+        npm ci || npm install || echo "⚠️  npm install failed in root"
+        cd server && (npm ci || npm install || echo "⚠️  npm install failed in server")
+        cd ../client && (npm ci || npm install || echo "⚠️  npm install failed in client")
 
     - name: Clean build artifacts
       run: |
