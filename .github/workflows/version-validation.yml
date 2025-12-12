@@ -68,7 +68,6 @@ jobs:
     name: Validate Tag vs Package Version
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -81,32 +80,40 @@ jobs:
             const fs = require('fs');
             
             try {
+              // Check if this is a tag push
+              if (!context.ref.startsWith('refs/tags/v')) {
+                console.log('ℹ️ This is not a tag push - tag version validation is only applicable for tag pushes.');
+                console.log(`Current ref: ${context.ref}`);
+                console.log('✅ Tag version check skipped (not applicable for this trigger)');
+                return;
+              }
+              
               const tagName = context.ref.replace('refs/tags/', '');
               const tagVersion = tagName.replace(/^v/, '');
               
               const rootPackage = JSON.parse(fs.readFileSync('package.json', 'utf8'));
               const packageVersion = rootPackage.version;
             
-            console.log(`Git tag version: ${tagVersion} (from ${tagName})`);
-            console.log(`package.json version: ${packageVersion}`);
-            
-            if (tagVersion !== packageVersion) {
-              const message = `⚠️ **Tag and Package Version Mismatch**\n\n` +
-                `The git tag version does not match the package.json version:\n\n` +
-                `- Git tag: \`${tagName}\` (version: \`${tagVersion}\`)\n` +
-                `- package.json: \`${packageVersion}\`\n\n` +
-                `**Recommendation:**\n` +
-                `1. Update package.json to version \`${tagVersion}\`, OR\n` +
-                `2. Delete the tag and create a new one matching \`v${packageVersion}\`\n\n` +
-                `This is informational - workflow will continue.`;
+              console.log(`Git tag version: ${tagVersion} (from ${tagName})`);
+              console.log(`package.json version: ${packageVersion}`);
               
-              core.warning(message);
-            } else {
-              console.log('✅ Tag version matches package.json version');
-            }
-            
-            // Always succeed - this is informational
-            console.log('✅ Tag version check completed');
+              if (tagVersion !== packageVersion) {
+                const message = `⚠️ **Tag and Package Version Mismatch**\n\n` +
+                  `The git tag version does not match the package.json version:\n\n` +
+                  `- Git tag: \`${tagName}\` (version: \`${tagVersion}\`)\n` +
+                  `- package.json: \`${packageVersion}\`\n\n` +
+                  `**Recommendation:**\n` +
+                  `1. Update package.json to version \`${tagVersion}\`, OR\n` +
+                  `2. Delete the tag and create a new one matching \`v${packageVersion}\`\n\n` +
+                  `This is informational - workflow will continue.`;
+                
+                core.warning(message);
+              } else {
+                console.log('✅ Tag version matches package.json version');
+              }
+              
+              // Always succeed - this is informational
+              console.log('✅ Tag version check completed');
             } catch (error) {
               core.warning(`Tag version check error: ${error.message}`);
               console.log('✅ Tag version check completed (with errors)');
