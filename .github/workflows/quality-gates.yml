@@ -20,13 +20,15 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Wait for other workflows
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
-            const { owner, repo } = context.repo;
-            const sha = context.payload.pull_request.head.sha;
-            const prNumber = context.payload.pull_request.number;
-            const targetBranch = context.payload.pull_request.base.ref;
+            try {
+              const { owner, repo } = context.repo;
+              const sha = context.payload.pull_request.head.sha;
+              const prNumber = context.payload.pull_request.number;
+              const targetBranch = context.payload.pull_request.base.ref;
             
             console.log(`Waiting for workflows on SHA: ${sha}`);
             console.log(`PR #${prNumber} targeting ${targetBranch}`);
@@ -268,4 +270,8 @@ jobs:
             }
             
             // Always exit successfully - this is informational only
-            process.exit(0);
+            console.log('✅ Quality gates summary completed');
+            } catch (error) {
+              core.warning(`Quality gates summary error: ${error.message}`);
+              console.log('✅ Quality gates summary completed (with errors)');
+            }

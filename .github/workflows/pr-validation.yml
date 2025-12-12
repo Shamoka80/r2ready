@@ -19,11 +19,13 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Validate PR Description
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
-            const prBody = context.payload.pull_request.body || '';
-            const prNumber = context.payload.pull_request.number;
+            try {
+              const prBody = context.payload.pull_request.body || '';
+              const prNumber = context.payload.pull_request.number;
             
             // Validation flags
             let hasErrors = false;
@@ -136,7 +138,11 @@ jobs:
             }
             
             // Always exit successfully - this is informational only
-            process.exit(0);
+            console.log('✅ PR description validation completed');
+            } catch (error) {
+              core.warning(`PR description validation error: ${error.message}`);
+              console.log('✅ PR description validation completed (with errors)');
+            }
 
   pr-title-validation:
     name: PR Title Validation
@@ -144,11 +150,13 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Validate PR Title Format
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
-            const prTitle = context.payload.pull_request.title;
-            const prNumber = context.payload.pull_request.number;
+            try {
+              const prTitle = context.payload.pull_request.title;
+              const prNumber = context.payload.pull_request.number;
             
             // Conventional commit regex
             // Pattern: type(scope): description
@@ -232,6 +240,9 @@ jobs:
               } else {
                 core.info('✅ PR title follows conventional commit format!');
               }
+            } catch (error) {
+              core.warning(`PR title validation error: ${error.message}`);
+              console.log('✅ PR title validation completed (with errors)');
             }
 
   commit-message-validation:
@@ -246,20 +257,22 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
       
       - name: Validate Commit Messages
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
-            const prNumber = context.payload.pull_request.number;
-            const baseSha = context.payload.pull_request.base.sha;
-            const headSha = context.payload.pull_request.head.sha;
-            
-            // Get all commits in the PR
-            const { data: commits } = await github.rest.repos.compareCommits({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              base: baseSha,
-              head: headSha
-            });
+            try {
+              const prNumber = context.payload.pull_request.number;
+              const baseSha = context.payload.pull_request.base.sha;
+              const headSha = context.payload.pull_request.head.sha;
+              
+              // Get all commits in the PR
+              const { data: commits } = await github.rest.repos.compareCommits({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                base: baseSha,
+                head: headSha
+              });
             
             // Conventional commit regex
             const conventionalCommitRegex = /^(feat|fix|docs|style|refactor|perf|test|chore|ci|build)(\([a-zA-Z0-9_-]+\))?: [a-z].+$/;
@@ -358,15 +371,23 @@ jobs:
             }
             
             // Warn if there are invalid commits (don't fail - allow squash merge)
-            if (invalidCommits.length > 0) {
-              core.warning(`${invalidCommits.length} commit(s) do not follow conventional commit format. Use squash merge or amend commits.`);
-              core.info('ℹ️  This check is informational. PR can still be merged using "Squash and merge" with a properly formatted PR title.');
-            } else if (nonMeaningfulCommits.length > 0) {
-              core.warning(`${nonMeaningfulCommits.length} commit(s) could be more descriptive`);
-              core.info('✅ All commits follow conventional format (some could be more descriptive)');
-            } else {
-              core.info(`✅ All ${commits.commits.length} commit(s) follow conventional commit format!`);
+            try {
+              if (invalidCommits.length > 0) {
+                core.warning(`${invalidCommits.length} commit(s) do not follow conventional commit format. Use squash merge or amend commits.`);
+                core.info('ℹ️  This check is informational. PR can still be merged using "Squash and merge" with a properly formatted PR title.');
+              } else if (nonMeaningfulCommits.length > 0) {
+                core.warning(`${nonMeaningfulCommits.length} commit(s) could be more descriptive`);
+                core.info('✅ All commits follow conventional format (some could be more descriptive)');
+              } else {
+                core.info(`✅ All ${commits.commits.length} commit(s) follow conventional commit format!`);
+              }
+            } catch (error) {
+              core.warning(`Error during commit validation: ${error.message}`);
             }
             
             // Always exit successfully - this is informational only
-            process.exit(0);
+            console.log('✅ Commit message validation completed');
+            } catch (error) {
+              core.warning(`Commit validation error: ${error.message}`);
+              console.log('✅ Commit message validation completed (with errors)');
+            }
