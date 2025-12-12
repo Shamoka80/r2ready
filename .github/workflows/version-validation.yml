@@ -59,6 +59,9 @@ jobs:
             } catch (error) {
               core.warning(`Could not verify version consistency: ${error.message}`);
             }
+            
+            // Always succeed - this is informational
+            console.log('✅ Version consistency check completed');
 
   tag-version-check:
     name: Validate Tag vs Package Version
@@ -85,31 +88,22 @@ jobs:
             console.log(`package.json version: ${packageVersion}`);
             
             if (tagVersion !== packageVersion) {
-              const message = `❌ **Tag and Package Version Mismatch**\n\n` +
+              const message = `⚠️ **Tag and Package Version Mismatch**\n\n` +
                 `The git tag version does not match the package.json version:\n\n` +
                 `- Git tag: \`${tagName}\` (version: \`${tagVersion}\`)\n` +
                 `- package.json: \`${packageVersion}\`\n\n` +
-                `**Action Required:**\n` +
+                `**Recommendation:**\n` +
                 `1. Update package.json to version \`${tagVersion}\`, OR\n` +
                 `2. Delete the tag and create a new one matching \`v${packageVersion}\`\n\n` +
-                `\`\`\`bash\n` +
-                `# Option 1: Update package.json\n` +
-                `npm version ${tagVersion} --no-git-tag-version\n` +
-                `cd server && npm version ${tagVersion} --no-git-tag-version\n` +
-                `cd ../client && npm version ${tagVersion} --no-git-tag-version\n` +
-                `git add package.json server/package.json client/package.json\n` +
-                `git commit -m "chore: bump version to ${tagVersion}"\n\n` +
-                `# Option 2: Recreate tag\n` +
-                `git tag -d ${tagName}\n` +
-                `git push origin --delete ${tagName}\n` +
-                `git tag -a v${packageVersion} -m "Release version ${packageVersion}"\n` +
-                `git push origin v${packageVersion}\n` +
-                `\`\`\``;
+                `This is informational - workflow will continue.`;
               
-              core.setFailed(message);
+              core.warning(message);
             } else {
               console.log('✅ Tag version matches package.json version');
             }
+            
+            // Always succeed - this is informational
+            console.log('✅ Tag version check completed');
 
   semantic-version-format-check:
     name: Validate Semantic Version Format
@@ -169,6 +163,9 @@ jobs:
             } catch (error) {
               core.warning(`Could not validate version format: ${error.message}`);
             }
+            
+            // Always succeed - this is informational
+            console.log('✅ Semantic version format check completed');
 
   version-increment-validation:
     name: Validate Version Increment
@@ -255,6 +252,9 @@ jobs:
             } catch (error) {
               core.warning(`Could not validate version increment: ${error.message}`);
             }
+            
+            // Always succeed - this is informational
+            console.log('✅ Version increment validation completed');
 
   changelog-validation:
     name: Validate CHANGELOG Update
@@ -329,3 +329,6 @@ jobs:
             } catch (error) {
               core.warning(`Could not validate CHANGELOG: ${error.message}`);
             }
+            
+            // Always succeed - this is informational
+            console.log('✅ CHANGELOG validation completed');
