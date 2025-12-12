@@ -12,7 +12,7 @@ on:
 
 jobs:
   dependency-audit:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     name: Dependency Security Audit
     timeout-minutes: 15
     continue-on-error: true  # Don't block workflow on audit failures - report as warnings
@@ -95,7 +95,7 @@ jobs:
         fi
 
   snyk-scan:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     name: Snyk Security Scan
     timeout-minutes: 15
     continue-on-error: true  # Don't block workflow if Snyk token is missing or scan fails
@@ -171,7 +171,7 @@ jobs:
         fi
 
   codeql-analysis:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     name: CodeQL Security Analysis
     timeout-minutes: 30
     continue-on-error: true  # Don't fail the workflow on CodeQL errors
@@ -223,7 +223,7 @@ jobs:
       # Upload results even if there are warnings/errors - don't block the workflow
 
   security-scorecard:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     name: OSSF Security Scorecard
     timeout-minutes: 10
     continue-on-error: true  # Don't block workflow on scorecard issues
@@ -258,7 +258,7 @@ jobs:
       # If not enabled, this step will fail but won't block the workflow
 
   notify-security-team:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     name: Notify Security Team
     timeout-minutes: 5
     needs: [dependency-audit, snyk-scan, codeql-analysis]
