@@ -272,29 +272,12 @@ jobs:
       
     - name: Check for security job failures
       id: check-failures
-      continue-on-error: true
       run: |
-        set -e
-        HAS_FAILURES=false
-        
-        if [ "${{ needs.dependency-audit.result }}" = "failure" ]; then
-          HAS_FAILURES=true
-          echo "⚠️  Dependency Security Audit failed"
-        fi
-        
-        if [ "${{ needs.snyk-scan.result }}" = "failure" ]; then
-          HAS_FAILURES=true
-          echo "⚠️  Snyk Security Scan failed"
-        fi
-        
-        if [ "${{ needs.codeql-analysis.result }}" = "failure" ]; then
-          HAS_FAILURES=true
-          echo "⚠️  CodeQL Security Analysis failed"
-        fi
-        
-        if [ "$HAS_FAILURES" = "true" ]; then
+        if [ "${{ needs.dependency-audit.result }}" = "failure" ] || \
+           [ "${{ needs.snyk-scan.result }}" = "failure" ] || \
+           [ "${{ needs.codeql-analysis.result }}" = "failure" ]; then
           echo "has_failures=true" >> $GITHUB_OUTPUT
-          echo "🚨 Security audit failures detected"
+          echo "⚠️  Security audit failures detected"
         else
           echo "has_failures=false" >> $GITHUB_OUTPUT
           echo "✅ All security audits passed - no notification needed"
@@ -302,36 +285,17 @@ jobs:
       
     - name: Send notification
       if: steps.check-failures.outputs.has_failures == 'true'
-      continue-on-error: true
       run: |
         echo "🚨 Security audit failed - notifying security team"
-        echo ""
         echo "Failed jobs:"
-        [ "${{ needs.dependency-audit.result }}" = "failure" ] && echo "  ❌ Dependency Security Audit"
-        [ "${{ needs.snyk-scan.result }}" = "failure" ] && echo "  ❌ Snyk Security Scan"
-        [ "${{ needs.codeql-analysis.result }}" = "failure" ] && echo "  ❌ CodeQL Security Analysis"
-        echo ""
-        echo "💡 Add notification logic here (email, Slack, etc.)"
-        echo "   Example: curl -X POST https://hooks.slack.com/... -d '{\"text\":\"Security audit failed\"}'"
-        exit 0  # Always succeed even if notification fails
+        [ "${{ needs.dependency-audit.result }}" = "failure" ] && echo "  - Dependency Security Audit"
+        [ "${{ needs.snyk-scan.result }}" = "failure" ] && echo "  - Snyk Security Scan"
+        [ "${{ needs.codeql-analysis.result }}" = "failure" ] && echo "  - CodeQL Security Analysis"
+        # Add actual notification logic here (email, Slack, etc.)
+        # Example: curl -X POST https://hooks.slack.com/... -d '{"text":"Security audit failed"}'
       
-    - name: Job completed successfully
+    - name: Job completed
       if: always()
       run: |
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo "✅ Notify Security Team job completed"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo ""
-        echo "Job Status Summary:"
-        echo "  • Dependency Audit: ${{ needs.dependency-audit.result }}"
-        echo "  • Snyk Scan: ${{ needs.snyk-scan.result }}"
-        echo "  • CodeQL Analysis: ${{ needs.codeql-analysis.result }}"
-        echo ""
-        if [ "${{ steps.check-failures.outputs.has_failures }}" = "true" ]; then
-          echo "⚠️  Notifications sent for security failures"
-        else
-          echo "✅ All security checks passed - no action needed"
-        fi
-        echo ""
-        echo "This job always completes successfully to support branch protection rules."
-        exit 0  # Explicitly exit with success
+        echo "This job always runs to ensure it can be used as a required status check"
