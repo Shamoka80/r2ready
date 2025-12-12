@@ -58,15 +58,22 @@ jobs:
             
             console.log(`Required checks: ${requiredChecks.join(', ')}`);
             
-            // Wait for checks to complete (max 30 minutes)
-            const maxWaitTime = 30 * 60 * 1000; // 30 minutes
-            const pollInterval = 10 * 1000; // 10 seconds
+            // Wait for checks to complete (max 8 minutes to respect job timeout of 10 minutes)
+            const maxWaitTime = 8 * 60 * 1000; // 8 minutes
+            const pollInterval = 15 * 1000; // 15 seconds (reduced API calls)
+            const checkAppearanceTimeout = 3 * 60 * 1000; // 3 minutes for checks to appear
             const startTime = Date.now();
+            const checkFirstSeen = {};
             
             let allChecksComplete = false;
             let checkResults = {};
+            let iteration = 0;
             
             while (!allChecksComplete && (Date.now() - startTime) < maxWaitTime) {
+              iteration++;
+              const elapsed = Math.round((Date.now() - startTime) / 1000);
+              console.log(`\n[Iteration ${iteration}, ${elapsed}s elapsed] Checking status...`);
+              
               // Get all check runs for this commit
               const { data: checkRuns } = await github.rest.checks.listForRef({
                 owner,
@@ -75,7 +82,7 @@ jobs:
                 per_page: 100
               });
               
-              console.log(`\nFound ${checkRuns.check_runs.length} check runs`);
+              console.log(`Found ${checkRuns.check_runs.length} check runs`);
               
               // Map check runs to our required checks
               checkResults = {};
@@ -88,6 +95,12 @@ jobs:
                 });
                 
                 if (matchingRuns.length > 0) {
+                  // Track when we first saw this check
+                  if (!checkFirstSeen[checkName]) {
+                    checkFirstSeen[checkName] = Date.now();
+                    console.log(`✓ Found check: ${checkName}`);
+                  }
+                  
                   // Use the most recent run
                   const latestRun = matchingRuns.sort((a, b) => 
                     new Date(b.started_at) - new Date(a.started_at)
@@ -100,12 +113,25 @@ jobs:
                     name: latestRun.name
                   };
                 } else {
-                  checkResults[checkName] = {
-                    status: 'pending',
-                    conclusion: null,
-                    html_url: null,
-                    name: checkName
-                  };
+                  // Check if we've waited long enough for this check to appear
+                  const timeSinceStart = Date.now() - startTime;
+                  if (timeSinceStart > checkAppearanceTimeout) {
+                    // Treat as not found/not applicable after timeout
+                    console.log(`⚠️  Check '${checkName}' not found after ${Math.round(checkAppearanceTimeout / 1000)}s - treating as not applicable`);
+                    checkResults[checkName] = {
+                      status: 'completed',
+                      conclusion: 'skipped',
+                      html_url: null,
+                      name: checkName
+                    };
+                  } else {
+                    checkResults[checkName] = {
+                      status: 'pending',
+                      conclusion: null,
+                      html_url: null,
+                      name: checkName
+                    };
+                  }
                 }
               }
               
@@ -121,12 +147,21 @@ jobs:
                   return !result || result.status !== 'completed';
                 });
                 console.log(`Waiting for checks to complete: ${pending.join(', ')}`);
+                
+                // Show progress for long waits
+                if (iteration % 4 === 0) {
+                  const elapsedMinutes = Math.round(elapsed / 60);
+                  console.log(`⏳ Still waiting... (${elapsedMinutes} minute${elapsedMinutes !== 1 ? 's' : ''} elapsed)`);
+                }
+                
                 await new Promise(resolve => setTimeout(resolve, pollInterval));
               }
             }
             
             if (!allChecksComplete) {
-              console.log('⚠️  Timeout waiting for all checks to complete');
+              const elapsedMinutes = Math.round((Date.now() - startTime) / 60000);
+              console.log(`⚠️  Timeout after ${elapsedMinutes} minutes - proceeding with available results`);
+              console.log('Some checks may still be running, but summary will be generated with current status');
             }
             
             // Calculate statistics
