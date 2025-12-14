@@ -161,6 +161,7 @@ export const createRateLimit = (
 export const rateLimitMiddleware = {
   // Authentication rate limits
   login: createRateLimit('auth', 'login', { identifierType: 'ip' }),
+  register: createRateLimit('auth', 'register', { identifierType: 'ip' }), // More lenient for registration
   passwordReset: createRateLimit('auth', 'password_reset', { identifierType: 'ip' }),
   tokenRefresh: createRateLimit('auth', 'token_refresh', { identifierType: 'ip' }),
 

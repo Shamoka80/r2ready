@@ -17,12 +17,17 @@ client/dist/
 .DS_Store
 .DS_Store?
 ehthumbs.db
-.env
-.env.development.local
 # Environment files (keep examples)
+.env
+.env.*
 .env.local
+.env.development.local
 .env.production.local
 .env.test.local
+**/.env
+**/.env.*
+server/.env
+server/.env.*
 .idea/
 # IDE files
 # Ignore backup artifacts
@@ -47,7 +52,6 @@ releases/*.tar.gz*
 # Runtime data
 # Runtime files
 *.seed
-server/.env
 server/uploads/*
 !server/uploads/.gitkeep
 .Spotlight-V100

@@ -1,8 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cors from 'cors';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import fs from "fs";
+import path from "path";
+import { fileURLToPath } from 'url';
 import { Socket } from 'net';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { registerRoutes } from "./routes.js";
@@ -23,7 +23,9 @@ import { handleStripeWebhook } from './routes/stripe-webhooks.js';
 import { jobWorker } from './workers/jobWorker.js';
 import { jobQueueService } from './services/jobQueue.js';
 import { QueryMonitoringService } from './services/queryMonitoring.js';
+import { emailService } from './services/emailService.js';
 
+// Define __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -310,6 +312,20 @@ async function startServer() {
     }
   } catch (error) {
     console.warn('⚠️  Database error:', error instanceof Error ? error.message : 'Unknown error');
+  }
+
+  // Initialize email service and check Microsoft 365 SMTP connection
+  try {
+    console.log('\n📧 Initializing email service...');
+    await emailService.ensureInitialized();
+    const emailHealth = await emailService.healthCheck();
+    if (emailHealth) {
+      console.log('✅ Email service ready');
+    } else {
+      console.warn('⚠️  Email service health check failed - emails may not be sent');
+    }
+  } catch (error) {
+    console.warn('⚠️  Email service initialization error:', error instanceof Error ? error.message : 'Unknown error');
   }
 
   // Validate database schema consistency (fail-fast on critical errors)

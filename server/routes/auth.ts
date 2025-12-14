@@ -499,7 +499,7 @@ router.post('/login',
  * Supports dual-mode registration based on enable_email_verification feature flag
  * RECOVERY MODE: Allows re-registration if user is stuck in incomplete state
  */
-router.post('/register-tenant', rateLimitMiddleware.login, blockTestUserRegistration, async (req, res) => {
+router.post('/register-tenant', rateLimitMiddleware.register, blockTestUserRegistration, async (req, res) => {
   try {
     // Check feature flag for email verification flow
     const emailVerificationEnabled = await flagService.isEnabled('enable_email_verification');
@@ -572,6 +572,26 @@ router.post('/register-tenant', rateLimitMiddleware.login, blockTestUserRegistra
         .where(eq(tenants.id, existingUser.tenantId));
 
       // Send verification email synchronously (critical path)
+      // Log verification details BEFORE attempting to send (so they always show)
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5173';
+      const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
+      
+      // FORCE OUTPUT - Use process.stderr.write to ensure visibility
+      process.stderr.write('\n');
+      process.stderr.write('═══════════════════════════════════════════════════════════════\n');
+      process.stderr.write('🔗 EMAIL VERIFICATION LINK (DEVELOPMENT MODE)\n');
+      process.stderr.write('═══════════════════════════════════════════════════════════════\n');
+      process.stderr.write(`VERIFICATION LINK: ${verificationUrl}\n`);
+      process.stderr.write(`VERIFICATION CODE: ${verificationCode}\n`);
+      process.stderr.write(`EMAIL: ${data.ownerEmail}\n`);
+      process.stderr.write('═══════════════════════════════════════════════════════════════\n');
+      process.stderr.write('\n');
+      
+      // Also use console.error as backup
+      console.error(`\n[Auth] 🔗 VERIFICATION LINK: ${verificationUrl}`);
+      console.error(`[Auth] 🔢 VERIFICATION CODE: ${verificationCode}`);
+      console.error(`[Auth] 📧 EMAIL: ${data.ownerEmail}\n`);
+      
       try {
         await emailService.sendVerificationEmail(
           data.ownerEmail,
@@ -646,13 +666,22 @@ router.post('/register-tenant', rateLimitMiddleware.login, blockTestUserRegistra
 
       // Send verification email synchronously (critical path)
       try {
-        await emailService.sendVerificationEmail(
+        const emailSent = await emailService.sendVerificationEmail(
           data.ownerEmail,
           verificationToken,
           verificationCode,
           data.ownerFirstName
         );
-        console.log(`[Auth] Sent verification email to ${data.ownerEmail}`);
+        
+        if (emailSent) {
+          console.log(`[Auth] ✅ Verification email sent successfully to ${data.ownerEmail}`);
+        } else {
+          console.error(`[Auth] ❌ Failed to send verification email to ${data.ownerEmail}`);
+          return res.status(500).json({
+            success: false,
+            error: 'Failed to send verification email. Please try again or contact support.'
+          });
+        }
       } catch (emailError) {
         // Log error and surface to user - verification is critical
         console.error('Error sending verification email:', emailError);
@@ -1543,14 +1572,14 @@ router.post('/send-verification-email', strictRateLimit.passwordChange, async (r
       
       // Check if email actually sent successfully
       if (!emailSent) {
-        console.error('Failed to send verification email - emailService returned false');
+        console.error(`[Auth] ❌ Failed to send verification email to ${email}`);
         return res.status(500).json({
           success: false,
           error: 'Failed to send verification email. Please try again later.'
         });
       }
       
-      console.log(`[Auth] Sent verification email to ${email}`);
+      console.log(`[Auth] ✅ Verification email sent successfully to ${email}`);
     } catch (emailError) {
       // Return error response instead of silently failing
       console.error('Failed to send verification email:', emailError);
