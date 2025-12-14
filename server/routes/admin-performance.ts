@@ -21,7 +21,7 @@ router.get('/', authenticateUser as any, async (req: Request, res: Response) => 
         message: 'Admin access required. Only business owners and consultant owners can access performance metrics.',
       });
     }
-
+////////////////////////////
     const validationResult = getPerformanceMetricsSchema.safeParse(req.query);
     
     if (!validationResult.success) {

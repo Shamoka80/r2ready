@@ -1,3 +1,0 @@
-==> Ensuring venv
-==> Installing deps (venv)
-==> Running QA

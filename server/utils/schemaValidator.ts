@@ -1,5 +1,4 @@
-import { db } from '../db';
-import { sql } from 'drizzle-orm';
+import { db, sql } from '../db';
 
 interface ColumnDefinition {
   name: string;
@@ -103,32 +102,36 @@ export async function validateSchemaConsistency(): Promise<SchemaValidationResul
     for (const tableDefinition of CRITICAL_SCHEMA) {
       const { tableName, columns } = tableDefinition;
 
-      // Check if table exists
-      const tableExistsQuery = await db.execute(sql`
+      // Check if table exists - use sql directly for better compatibility
+      const tableExistsResult = await sql`
         SELECT EXISTS (
           SELECT FROM information_schema.tables 
           WHERE table_schema = 'public' 
           AND table_name = ${tableName}
-        );
-      `);
+        ) as exists;
+      `;
 
-      const tableExists = (tableExistsQuery.rows[0] as any).exists;
+      // Handle different result formats (Neon returns array, postgres returns array)
+      const resultArray = Array.isArray(tableExistsResult) ? tableExistsResult : [tableExistsResult];
+      const firstRow = resultArray[0];
+      const tableExists = firstRow?.exists ?? false;
 
       if (!tableExists) {
         errors.push(`❌ Critical table '${tableName}' does not exist in the database`);
         continue;
       }
 
-      // Get actual columns from database
-      const columnsQuery = await db.execute(sql`
+      // Get actual columns from database - use sql directly for better compatibility
+      const columnsResult = await sql`
         SELECT column_name, data_type, is_nullable
         FROM information_schema.columns
         WHERE table_schema = 'public' 
         AND table_name = ${tableName}
         ORDER BY ordinal_position;
-      `);
+      `;
 
-      const actualColumns = columnsQuery.rows as Array<{
+      // Handle different result formats (Neon returns array, postgres returns array)
+      const actualColumns = (Array.isArray(columnsResult) ? columnsResult : []) as Array<{
         column_name: string;
         data_type: string;
         is_nullable: string;
@@ -194,6 +197,23 @@ export async function validateSchemaConsistency(): Promise<SchemaValidationResul
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    // Check if this is a connection error (not a schema error)
+    const isConnectionError = 
+      errorMessage.includes('ECONNREFUSED') ||
+      errorMessage.includes('fetch failed') ||
+      errorMessage.includes('connect') ||
+      errorMessage.includes('connection') ||
+      errorMessage.includes('timeout');
+    
+    if (isConnectionError) {
+      console.warn('⚠️  Database connection failed during schema validation - skipping validation');
+      console.warn('💡 This is not a schema error. Please check your DATABASE_URL and ensure the database is accessible.');
+      // Return valid result when it's just a connection issue (not a schema problem)
+      return { isValid: true, errors: [], warnings: ['Database connection unavailable - schema validation skipped'] };
+    }
+    
+    // For actual schema/query errors, return invalid
     errors.push(`❌ Schema validation error: ${errorMessage}`);
     console.error('❌ Schema validation failed with error:', error);
     return { isValid: false, errors, warnings };

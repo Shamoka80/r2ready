@@ -14,6 +14,7 @@ export class RateLimitService {
   // Default rate limit configurations
   private static readonly defaultLimits = {
     'auth:login': { maxRequests: 5, windowSeconds: 300 }, // 5 attempts per 5 minutes
+    'auth:register': { maxRequests: 10, windowSeconds: 300 }, // 10 registrations per 5 minutes (more lenient for testing)
     'auth:2fa_verify': { maxRequests: 10, windowSeconds: 300 }, // 10 attempts per 5 minutes
     'auth:password_reset': { maxRequests: 3, windowSeconds: 3600 }, // 3 attempts per hour
     'exports:pdf': { maxRequests: 10, windowSeconds: 60 }, // 10 exports per minute
@@ -125,9 +126,19 @@ export class RateLimitService {
         retryAfter
       };
 
-    } catch (error) {
-      console.error('Rate limit check error:', error);
-      // On error, allow the request but log it
+    } catch (error: any) {
+      // Check if this is a connection error - if so, silently allow (database unavailable)
+      const errorMessage = error?.message || String(error);
+      const isConnectionError = 
+        errorMessage.includes('ECONNREFUSED') ||
+        errorMessage.includes('fetch failed') ||
+        errorMessage.includes('connect');
+      
+      if (!isConnectionError) {
+        // Only log non-connection errors
+        console.error('Rate limit check error:', error);
+      }
+      // On error, allow the request (fail open when database unavailable)
       return {
         allowed: true,
         currentCount: 1,

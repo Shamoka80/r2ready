@@ -15,15 +15,32 @@ class JobWorker {
       return;
     }
 
-    this.isRunning = true;
-    console.log('[JobWorker] Starting worker process');
-    console.log(`[JobWorker] Registered handlers: ${jobQueueService.getRegisteredHandlers().join(', ')}`);
+    try {
+      this.isRunning = true;
+      console.log('[JobWorker] Starting worker process');
+      console.log(`[JobWorker] Registered handlers: ${jobQueueService.getRegisteredHandlers().join(', ')}`);
 
-    this.pollingInterval = setInterval(async () => {
+      this.pollingInterval = setInterval(async () => {
+        await this.pollAndProcess();
+      }, this.POLL_INTERVAL_MS);
+
       await this.pollAndProcess();
-    }, this.POLL_INTERVAL_MS);
-
-    await this.pollAndProcess();
+    } catch (error: any) {
+      const errorMessage = error?.message || String(error);
+      const isBillingError = 
+        errorMessage.includes('account payments have failed') ||
+        errorMessage.includes('spending limit') ||
+        errorMessage.includes('billing') ||
+        errorMessage.includes('payment') ||
+        errorMessage.includes('Billing & plans');
+      
+      if (isBillingError) {
+        // Don't set isRunning to true if billing error - worker won't start
+        this.isRunning = false;
+        throw error; // Re-throw so caller can handle it
+      }
+      throw error; // Re-throw other errors
+    }
   }
 
   async stop(): Promise<void> {
@@ -72,8 +89,36 @@ class JobWorker {
           this.processingJobs.delete(job.id);
         });
 
-    } catch (error) {
-      console.error('[JobWorker] Error polling queue:', error);
+    } catch (error: any) {
+      // Check if this is a connection error - if so, silently skip (database unavailable)
+      const errorMessage = error?.message || String(error);
+      const isConnectionError = 
+        errorMessage.includes('ECONNREFUSED') ||
+        errorMessage.includes('fetch failed') ||
+        errorMessage.includes('connect');
+      
+      const isBillingError = 
+        errorMessage.includes('account payments have failed') ||
+        errorMessage.includes('spending limit') ||
+        errorMessage.includes('billing') ||
+        errorMessage.includes('payment');
+      
+      if (isBillingError) {
+        // Stop polling if billing error - worker should not continue
+        this.isRunning = false;
+        if (this.pollingInterval) {
+          clearInterval(this.pollingInterval);
+          this.pollingInterval = null;
+        }
+        console.warn('[JobWorker] Stopped due to billing/payment issue. Please resolve billing to resume background jobs.');
+        return;
+      }
+      
+      if (!isConnectionError) {
+        // Only log non-connection errors
+        console.error('[JobWorker] Error polling queue:', error);
+      }
+      // Silently skip connection errors - database is unavailable, will retry when available
     }
   }
 
@@ -116,7 +161,7 @@ class JobWorker {
           .set({ 
             attempts: currentAttempts,
             status: 'PENDING',
-            updatedAt: sql`now()`
+            updatedAt: new Date()
           })
           .where(eq(jobs.id, job.id));
 

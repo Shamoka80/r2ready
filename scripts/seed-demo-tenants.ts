@@ -1,6 +1,8 @@
 #!/usr/bin/env tsx
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+import { neon, neonConfig } from "@neondatabase/serverless";
+import postgres from "postgres";
+import { drizzle as drizzleNeon } from "drizzle-orm/neon-http";
+import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
 import { sql } from "drizzle-orm";
 import * as schema from "../shared/schema.js";
 import dotenv from "dotenv";
@@ -12,8 +14,36 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL environment variable is required");
 }
 
-const connection = neon(process.env.DATABASE_URL);
-const db = drizzle(connection, { schema });
+// Detect database type and use appropriate driver (same logic as server/db.ts)
+const dbUrl = process.env.DATABASE_URL;
+const isLocalhost = dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1') || dbUrl.includes('::1');
+const isNeon = dbUrl.includes('neon.tech') || dbUrl.includes('.neon.tech');
+
+let db: any;
+let sqlClient: any;
+
+if (isLocalhost) {
+  console.log('💡 Using localhost database - using standard PostgreSQL driver');
+  const client = postgres(dbUrl, {
+    max: 10,
+    idle_timeout: 20,
+    connect_timeout: 10,
+  });
+  sqlClient = client;
+  db = drizzlePostgres(client, { schema });
+} else if (isNeon) {
+  console.log('💡 Using Neon database - using Neon HTTP driver');
+  neonConfig.pipelineConnect = 'password';
+  const neonSql = neon(dbUrl);
+  sqlClient = neonSql;
+  db = drizzleNeon(neonSql as any, { schema });
+} else {
+  console.log('💡 Using cloud database - attempting Neon HTTP driver');
+  neonConfig.pipelineConnect = 'password';
+  const neonSql = neon(dbUrl);
+  sqlClient = neonSql;
+  db = drizzleNeon(neonSql as any, { schema });
+}
 
 async function seedDemoTenants() {
   console.log("🌱 Starting demo tenant seeding...");
@@ -24,11 +54,20 @@ async function seedDemoTenants() {
     
     // Use TRUNCATE CASCADE for clean slate (faster and handles FK constraints)
     try {
-      await db.execute(sql`DELETE FROM "Tenant" WHERE name LIKE '%demo-%' CASCADE`);
-    } catch (error) {
-      // If CASCADE doesn't work, delete manually
-      console.log("Deleting demo tenants individually...");
+      // Try to delete demo tenants - use appropriate method based on database type
       await db.delete(schema.tenants).where(sql`name LIKE '%demo-%'`);
+    } catch (error) {
+      // If that doesn't work, try execute with raw SQL
+      console.log("Deleting demo tenants with raw SQL...");
+      try {
+        if (isLocalhost && sqlClient) {
+          await sqlClient`DELETE FROM "Tenant" WHERE name LIKE ${'%demo-%'}`;
+        } else {
+          await db.execute(sql`DELETE FROM "Tenant" WHERE name LIKE '%demo-%'`);
+        }
+      } catch (error2) {
+        console.log("⚠️  Could not delete existing demo tenants - continuing anyway");
+      }
     }
 
     // === BUSINESS TENANT ===
@@ -301,7 +340,7 @@ async function seedDemoTenants() {
     console.log("📋 Creating sample assessments...");
 
     // Get R2v3 standard (assuming it exists or create a simple one)
-    const r2StandardResult = await db.select().from(schema.standardVersions).where(sql`code = 'R2v3'`);
+    const r2StandardResult = await db.select().from(schema.standardVersions).where(sql`${schema.standardVersions.code} = 'R2v3'`);
     let r2Standard = r2StandardResult[0];
     
     if (!r2Standard) {
@@ -456,16 +495,42 @@ async function seedDemoTenants() {
     console.log(`   • Sample assessments and evidence objects created`);
     console.log(`   • License events for audit trail`);
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ Error during seeding:", error);
+    
+    // Check if it's a connection error - if so, provide helpful message
+    const errorMessage = error?.message || String(error);
+    const isConnectionError = 
+      errorMessage.includes('ECONNREFUSED') ||
+      errorMessage.includes('fetch failed') ||
+      errorMessage.includes('connect') ||
+      errorMessage.includes('NeonDbError');
+    
+    if (isConnectionError) {
+      console.error("\n💡 Connection Error Detected:");
+      console.error("   This might be because:");
+      console.error("   1. Database is not running or not accessible");
+      console.error("   2. DATABASE_URL is incorrect");
+      console.error("   3. Network/firewall issues");
+      console.error("\n   In CI, make sure DATABASE_URL points to the local PostgreSQL service");
+      console.error(`   Current DATABASE_URL: ${process.env.DATABASE_URL ? 'SET' : 'NOT SET'}`);
+    }
+    
     throw error;
   }
 }
 
 // Run the seeding if this file is executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  await seedDemoTenants();
-  process.exit(0);
+if (import.meta.url === `file://${process.argv[1]}` || import.meta.url.endsWith(process.argv[1])) {
+  seedDemoTenants()
+    .then(() => {
+      console.log("✅ Seeding completed successfully");
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error("❌ Seeding failed:", error);
+      process.exit(1);
+    });
 }
 
 export { seedDemoTenants };

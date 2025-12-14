@@ -1,6 +1,5 @@
 
 import { Storage } from '@google-cloud/storage';
-import { Client } from '@microsoft/microsoft-graph-client';
 import { Dropbox } from 'dropbox';
 import { BlobServiceClient } from '@azure/storage-blob';
 import crypto from 'crypto';
@@ -10,7 +9,7 @@ import path from 'path';
 interface CloudProvider {
   id: string;
   name: string;
-  type: 'google_drive' | 'onedrive' | 'dropbox' | 'azure_blob';
+  type: 'google_drive' | 'dropbox' | 'azure_blob';
   credentials: any;
   quotaUsed: number;
   quotaLimit: number;
@@ -28,7 +27,6 @@ interface UploadResult {
 
 export class CloudStorageIntegrationService {
   private googleStorage?: Storage;
-  private microsoftClient?: Client;
   private dropboxClient?: Dropbox;
   private azureBlobClient?: BlobServiceClient;
   private encryptionKey: string;
@@ -48,15 +46,6 @@ export class CloudStorageIntegrationService {
         });
       }
 
-      // Initialize Microsoft Graph (OneDrive)
-      if (process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET) {
-        this.microsoftClient = Client.init({
-          authProvider: async (done) => {
-            // OAuth token implementation would go here
-            done(null, process.env.MICROSOFT_ACCESS_TOKEN || '');
-          }
-        });
-      }
 
       // Initialize Dropbox
       if (process.env.DROPBOX_ACCESS_TOKEN) {
@@ -121,49 +110,6 @@ export class CloudStorageIntegrationService {
       });
       stream.end(processedBuffer);
     });
-  }
-
-  async uploadToOneDrive(fileBuffer: Buffer, fileName: string): Promise<UploadResult> {
-    if (!this.microsoftClient) {
-      throw new Error('OneDrive not configured');
-    }
-
-    const isSecure = this.isSensitiveFile(fileName);
-    let processedBuffer = fileBuffer;
-    let encryptionKey: string | undefined;
-
-    if (isSecure) {
-      const result = await this.encryptFile(fileBuffer);
-      processedBuffer = result.encryptedData;
-      encryptionKey = result.encryptionKey;
-    }
-
-    try {
-      const uploadSession = await this.microsoftClient
-        .api('/me/drive/root:/RUR2_Evidence/' + fileName + ':/createUploadSession')
-        .post({
-          item: {
-            '@microsoft.graph.conflictBehavior': 'rename',
-            name: fileName
-          }
-        });
-
-      // For simplicity, using direct upload for small files
-      const response = await this.microsoftClient
-        .api('/me/drive/root:/RUR2_Evidence/' + fileName + ':/content')
-        .put(processedBuffer);
-
-      return {
-        fileId: response.id,
-        fileName,
-        size: processedBuffer.length,
-        provider: 'onedrive',
-        encryptionKey,
-        uploadUrl: response.webUrl
-      };
-    } catch (error) {
-      throw new Error(`OneDrive upload failed: ${(error as Error).message}`);
-    }
   }
 
   async uploadToDropbox(fileBuffer: Buffer, fileName: string): Promise<UploadResult> {
@@ -263,12 +209,6 @@ export class CloudStorageIntegrationService {
         fileBuffer = contents;
         break;
 
-      case 'onedrive':
-        if (!this.microsoftClient) throw new Error('OneDrive not configured');
-        const response = await this.microsoftClient.api(`/me/drive/items/${fileId}/content`).get();
-        fileBuffer = Buffer.from(response);
-        break;
-
       case 'dropbox':
         if (!this.dropboxClient) throw new Error('Dropbox not configured');
         const downloadResponse = await this.dropboxClient.filesDownload({ path: fileId });
@@ -309,15 +249,6 @@ export class CloudStorageIntegrationService {
       case 'google_drive':
         // Google Cloud Storage quota check
         return { used: 0, limit: 1000000000000, available: 1000000000000 }; // 1TB default
-
-      case 'onedrive':
-        if (!this.microsoftClient) throw new Error('OneDrive not configured');
-        const quota = await this.microsoftClient.api('/me/drive').get();
-        return {
-          used: quota.quota.used,
-          limit: quota.quota.total,
-          available: quota.quota.remaining
-        };
 
       case 'dropbox':
         if (!this.dropboxClient) throw new Error('Dropbox not configured');
@@ -400,32 +331,6 @@ export class CloudStorageIntegrationService {
           id: 'google_drive',
           name: 'Google Drive',
           type: 'google_drive',
-          credentials: false,
-          quotaUsed: 0,
-          quotaLimit: 0,
-          isActive: false
-        });
-      }
-    }
-
-    // OneDrive status
-    if (this.microsoftClient) {
-      try {
-        const quota = await this.checkQuota('onedrive');
-        providers.push({
-          id: 'onedrive',
-          name: 'OneDrive',
-          type: 'onedrive',
-          credentials: !!process.env.MICROSOFT_ACCESS_TOKEN,
-          quotaUsed: quota.used,
-          quotaLimit: quota.limit,
-          isActive: true
-        });
-      } catch (error) {
-        providers.push({
-          id: 'onedrive',
-          name: 'OneDrive',
-          type: 'onedrive',
           credentials: false,
           quotaUsed: 0,
           quotaLimit: 0,

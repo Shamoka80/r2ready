@@ -1,2 +1,0 @@
-MISS ./Fixes/reports/exec_summary.docx
-PHASE4_SMOKE: FAIL

@@ -142,15 +142,23 @@ export const createRateLimit = (
 
       next();
 
-    } catch (error) {
+    } catch (error: any) {
+      // Check if this is a connection error
+      const errorMessage = error?.message || String(error);
+      const isConnectionError = 
+        errorMessage.includes('ECONNREFUSED') ||
+        errorMessage.includes('fetch failed') ||
+        errorMessage.includes('connect');
+      
+      if (isConnectionError) {
+        // Database unavailable - allow request through (fail open)
+        next();
+        return;
+      }
+      
+      // For other errors, log and allow (fail open to avoid blocking legitimate requests)
       console.error('Rate limit middleware error:', error);
-      // On error, apply conservative rate limiting
-      res.status(429).json({
-        success: false,
-        error: 'RATE_LIMIT_ERROR',
-        message: 'Rate limiting service unavailable. Please try again later.'
-      });
-      return;
+      next();
     }
   };
 };
@@ -161,6 +169,7 @@ export const createRateLimit = (
 export const rateLimitMiddleware = {
   // Authentication rate limits
   login: createRateLimit('auth', 'login', { identifierType: 'ip' }),
+  register: createRateLimit('auth', 'register', { identifierType: 'ip' }), // Separate rate limit for registration
   passwordReset: createRateLimit('auth', 'password_reset', { identifierType: 'ip' }),
   tokenRefresh: createRateLimit('auth', 'token_refresh', { identifierType: 'ip' }),
 

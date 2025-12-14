@@ -1,6 +1,6 @@
-import { db } from '../db.js';
+import { db, sql as clientSql } from '../db.js';
 import { jobs, Job, NewJob } from '../../shared/schema.js';
-import { eq, and, desc, sql, lte } from 'drizzle-orm';
+import { eq, and, desc, lte, sql } from 'drizzle-orm';
 import { ExportService } from './exportService.js';
 import { emailService } from './emailService.js';
 
@@ -22,63 +22,91 @@ class JobQueueService {
     priority?: 'low' | 'medium' | 'high';
     maxAttempts?: number;
   }): Promise<string> {
-    const newJob: NewJob = {
-      tenantId: jobData.tenantId,
-      type: jobData.type,
-      status: 'PENDING',
-      priority: jobData.priority || 'medium',
-      payload: jobData.payload,
-      result: null,
-      error: null,
-      attempts: 0,
-      maxAttempts: jobData.maxAttempts || 3,
-    };
+    try {
+      const newJob: NewJob = {
+        tenantId: jobData.tenantId,
+        type: jobData.type,
+        status: 'PENDING',
+        priority: jobData.priority || 'medium',
+        payload: jobData.payload,
+        result: null,
+        error: null,
+        attempts: 0,
+        maxAttempts: jobData.maxAttempts || 3,
+      };
 
-    const [insertedJob] = await db.insert(jobs).values(newJob).returning();
+      const [insertedJob] = await db.insert(jobs).values(newJob).returning();
 
-    this.inMemoryQueue.set(insertedJob.id, insertedJob);
-    console.log(`[JobQueue] Enqueued job ${insertedJob.id} (type: ${insertedJob.type}, priority: ${insertedJob.priority})`);
+      this.inMemoryQueue.set(insertedJob.id, insertedJob);
+      console.log(`[JobQueue] Enqueued job ${insertedJob.id} (type: ${insertedJob.type}, priority: ${insertedJob.priority})`);
 
-    return insertedJob.id;
+      return insertedJob.id;
+    } catch (error: any) {
+      const errorMessage = error?.message || String(error);
+      const isConnectionError = 
+        errorMessage.includes('ECONNREFUSED') ||
+        errorMessage.includes('fetch failed') ||
+        errorMessage.includes('connect');
+      
+      if (isConnectionError) {
+        // Database unavailable - throw a more user-friendly error
+        throw new Error('Database connection unavailable - cannot enqueue job');
+      }
+      throw error;
+    }
   }
 
   async dequeue(): Promise<Job | null> {
-    const priorityOrder: ('high' | 'medium' | 'low')[] = ['high', 'medium', 'low'];
+    try {
+      const priorityOrder: ('high' | 'medium' | 'low')[] = ['high', 'medium', 'low'];
 
-    for (const priority of priorityOrder) {
-      // Atomic UPDATE with WHERE clause - only claims job if still PENDING
-      // This prevents race conditions where multiple workers grab the same job
-      const claimedJobs = await db
-        .update(jobs)
-        .set({ 
-          status: 'PROCESSING',
-          updatedAt: sql`now()`
-        })
-        .where(
-          and(
-            eq(jobs.status, 'PENDING'),
-            sql`${jobs.priority} = ${priority}`,
-            // Use subquery to get the first job by priority and creation time
-            sql`${jobs.id} = (
-              SELECT id FROM ${jobs}
-              WHERE status = 'PENDING' AND priority = ${priority}
-              ORDER BY "createdAt" ASC
-              LIMIT 1
-            )`
+      for (const priority of priorityOrder) {
+        // Atomic UPDATE with WHERE clause - only claims job if still PENDING
+        // This prevents race conditions where multiple workers grab the same job
+        const claimedJobs = await db
+      .update(jobs)
+      .set({ 
+        status: 'PROCESSING',
+        updatedAt: new Date()
+      })
+          .where(
+            and(
+              eq(jobs.status, 'PENDING'),
+              sql`${jobs.priority} = ${priority}`,
+              // Use subquery to get the first job by priority and creation time
+              sql`${jobs.id} = (
+                SELECT id FROM ${jobs}
+                WHERE status = 'PENDING' AND priority = ${priority}
+                ORDER BY "createdAt" ASC
+                LIMIT 1
+              )`
+            )
           )
-        )
-        .returning();
+          .returning();
 
-      if (claimedJobs.length > 0) {
-        const job = claimedJobs[0];
-        this.inMemoryQueue.delete(job.id);
-        
-        console.log(`[JobQueue] Dequeued job ${job.id} (type: ${job.type}, priority: ${job.priority})`);
-        return job;
+        if (claimedJobs.length > 0) {
+          const job = claimedJobs[0];
+          this.inMemoryQueue.delete(job.id);
+          
+          console.log(`[JobQueue] Dequeued job ${job.id} (type: ${job.type}, priority: ${job.priority})`);
+          return job;
+        }
       }
-    }
 
-    return null;
+      return null;
+    } catch (error: any) {
+      const errorMessage = error?.message || String(error);
+      const isConnectionError = 
+        errorMessage.includes('ECONNREFUSED') ||
+        errorMessage.includes('fetch failed') ||
+        errorMessage.includes('connect');
+      
+      if (isConnectionError) {
+        // Database unavailable - return null (no jobs available)
+        return null;
+      }
+      throw error;
+    }
   }
 
   async updateStatus(
@@ -87,9 +115,10 @@ class JobQueueService {
     result?: any,
     error?: string
   ): Promise<void> {
+    const now = new Date();
     const updateData: any = {
       status,
-      updatedAt: sql`now()`,
+      updatedAt: now,
     };
 
     if (result !== undefined) {
@@ -101,7 +130,7 @@ class JobQueueService {
     }
 
     if (status === 'COMPLETED' || status === 'FAILED') {
-      updateData.completedAt = sql`now()`;
+      updateData.completedAt = now;
     }
 
     await db
@@ -118,7 +147,7 @@ class JobQueueService {
       .update(jobs)
       .set({ 
         attempts: sql`${jobs.attempts} + 1`,
-        updatedAt: sql`now()`
+        updatedAt: new Date()
       })
       .where(eq(jobs.id, jobId));
   }
@@ -160,7 +189,7 @@ class JobQueueService {
         status: 'PENDING',
         error: null,
         attempts: 0,
-        updatedAt: sql`now()`,
+        updatedAt: new Date(),
         completedAt: null,
       })
       .where(eq(jobs.id, jobId));
@@ -294,9 +323,27 @@ async function executeMaintenanceSQL(sqlQuery: string, timeout: number): Promise
   const startTime = Date.now();
   
   try {
-    await db.execute(sql.raw(`SET LOCAL statement_timeout = '${timeout}ms'`));
+    // For VACUUM and ANALYZE, use sql.unsafe for raw SQL (works with both drivers)
+    const dbUrl = process.env.DATABASE_URL || '';
+    const isLocalhost = dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1') || dbUrl.includes('::1');
     
-    const result = await db.execute(sql.raw(sqlQuery));
+    if (isLocalhost && clientSql.unsafe) {
+      // Standard postgres driver - use unsafe for DDL commands
+      // Set timeout first
+      await clientSql.unsafe(`SET LOCAL statement_timeout = '${timeout}ms'`);
+      // Then execute the maintenance command
+      await clientSql.unsafe(sqlQuery);
+    } else {
+      // Neon or other - use sql.unsafe if available, otherwise try db.execute
+      if (clientSql.unsafe) {
+        await clientSql.unsafe(`SET LOCAL statement_timeout = '${timeout}ms'`);
+        await clientSql.unsafe(sqlQuery);
+      } else {
+        // Fallback for Neon (though it should have unsafe)
+        await db.execute(sql.raw(`SET LOCAL statement_timeout = '${timeout}ms'`));
+        await db.execute(sql.raw(sqlQuery));
+      }
+    }
     
     const duration = Date.now() - startTime;
     
@@ -327,9 +374,19 @@ async function handleAnalyzeTable(payload: any): Promise<any> {
   const timeoutMs = 30000;
   
   try {
-    const tableStatsQuery = `SELECT reltuples::bigint as row_count FROM pg_class WHERE relname = '${tableName}'`;
-    const statsResult = await db.execute(sql.raw(tableStatsQuery));
-    const rowCountBefore = statsResult.rows[0]?.row_count || 0;
+    // Use sql directly for better compatibility with both drivers
+    const dbUrl = process.env.DATABASE_URL || '';
+    const isLocalhost = dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1') || dbUrl.includes('::1');
+    
+    let rowCountBefore = 0;
+    if (isLocalhost && clientSql.unsafe) {
+      const statsResult = await clientSql.unsafe(`SELECT reltuples::bigint as row_count FROM pg_class WHERE relname = '${tableName}'`);
+      rowCountBefore = (Array.isArray(statsResult) ? statsResult[0] : statsResult)?.row_count || 0;
+    } else {
+      const statsResult = await clientSql`SELECT reltuples::bigint as row_count FROM pg_class WHERE relname = ${tableName}`;
+      const result = Array.isArray(statsResult) ? statsResult[0] : statsResult;
+      rowCountBefore = result?.row_count || 0;
+    }
     
     const analyzeQuery = `ANALYZE "${tableName}"`;
     await executeMaintenanceSQL(analyzeQuery, timeoutMs);
@@ -341,7 +398,6 @@ async function handleAnalyzeTable(payload: any): Promise<any> {
       operation: 'ANALYZE',
       duration,
       rowCount: rowCountBefore,
-      completedAt: new Date().toISOString(),
     };
     
     console.log(`[JobQueue] ANALYZE completed for ${tableName} in ${duration}ms (${rowCountBefore} rows)`);
@@ -357,7 +413,6 @@ async function handleAnalyzeTable(payload: any): Promise<any> {
       duration,
       success: false,
       error: error.message,
-      completedAt: new Date().toISOString(),
     };
   }
 }
@@ -376,9 +431,19 @@ async function handleVacuumTable(payload: any): Promise<any> {
   const timeoutMs = 120000;
   
   try {
-    const tableStatsQuery = `SELECT reltuples::bigint as row_count FROM pg_class WHERE relname = '${tableName}'`;
-    const statsResult = await db.execute(sql.raw(tableStatsQuery));
-    const rowCountBefore = statsResult.rows[0]?.row_count || 0;
+    // Use sql directly for better compatibility
+    const dbUrl = process.env.DATABASE_URL || '';
+    const isLocalhost = dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1') || dbUrl.includes('::1');
+    
+    let rowCountBefore = 0;
+    if (isLocalhost && clientSql.unsafe) {
+      const statsResult = await clientSql.unsafe(`SELECT reltuples::bigint as row_count FROM pg_class WHERE relname = '${tableName}'`);
+      rowCountBefore = (Array.isArray(statsResult) ? statsResult[0] : statsResult)?.row_count || 0;
+    } else {
+      const statsResult = await clientSql`SELECT reltuples::bigint as row_count FROM pg_class WHERE relname = ${tableName}`;
+      const result = Array.isArray(statsResult) ? statsResult[0] : statsResult;
+      rowCountBefore = result?.row_count || 0;
+    }
     
     const vacuumQuery = `VACUUM "${tableName}"`;
     await executeMaintenanceSQL(vacuumQuery, timeoutMs);
@@ -390,7 +455,6 @@ async function handleVacuumTable(payload: any): Promise<any> {
       operation: 'VACUUM',
       duration,
       rowCount: rowCountBefore,
-      completedAt: new Date().toISOString(),
     };
     
     console.log(`[JobQueue] VACUUM completed for ${tableName} in ${duration}ms (${rowCountBefore} rows)`);
@@ -406,7 +470,6 @@ async function handleVacuumTable(payload: any): Promise<any> {
       duration,
       success: false,
       error: error.message,
-      completedAt: new Date().toISOString(),
     };
   }
 }

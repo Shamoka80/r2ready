@@ -1,5 +1,0 @@
-LEDGER_READY
-OK Fixes/api/openapi_credits.yaml
-OK Fixes/contracts/stripe_credits.ts
-OK Fixes/migrations/002_credits.sql
-Phase 5 scaffold ready.
