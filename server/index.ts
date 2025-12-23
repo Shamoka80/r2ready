@@ -195,7 +195,6 @@ async function scheduleDailyPurgeJob() {
         priority: 'low',
         maxAttempts: 2,
       });
-      console.log(`📅 Scheduled daily purge job: ${jobId}`);
     } catch (error) {
       console.error('Failed to enqueue purge job:', error);
     }
@@ -316,16 +315,10 @@ async function startServer() {
 
   // Initialize email service and check Microsoft 365 SMTP connection
   try {
-    console.log('\n📧 Initializing email service...');
     await emailService.ensureInitialized();
-    const emailHealth = await emailService.healthCheck();
-    if (emailHealth) {
-      console.log('✅ Email service ready');
-    } else {
-      console.warn('⚠️  Email service health check failed - emails may not be sent');
-    }
+    await emailService.healthCheck();
   } catch (error) {
-    console.warn('⚠️  Email service initialization error:', error instanceof Error ? error.message : 'Unknown error');
+    // Email service initialization error - logged by service
   }
 
   // Validate database schema consistency (fail-fast on critical errors)
@@ -410,14 +403,7 @@ async function startServer() {
   // Fix path resolution - in compiled JS, __dirname points to server/dist/server/
   const distDir = path.resolve(__dirname, "../../../client/dist");
 
-  console.log(`🔍 Checking dist directory: ${distDir}`);
-  console.log(`📂 Directory exists: ${fs.existsSync(distDir)}`);
-  if (fs.existsSync(distDir)) {
-    console.log(`📁 Directory contents:`, fs.readdirSync(distDir));
-  }
-
   if (isProduction || fs.existsSync(distDir)) {
-    console.log(`📁 Production mode: Serving static files from: ${distDir}`);
 
     // Serve static assets with proper caching headers and compression
     app.use(express.static(distDir, {
@@ -496,7 +482,6 @@ async function startServer() {
       }
     });
   } else {
-    console.log(`🔧 Development mode: Proxying frontend to Vite`);
 
     // Create Vite proxy once and reuse it (fixes EventEmitter memory leak)
     const viteProxy = createProxyMiddleware({

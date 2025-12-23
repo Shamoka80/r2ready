@@ -17,17 +17,10 @@ client/dist/
 .DS_Store
 .DS_Store?
 ehthumbs.db
-# Environment files (keep examples)
+# Environment files
 .env
-.env.*
 .env.local
-.env.development.local
-.env.production.local
-.env.test.local
-**/.env
-**/.env.*
 server/.env
-server/.env.*
 .idea/
 # IDE files
 # Ignore backup artifacts

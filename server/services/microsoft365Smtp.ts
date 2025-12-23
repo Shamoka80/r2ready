@@ -59,13 +59,7 @@ class Microsoft365SmtpService {
       const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.MICROSOFT_365_FROM_EMAIL || process.env.MS365_SMTP_FROM_EMAIL || user;
       const fromName = process.env.SMTP_FROM_NAME;
 
-      console.log(`  Host: ${host}`);
-      console.log(`  Port: ${port}`);
-      console.log(`  User: ${user ? user.substring(0, 3) + '***' : '❌ NOT SET'}`);
-      console.log(`  From Email: ${fromEmail || '❌ NOT SET'}`);
-
       if (!user) {
-        console.log('  ❌ SMTP_USER or MS365_SMTP_USER is missing');
         this.logger.warn('Microsoft 365 SMTP not configured - SMTP_USER or MS365_SMTP_USER is missing');
         return null;
       }
@@ -85,20 +79,7 @@ class Microsoft365SmtpService {
       const useBasicAuth = hasBasicAuth;
       const useOAuth2 = !hasBasicAuth && hasOAuth2Credentials && hasRefreshToken;
 
-      console.log(`  Authentication: ${useBasicAuth ? 'Basic Auth' : useOAuth2 ? 'OAuth2' : '❌ NONE'}`);
-      if (hasOAuth2Credentials && !hasRefreshToken && !hasBasicAuth) {
-        console.log(`  ⚠️  OAuth2 credentials found but no refresh token - OAuth2 requires MS365_OAUTH_REFRESH_TOKEN`);
-      }
-      if (hasOAuth2Credentials && hasBasicAuth) {
-        console.log(`  ℹ️  Both OAuth2 and Basic Auth available - using Basic Auth (simpler)`);
-      }
-
       if (!useOAuth2 && !useBasicAuth) {
-        console.log('  ❌ No authentication method configured');
-        if (hasOAuth2Credentials && !hasRefreshToken) {
-          console.log('     OAuth2 credentials found but missing MS365_OAUTH_REFRESH_TOKEN');
-        }
-        console.log('     Need either SMTP_PASSWORD (basic auth) or OAuth2 credentials with refresh token');
         this.logger.warn('Microsoft 365 SMTP authentication not configured - need either SMTP_PASSWORD/MS365_SMTP_PASSWORD (basic auth) or OAuth2 credentials with refresh token');
         return null;
       }
@@ -163,37 +144,11 @@ class Microsoft365SmtpService {
 
       // Verify connection
       try {
-        console.log(`  Connecting to ${host}:${port}...`);
         await this.transporter.verify();
-        console.log(`  ✅ Connection verified successfully!`);
         this.logger.info(`Microsoft 365 SMTP connection verified successfully (${host}:${port})`);
         this.config = config;
         return this.transporter;
       } catch (verifyError: any) {
-        console.log(`  ❌ Connection verification FAILED`);
-        console.log(`     Error: ${verifyError.message}`);
-        if (verifyError.code) {
-          console.log(`     Code: ${verifyError.code}`);
-        }
-        if (verifyError.command) {
-          console.log(`     SMTP Command: ${verifyError.command}`);
-        }
-        // Common error messages with helpful troubleshooting
-        if (verifyError.message?.includes('Invalid login') || verifyError.message?.includes('authentication failed')) {
-          console.log(`     → Check SMTP_USER and SMTP_PASSWORD are correct`);
-        } else if (verifyError.message?.includes('access token') || verifyError.code === 'EAUTH') {
-          if (useOAuth2) {
-            console.log(`     → OAuth2 authentication failed - check refresh token is valid`);
-            console.log(`     → If using OAuth2, ensure MS365_OAUTH_REFRESH_TOKEN is set and valid`);
-            console.log(`     → Consider using Basic Auth (SMTP_PASSWORD) instead for simpler setup`);
-          } else {
-            console.log(`     → Authentication failed - check SMTP_USER and SMTP_PASSWORD`);
-          }
-        } else if (verifyError.message?.includes('timeout') || verifyError.code === 'ETIMEDOUT') {
-          console.log(`     → Check network/firewall allows connection to ${host}:${port}`);
-        } else if (verifyError.message?.includes('ECONNREFUSED')) {
-          console.log(`     → Cannot connect to ${host}:${port} - check host and port`);
-        }
         this.logger.error('Microsoft 365 SMTP connection verification failed', verifyError as any);
         this.transporter = null;
         return null;

@@ -44,17 +44,11 @@ class EmailService {
   private async initializeProviders() {
     if (this.initialized) return;
     
-    console.log('\n═══════════════════════════════════════════════════════════════');
-    console.log('📧 EMAIL SERVICE INITIALIZATION');
-    console.log('═══════════════════════════════════════════════════════════════');
-    
     // Priority 1: Microsoft 365 SMTP (Primary Production Provider)
     const isConfigured = microsoft365SmtpService.isConfigured();
-    console.log(`Microsoft 365 SMTP Configuration Check: ${isConfigured ? '✅ CONFIGURED' : '❌ NOT CONFIGURED'}`);
     
     if (isConfigured) {
       try {
-        console.log('Attempting to connect to Microsoft 365 SMTP...');
         this.ms365Transporter = await microsoft365SmtpService.initialize();
         if (this.ms365Transporter) {
           this.providers.push({
@@ -62,31 +56,19 @@ class EmailService {
             transporter: this.ms365Transporter,
             isConfigured: true
           });
-          console.log('✅ Microsoft 365 SMTP: CONNECTED AND READY');
           this.logger.info('Email service initialized with Microsoft 365 SMTP provider');
         } else {
-          console.log('❌ Microsoft 365 SMTP: CONNECTION FAILED');
-          console.log('   Reason: Connection verification failed. Check credentials and network.');
           this.logger.warn('Microsoft 365 SMTP configuration failed - connection could not be established');
         }
       } catch (error: any) {
-        console.log('❌ Microsoft 365 SMTP: INITIALIZATION ERROR');
-        console.log(`   Error: ${error.message || error}`);
         this.logger.error('Failed to initialize Microsoft 365 SMTP provider', error as any);
       }
     } else {
-      console.log('⚠️  Microsoft 365 SMTP: NOT CONFIGURED');
-      console.log('   Required environment variables:');
-      console.log('   - SMTP_USER (or MS365_SMTP_USER)');
-      console.log('   - SMTP_PASSWORD (or MS365_SMTP_PASSWORD) for basic auth');
-      console.log('   - OR OAuth2 credentials (MICROSOFT_365_CLIENT_ID, etc.)');
       this.logger.warn('Microsoft 365 SMTP not configured - check environment variables');
     }
 
     // Priority 2: Console (Development fallback)
     if (this.providers.length === 0 || !this.providers.some(p => p.isConfigured)) {
-      console.log('⚠️  No production email providers available - using Console fallback');
-      console.log('   WARNING: Emails will be logged to console, NOT sent via SMTP');
       this.logger.warn('No production email providers configured - emails will be logged to console');
       this.providers.push({
         name: 'Console',
@@ -100,11 +82,6 @@ class EmailService {
       providers: this.providers.map(p => `${p.name}${p.isConfigured ? '' : ' (Not Configured)'}`),
       activeProvider: this.providers.find(p => p.isConfigured)?.name || 'None'
     };
-    
-    console.log('═══════════════════════════════════════════════════════════════');
-    console.log(`Active Email Provider: ${metadata.activeProvider}`);
-    console.log(`Available Providers: ${metadata.providers.join(', ')}`);
-    console.log('═══════════════════════════════════════════════════════════════\n');
     
     this.logger.info('Email service provider initialization complete', { metadata });
     this.initialized = true;
@@ -159,15 +136,6 @@ class EmailService {
         };
 
         if (provider.name === 'Console') {
-          console.log('\n╔════════════════════════════════════════════════════════════╗');
-          console.log('║           📧 EMAIL: Logged to Console (Development)         ║');
-          console.log('╠════════════════════════════════════════════════════════════╣');
-          console.log(`  From: ${emailData.from}`);
-          console.log(`  To: ${emailData.to}`);
-          console.log(`  Subject: ${emailData.subject}`);
-          console.log('────────────────────────────────────────────────────────────');
-          console.log(emailData.html);
-          console.log('╚════════════════════════════════════════════════════════════╝\n');
           // Reset index if successful
           this.currentProviderIndex = 0;
           return true;
@@ -175,11 +143,7 @@ class EmailService {
 
         // Microsoft 365 SMTP sending
         if (provider.name === 'Microsoft365' && provider.transporter) {
-          console.log(`[EmailService] 📧 Sending email via Microsoft 365 SMTP to: ${emailData.to}`);
-          
           const result = await provider.transporter.sendMail(emailData);
-          
-          console.log(`[EmailService] ✅ Email sent successfully! Message ID: ${result.messageId}`);
           
           this.logger.info('Email sent successfully via Microsoft 365 SMTP', {
             metadata: {
@@ -201,14 +165,6 @@ class EmailService {
 
       } catch (error: any) {
         lastError = error as Error;
-
-        console.error(`[EmailService] ❌ Email send failed (Provider: ${provider.name}): ${lastError.message}`);
-        if (error.code) {
-          console.error(`  Error Code: ${error.code}`);
-        }
-        if (error.command) {
-          console.error(`  SMTP Command: ${error.command}`);
-        }
 
         this.logger.error('Email send failed', {
           metadata: {
@@ -489,7 +445,6 @@ If you didn't request this password reset, please ignore this email.
       payload
     });
 
-    console.log(`[EmailService] Queued email to ${options.to}: ${options.subject} (jobId: ${jobId})`);
     return jobId;
   }
 

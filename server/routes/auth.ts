@@ -587,11 +587,6 @@ router.post('/register-tenant', rateLimitMiddleware.register, blockTestUserRegis
       process.stderr.write('═══════════════════════════════════════════════════════════════\n');
       process.stderr.write('\n');
       
-      // Also use console.error as backup
-      console.error(`\n[Auth] 🔗 VERIFICATION LINK: ${verificationUrl}`);
-      console.error(`[Auth] 🔢 VERIFICATION CODE: ${verificationCode}`);
-      console.error(`[Auth] 📧 EMAIL: ${data.ownerEmail}\n`);
-      
       try {
         await emailService.sendVerificationEmail(
           data.ownerEmail,
@@ -599,7 +594,6 @@ router.post('/register-tenant', rateLimitMiddleware.register, blockTestUserRegis
           verificationCode,
           data.ownerFirstName
         );
-        console.log(`[Auth] Sent verification email to ${data.ownerEmail}`);
       } catch (emailError) {
         // Log error and surface to user - verification is critical
         console.error('Error sending verification email:', emailError);
@@ -673,10 +667,7 @@ router.post('/register-tenant', rateLimitMiddleware.register, blockTestUserRegis
           data.ownerFirstName
         );
         
-        if (emailSent) {
-          console.log(`[Auth] ✅ Verification email sent successfully to ${data.ownerEmail}`);
-        } else {
-          console.error(`[Auth] ❌ Failed to send verification email to ${data.ownerEmail}`);
+        if (!emailSent) {
           return res.status(500).json({
             success: false,
             error: 'Failed to send verification email. Please try again or contact support.'
@@ -1387,6 +1378,7 @@ router.post('/auto-provision-test-license', AuthService.authMiddleware, async (r
       return res.status(403).json({ error: 'This endpoint is only available for test accounts' });
     }
 
+
     console.log('🧪 Auto-provisioning free license for test account:', req.user!.email);
 
     // Import licenses table
@@ -1487,10 +1479,12 @@ router.post('/auto-provision-test-license', AuthService.authMiddleware, async (r
       })
       .where(eq(users.id, req.user!.id));
 
+      userId: req.user!.id
+    });
+
     console.log('✅ Test license auto-provisioned successfully:', {
       licenseId: newLicense.id,
       tenantId: req.tenant!.id,
-      userId: req.user!.id
     });
 
     res.json({
@@ -1579,7 +1573,6 @@ router.post('/send-verification-email', strictRateLimit.passwordChange, async (r
         });
       }
       
-      console.log(`[Auth] ✅ Verification email sent successfully to ${email}`);
     } catch (emailError) {
       // Return error response instead of silently failing
       console.error('Failed to send verification email:', emailError);
@@ -1600,9 +1593,6 @@ router.post('/send-verification-email', strictRateLimit.passwordChange, async (r
       { email, recoveryMode: isStuckInIncompleteState }
     );
 
-    console.log('✅ Verification email sent successfully:', { 
-      email, 
-      userId: user.id, 
       recoveryMode: isStuckInIncompleteState 
     });
 
@@ -1702,9 +1692,6 @@ router.post('/verify-email', async (req, res) => {
       }
     );
 
-    console.log('✅ Email verified successfully and user logged in:', {
-      email: user.email,
-      userId: user.id,
       setupStatus: updateData.setupStatus || user.setupStatus
     });
 
@@ -1825,9 +1812,6 @@ router.post('/verify-email-code',
       }
     );
 
-    console.log('✅ Email verified successfully via code and user logged in:', {
-      email: user.email,
-      userId: user.id,
       setupStatus: updateData.setupStatus || user.setupStatus
     });
 
@@ -1878,10 +1862,6 @@ router.post('/test-email', async (req, res) => {
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
     const verificationToken = crypto.randomUUID();
 
-    console.log(`📧 Test email generated for ${email}:`);
-    console.log(`   Code: ${verificationCode}`);
-    console.log(`   Token: ${verificationToken}`);
-    console.log(`   Type: ${type}`);
 
     res.json({
       success: true,
@@ -1934,10 +1914,6 @@ router.get('/test-get-verification-token', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    console.log('🧪 TEST ENDPOINT: Retrieved verification token for:', email);
-    console.log('   Token:', user.emailVerificationToken || 'null');
-    console.log('   Code:', user.emailVerificationCode || 'null');
-    console.log('   Expiry:', user.emailVerificationTokenExpiry || 'null');
 
     res.json({
       success: true,
@@ -2026,7 +2002,6 @@ router.post('/test-verify-email', async (req, res) => {
       user.businessRole || user.consultantRole!
     );
 
-    console.log('🧪 TEST ENDPOINT: Email verified and user logged in:', {
       email: user.email,
       userId: user.id,
       setupStatus: updateData.setupStatus || user.setupStatus,
@@ -2096,7 +2071,6 @@ router.post('/test-get-verification-token', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    console.log('🧪 TEST HELPER: Retrieving verification token:', {
       email: user.email,
       userId: user.id,
       setupStatus: user.setupStatus,
@@ -2150,6 +2124,8 @@ router.post('/forgot-password', strictRateLimit.passwordChange, async (req, res)
       return res.json(successResponse);
     }
 
+    console.log('🔑 Password reset requested for:', user.email);
+
     // Generate secure reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
     const resetTokenExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
@@ -2192,7 +2168,6 @@ router.post('/forgot-password', strictRateLimit.passwordChange, async (req, res)
       { email: user.email }
     );
 
-    console.log('🔑 Password reset requested for:', user.email);
 
     res.json(successResponse);
 
@@ -2262,7 +2237,6 @@ router.post('/reset-password', strictRateLimit.passwordChange, async (req, res) 
       { email: user.email, sessionsRevoked: true }
     );
 
-    console.log('✅ Password reset completed for:', user.email);
 
     res.json({
       success: true,
@@ -2303,7 +2277,6 @@ router.post('/admin/reset-stuck-user', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    console.log('🔧 ADMIN RESET: Resetting stuck user account:', {
       email,
       userId: user.id,
       currentStatus: {
@@ -2319,7 +2292,6 @@ router.post('/admin/reset-stuck-user', async (req, res) => {
       .set({ status: 'REVOKED' })
       .where(eq(userSessions.userId, user.id));
 
-    console.log('🔒 ADMIN RESET: Revoked all sessions for user:', {
       email,
       userId: user.id
     });
@@ -2357,6 +2329,21 @@ router.post('/admin/reset-stuck-user', async (req, res) => {
         sessionsRevoked: true
       }
     );
+
+    console.log('🔧 ADMIN RESET: Resetting stuck user account:', {
+      email,
+      userId: user.id,
+    });
+
+    // SECURITY: Revoke all existing sessions for this user
+    await db.update(userSessions)
+      .set({ status: 'REVOKED' })
+      .where(eq(userSessions.userId, user.id));
+
+    console.log('🔒 ADMIN RESET: Revoked all sessions for user:', {
+      email,
+      userId: user.id
+    });
 
     console.log('✅ ADMIN RESET: User account reset successfully:', {
       email,
