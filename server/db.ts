@@ -90,5 +90,7 @@ export async function testDatabaseConnection() {
   } catch (error) {
     console.error('❌ Database connection failed:', error);
     return false;
+  } finally {
+    // Note: postgres-js manages connections automatically, no need to close
   }
 }

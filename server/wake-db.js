@@ -5,7 +5,7 @@ async function wakeDatabase() {
   const maxRetries = 5;
   const retryDelay = 2000; // 2 seconds
   
-  console.log('Attempting to wake database with retry logic...');
+  console.log('Attempting to connect to database with retry logic...');
   
   if (!process.env.DATABASE_URL) {
     console.error('❌ DATABASE_URL environment variable is not set');
@@ -21,8 +21,9 @@ async function wakeDatabase() {
       const sql = neon(process.env.DATABASE_URL);
       const result = await sql`SELECT NOW() as current_time, 'Database is awake!' as message`;
       
-      console.log('✅ Database is awake:', result);
+      console.log('✅ Database is connected:', result);
       console.log('✅ Connection successful!');
+      
       process.exit(0);
       
     } catch (error) {
@@ -34,9 +35,9 @@ async function wakeDatabase() {
       } else {
         console.error('❌ All retry attempts failed');
         console.error('Please check:');
-        console.error('1. Your Neon database endpoint is enabled in the console');
+        console.error('1. Your Neon database endpoint is accessible');
         console.error('2. Your DATABASE_URL is correct');
-        console.error('3. Your database has not been suspended due to inactivity');
+        console.error('3. Your database connection settings (host, port, user, password, database)');
         process.exit(1);
       }
     }

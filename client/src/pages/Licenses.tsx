@@ -107,10 +107,15 @@ export default function Licenses() {
   const { toast } = useToast();
 
   // Fetch current licenses
-  const { data: licenses = [], isLoading: licensesLoading, refetch: refetchLicenses } = useQuery<License[]>({
+  const { data: licensesData, isLoading: licensesLoading, refetch: refetchLicenses } = useQuery<{ licenses?: License[]; count?: number } | License[]>({
     queryKey: ['licenses'],
-    queryFn: () => apiGet<License[]>('/api/licenses'),
+    queryFn: () => apiGet<{ licenses?: License[]; count?: number } | License[]>('/api/licenses'),
   });
+
+  // Extract licenses array from response (API returns { licenses: [...], count: ... } or direct array)
+  const licenses: License[] = Array.isArray(licensesData) 
+    ? licensesData 
+    : (Array.isArray(licensesData?.licenses) ? licensesData.licenses : []);
 
   // Fetch available license configurations
   const { data: licenseConfigs = {}, isLoading: configsLoading } = useQuery<Record<string, LicenseConfig>>({
@@ -261,6 +266,7 @@ export default function Licenses() {
   };
 
   const getCurrentUsage = () => {
+    if (!Array.isArray(licenses)) return { totalFacilities: 0, totalSeats: 0, totalClients: 0 };
     const baseLicenses = licenses.filter(l => l.licenseType === 'base' && l.isActive);
     const facilityPacks = licenses.filter(l => l.licenseType.includes('facility') && l.isActive);
     const seatPacks = licenses.filter(l => l.licenseType.includes('seat') && l.isActive);

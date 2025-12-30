@@ -1479,9 +1479,6 @@ router.post('/auto-provision-test-license', AuthService.authMiddleware, async (r
       })
       .where(eq(users.id, req.user!.id));
 
-      userId: req.user!.id
-    });
-
     console.log('✅ Test license auto-provisioned successfully:', {
       licenseId: newLicense.id,
       tenantId: req.tenant!.id,
@@ -1593,9 +1590,6 @@ router.post('/send-verification-email', strictRateLimit.passwordChange, async (r
       { email, recoveryMode: isStuckInIncompleteState }
     );
 
-      recoveryMode: isStuckInIncompleteState 
-    });
-
     res.json({
       success: true,
       message: 'Verification email sent successfully. Please check your inbox.',
@@ -1691,9 +1685,6 @@ router.post('/verify-email', async (req, res) => {
         autoLoginCreated: true
       }
     );
-
-      setupStatus: updateData.setupStatus || user.setupStatus
-    });
 
     res.json({
       success: true,
@@ -1811,9 +1802,6 @@ router.post('/verify-email-code',
         verificationMethod: 'code'
       }
     );
-
-      setupStatus: updateData.setupStatus || user.setupStatus
-    });
 
     res.json({
       success: true,
@@ -2002,12 +1990,6 @@ router.post('/test-verify-email', async (req, res) => {
       user.businessRole || user.consultantRole!
     );
 
-      email: user.email,
-      userId: user.id,
-      setupStatus: updateData.setupStatus || user.setupStatus,
-      autoLogin: true
-    });
-
     res.json({
       success: true,
       message: 'Email verified successfully (TEST MODE)',
@@ -2070,14 +2052,6 @@ router.post('/test-get-verification-token', async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-
-      email: user.email,
-      userId: user.id,
-      setupStatus: user.setupStatus,
-      emailVerified: user.emailVerified,
-      hasToken: !!user.emailVerificationToken,
-      hasCode: !!user.emailVerificationCode
-    });
 
     res.json({
       success: true,
@@ -2277,24 +2251,11 @@ router.post('/admin/reset-stuck-user', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-      email,
-      userId: user.id,
-      currentStatus: {
-        emailVerified: user.emailVerified,
-        setupStatus: user.setupStatus,
-        hasPassword: !!user.passwordHash
-      }
-    });
-
     // SECURITY: Revoke all existing sessions for this user
     // This prevents stale tokens from being used after account reset
     await db.update(userSessions)
       .set({ status: 'REVOKED' })
       .where(eq(userSessions.userId, user.id));
-
-      email,
-      userId: user.id
-    });
 
     // Generate new verification credentials
     const verificationToken = crypto.randomBytes(32).toString('hex');
