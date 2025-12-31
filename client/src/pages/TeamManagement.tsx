@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Users, 
@@ -78,6 +78,16 @@ export default function TeamManagement() {
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Check URL query params to auto-open invite dialog
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('invite') === 'true') {
+      setIsInviteDialogOpen(true);
+      // Clean up URL
+      window.history.replaceState({}, '', '/team');
+    }
+  }, []);
 
   // Fetch team members
   const { data: teamMembers = [], isLoading } = useQuery<TeamMember[]>({

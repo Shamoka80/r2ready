@@ -111,8 +111,7 @@ export async function validateSchemaConsistency(): Promise<SchemaValidationResul
           AND table_name = ${tableName}
         );
       `);
-
-      const tableExists = (tableExistsQuery.rows[0] as any).exists;
+      const tableExists = (tableExistsQuery.rows[0] as any)?.exists ?? false;
 
       if (!tableExists) {
         errors.push(`❌ Critical table '${tableName}' does not exist in the database`);
@@ -127,7 +126,6 @@ export async function validateSchemaConsistency(): Promise<SchemaValidationResul
         AND table_name = ${tableName}
         ORDER BY ordinal_position;
       `);
-
       const actualColumns = columnsQuery.rows as Array<{
         column_name: string;
         data_type: string;
