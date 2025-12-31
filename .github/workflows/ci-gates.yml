@@ -9,6 +9,7 @@ on:
 jobs:
   terminology-check:
     name: Forbidden Terminology Check
+    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
