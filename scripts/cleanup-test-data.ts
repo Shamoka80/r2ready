@@ -16,6 +16,7 @@ interface CleanupConfig {
 
 class TestDataCleaner {
   private db: any;
+  private client: any;
   private config: CleanupConfig;
 
   constructor(config: CleanupConfig) {
