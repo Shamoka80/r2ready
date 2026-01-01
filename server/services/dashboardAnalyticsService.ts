@@ -120,13 +120,20 @@ export class DashboardAnalyticsService {
         WHERE tenant_id = ${tenantId}
       `);
 
-      const stats = statsResult.rows[0];
+      // Safe access to stats result - handle both Neon and PostgreSQL result structures
+      let stats: any = null;
+      if (statsResult && statsResult.rows && Array.isArray(statsResult.rows) && statsResult.rows.length > 0) {
+        stats = statsResult.rows[0];
+      } else if (Array.isArray(statsResult) && statsResult.length > 0) {
+        stats = statsResult[0];
+      }
 
       // Get facility count (separate query - not in materialized view)
-      const [facilityCount] = await db
+      const facilityCountResult = await db
         .select({ count: count() })
         .from(facilityProfiles)
         .where(eq(facilityProfiles.tenantId, tenantId));
+      const facilityCount = facilityCountResult.length > 0 ? facilityCountResult[0] : null;
 
       // Count critical gaps (separate query - complex join, better left as-is)
       const criticalAnswers = await db

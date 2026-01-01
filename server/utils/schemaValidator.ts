@@ -112,7 +112,7 @@ export async function validateSchemaConsistency(): Promise<SchemaValidationResul
         );
       `);
 
-      const tableExists = (tableExistsQuery.rows[0] as any).exists;
+      const tableExists = (tableExistsQuery.rows[0] as any)?.exists ?? false;
 
       if (!tableExists) {
         errors.push(`❌ Critical table '${tableName}' does not exist in the database`);

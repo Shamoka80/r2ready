@@ -1,5 +1,6 @@
-import { ReactNode, useState, useEffect } from 'react';
+import { ReactNode, useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'wouter';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import { useFeatureFlag } from '@/lib/flags';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { AvatarImage } from '@radix-ui/react-avatar';
+import type { Assessment } from '@/api';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -62,10 +64,74 @@ export default function AppLayout({ children }: AppLayoutProps) {
     ...(isTrainingCenterEnabled ? [{ href: "/training-center", label: "Training", icon: BookOpen, active: location === "/training-center" }] : []),
   ];
 
-  const recentAssessments = [
-    { id: "1", name: "Security Assessment 2024", lastModified: "2 hours ago" },
-    { id: "2", name: "Compliance Review Q4", lastModified: "Yesterday" },
-  ];
+  // Fetch real assessments from API
+  const { data: assessmentsData } = useQuery<Assessment[] | { assessments?: Assessment[]; data?: Assessment[] }>({
+    queryKey: ['/api/assessments'],
+    retry: 2,
+  });
+
+  // Format recent assessments from fetched data (limit to 2 most recent)
+  const recentAssessments = useMemo(() => {
+    // Handle different response formats (array, wrapped in assessments, or wrapped in data)
+    let assessments: Assessment[] = [];
+    if (Array.isArray(assessmentsData)) {
+      assessments = assessmentsData;
+    } else if (assessmentsData?.assessments && Array.isArray(assessmentsData.assessments)) {
+      assessments = assessmentsData.assessments;
+    } else if (assessmentsData?.data && Array.isArray(assessmentsData.data)) {
+      assessments = assessmentsData.data;
+    }
+
+    if (assessments.length === 0) {
+      return [];
+    }
+
+    // Sort by updatedAt or createdAt (most recent first) and take top 2
+    const sorted = [...assessments]
+      .sort((a, b) => {
+        const dateA = new Date((a as any).updatedAt || (a as any).createdAt || 0).getTime();
+        const dateB = new Date((b as any).updatedAt || (b as any).createdAt || 0).getTime();
+        return dateB - dateA;
+      })
+      .slice(0, 2);
+
+    // Format dates to relative time
+    return sorted.map(assessment => {
+      const dateField = (assessment as any).updatedAt || (assessment as any).createdAt;
+      if (!dateField) {
+        return {
+          id: assessment.id,
+          name: assessment.title,
+          lastModified: 'Recently',
+        };
+      }
+
+      const date = new Date(dateField);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffHours / 24);
+
+      let lastModified: string;
+      if (diffHours < 1) {
+        lastModified = 'Just now';
+      } else if (diffHours < 24) {
+        lastModified = `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+      } else if (diffDays === 1) {
+        lastModified = 'Yesterday';
+      } else if (diffDays < 7) {
+        lastModified = `${diffDays} days ago`;
+      } else {
+        lastModified = date.toLocaleDateString();
+      }
+
+      return {
+        id: assessment.id,
+        name: assessment.title,
+        lastModified,
+      };
+    });
+  }, [assessmentsData]);
 
   // Navigation component for reuse in both mobile and desktop
   const NavigationItems = ({ onItemClick = () => {} }: { onItemClick?: () => void }) => (
@@ -93,32 +159,34 @@ export default function AppLayout({ children }: AppLayoutProps) {
         );
       })}
 
-      <div className="pt-6">
-        <h3 className="px-3 text-xs font-display font-bold text-primary uppercase tracking-wider mb-4 text-glow-blue">
-          Recent Assessments
-        </h3>
-        <div className="space-y-2">
-          {recentAssessments.map((assessment) => (
-            <Link
-              key={assessment.id}
-              href={`/assessments/${assessment.id}`}
-              onClick={onItemClick}
-              className={`group flex items-center space-x-3 px-3 py-3 rounded-glass transition-all duration-300 glass-morphism hover:bg-glass-light ${
-                location === `/assessments/${assessment.id}`
-                  ? "border border-secondary/30 bg-secondary/10 text-secondary"
-                  : "text-foreground hover:text-secondary"
-              }`}
-              data-testid={`link-assessment-${assessment.id}`}
-            >
-              <FileText className="w-4 h-4 text-secondary" />
-              <div className="flex-1 truncate">
-                <div className="text-sm font-medium">{assessment.name}</div>
-                <div className="text-xs text-muted-foreground">{assessment.lastModified}</div>
-              </div>
-            </Link>
-          ))}
+      {recentAssessments.length > 0 && (
+        <div className="pt-6">
+          <h3 className="px-3 text-xs font-display font-bold text-primary uppercase tracking-wider mb-4 text-glow-blue">
+            Recent Assessments
+          </h3>
+          <div className="space-y-2">
+            {recentAssessments.map((assessment) => (
+              <Link
+                key={assessment.id}
+                href={`/assessments/${assessment.id}`}
+                onClick={onItemClick}
+                className={`group flex items-center space-x-3 px-3 py-3 rounded-glass transition-all duration-300 glass-morphism hover:bg-glass-light ${
+                  location === `/assessments/${assessment.id}`
+                    ? "border border-secondary/30 bg-secondary/10 text-secondary"
+                    : "text-foreground hover:text-secondary"
+                }`}
+                data-testid={`link-assessment-${assessment.id}`}
+              >
+                <FileText className="w-4 h-4 text-secondary" />
+                <div className="flex-1 truncate">
+                  <div className="text-sm font-medium">{assessment.name}</div>
+                  <div className="text-xs text-muted-foreground">{assessment.lastModified}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Analytics Dashboard Link */}
       <div className="pt-4">
