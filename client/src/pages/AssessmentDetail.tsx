@@ -535,7 +535,7 @@ export default function AssessmentDetail() {
             </TabsContent>
 
             <TabsContent value="analytics" className="mt-6">
-              <AnalyticsTab />
+              <AnalyticsTab assessmentId={assessment.id} intakeFormId={assessment.intakeFormId} />
             </TabsContent>
 
             <TabsContent value="findings">

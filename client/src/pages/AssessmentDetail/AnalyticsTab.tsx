@@ -17,6 +17,7 @@ import {
   Download,
   Calendar
 } from "lucide-react";
+import { apiGet } from "@/api";
 
 interface AnalyticsData {
   overallScore: number;
@@ -70,25 +71,172 @@ interface GapAnalysisData {
   recommendations: string[];
 }
 
-export default function AnalyticsTab() {
+interface AnalyticsTabProps {
+  assessmentId?: string;
+  intakeFormId?: string;
+}
+
+export default function AnalyticsTab({ assessmentId: propAssessmentId, intakeFormId }: AnalyticsTabProps) {
   const [match, params] = useRoute("/assessments/:id");
-  const assessmentId = params?.id;
+  const routeAssessmentId = params?.id;
+  const assessmentId = propAssessmentId || routeAssessmentId;
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const calculateTimelineFromData = (scoringData: any): TimelineData[] => {
+    if (!scoringData) return [];
+    
+    const now = new Date();
+    const getTargetDate = (daysFromNow: number) => {
+      const date = new Date(now);
+      date.setDate(date.getDate() + daysFromNow);
+      return date.toISOString().split('T')[0];
+    };
+
+    // Calculate required questions progress
+    const requiredQuestionsProgress = scoringData.categoryScores
+      ? scoringData.categoryScores
+          .filter((cat: CategoryScore) => cat.required)
+          .reduce((sum: number, cat: CategoryScore) => sum + (cat.questionsAnswered / cat.totalQuestions), 0) / 
+          Math.max(1, scoringData.categoryScores.filter((cat: CategoryScore) => cat.required).length) * 100
+      : 0;
+
+    // Calculate critical gaps progress
+    const criticalGapsCount = scoringData.criticalIssues?.length || 0;
+    const criticalGapsProgress = Math.max(0, 100 - (criticalGapsCount * 25));
+
+    return [
+      {
+        milestone: 'Complete Required Questions',
+        targetDate: getTargetDate(7),
+        status: requiredQuestionsProgress >= 75 ? 'IN_PROGRESS' : requiredQuestionsProgress > 0 ? 'IN_PROGRESS' : 'PENDING',
+        progress: Math.min(100, Math.round(requiredQuestionsProgress)),
+        description: 'Answer all mandatory compliance questions'
+      },
+      {
+        milestone: 'Address Critical Gaps',
+        targetDate: getTargetDate(21),
+        status: criticalGapsCount < 3 && criticalGapsCount > 0 ? 'IN_PROGRESS' : criticalGapsCount === 0 ? 'COMPLETED' : 'PENDING',
+        progress: Math.max(0, Math.round(criticalGapsProgress)),
+        description: 'Resolve identified compliance issues'
+      },
+      {
+        milestone: 'Internal Audit',
+        targetDate: getTargetDate(35),
+        status: scoringData.readinessLevel === 'AUDIT_READY' ? 'IN_PROGRESS' : 'PENDING',
+        progress: scoringData.readinessLevel === 'AUDIT_READY' ? 25 : 0,
+        description: 'Conduct internal assessment review'
+      },
+      {
+        milestone: 'Certification Submission',
+        targetDate: getTargetDate(49),
+        status: scoringData.complianceStatus === 'COMPLIANT' ? 'IN_PROGRESS' : 'PENDING',
+        progress: scoringData.complianceStatus === 'COMPLIANT' ? 10 : 0,
+        description: 'Submit for R2v3 certification'
+      }
+    ];
+  };
+
+  const calculateGapAnalysisFromData = (categoryScores: CategoryScore[]): GapAnalysisData[] => {
+    if (!categoryScores || categoryScores.length === 0) return [];
+
+    return categoryScores
+      .map((category) => {
+        const currentScore = category.percentage;
+        const targetScore = category.required ? 95 : 85;
+        const gap = Math.max(0, targetScore - currentScore);
+
+        if (gap === 0) return null;
+
+        let priority: 'HIGH' | 'MEDIUM' | 'LOW' = 'LOW';
+        if (category.required && gap > 15) priority = 'HIGH';
+        else if (gap > 20) priority = 'HIGH';
+        else if (gap > 10) priority = 'MEDIUM';
+
+        const estimatedEffort = gap > 20 ? '3-4 weeks' : gap > 10 ? '2-3 weeks' : '1-2 weeks';
+
+        const recommendations: string[] = [];
+        if (category.questionsAnswered < category.totalQuestions) {
+          recommendations.push(`Complete ${category.totalQuestions - category.questionsAnswered} unanswered questions`);
+        }
+        if (category.criticalGaps && category.criticalGaps.length > 0) {
+          recommendations.push(`Address ${category.criticalGaps.length} critical gap(s) in this category`);
+        }
+        if (category.percentage < targetScore) {
+          recommendations.push(`Improve compliance score from ${category.percentage}% to ${targetScore}%`);
+        }
+
+        return {
+          category: category.categoryName,
+          currentScore,
+          targetScore,
+          gap,
+          priority,
+          estimatedEffort,
+          recommendations: recommendations.length > 0 ? recommendations : [`Focus on improving ${category.categoryName} compliance`]
+        };
+      })
+      .filter((gap): gap is GapAnalysisData => gap !== null)
+      .sort((a, b) => {
+        // Sort by priority (HIGH first) then by gap size
+        const priorityOrder = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+        if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
+          return priorityOrder[a.priority] - priorityOrder[b.priority];
+        }
+        return b.gap - a.gap;
+      });
+  };
 
   const fetchAnalytics = async () => {
-    if (!assessmentId) return;
+    if (!assessmentId) {
+      setLoading(false);
+      return;
+    }
 
     try {
       setRefreshing(true);
-      const response = await fetch(`/api/assessments/${assessmentId}/analytics`);
-      if (response.ok) {
-        const data = await response.json();
-        setAnalytics(data);
+      setError(null);
+      
+      // Build endpoint with query parameter if needed
+      let endpoint = `/assessments/${assessmentId}/analytics`;
+      if (intakeFormId) {
+        endpoint += `?intakeFormId=${intakeFormId}`;
       }
+      
+      // Use apiGet which automatically includes Authorization header
+      const data = await apiGet<any>(endpoint);
+      
+      // Calculate timeline and gap analysis from real data
+      const timeline = calculateTimelineFromData(data);
+      const gapAnalysis = calculateGapAnalysisFromData(data.categoryScores || []);
+      
+      // Build complete analytics object from API data
+      const analyticsData: AnalyticsData = {
+        overallScore: data.overallScore || 0,
+        complianceStatus: data.complianceStatus || 'INCOMPLETE',
+        readinessLevel: data.readinessLevel || 'NOT_READY',
+        estimatedAuditSuccess: data.estimatedAuditSuccess || 0,
+        categoryScores: data.categoryScores || [],
+        criticalIssues: data.criticalIssues || [],
+        recommendations: data.recommendations || [],
+        trends: [], // Trends would require historical data - leave empty for now
+        timeline: timeline,
+        gapAnalysis: gapAnalysis,
+        lastCalculated: data.lastCalculated || new Date().toISOString()
+      };
+      
+      setAnalytics(analyticsData);
     } catch (error) {
       console.error('Failed to fetch analytics:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch analytics';
+      setError(errorMessage);
+      
+      // Check if it's an authentication error
+      if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+        setError('Authentication failed. Please refresh the page and try again.');
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -97,7 +245,7 @@ export default function AnalyticsTab() {
 
   useEffect(() => {
     fetchAnalytics();
-  }, [assessmentId]);
+  }, [assessmentId, intakeFormId]);
 
   const getComplianceStatusColor = (status: string) => {
     switch (status) {
@@ -117,93 +265,22 @@ export default function AnalyticsTab() {
     }
   };
 
-  // Default analytics data structure
-  const defaultAnalytics: AnalyticsData = {
+  // Create empty analytics structure when no data is available
+  const emptyAnalytics: AnalyticsData = {
     overallScore: 0,
     complianceStatus: 'INCOMPLETE',
     readinessLevel: 'NOT_READY',
     estimatedAuditSuccess: 0,
     categoryScores: [],
-    criticalIssues: [
-      'Missing EPA documentation for waste handling',
-      'Security controls need improvement',
-      'Data sanitization procedures incomplete'
-    ],
-    recommendations: [
-      'Complete EPA documentation requirements immediately',
-      'Implement additional facility security measures',
-      'Develop comprehensive data destruction protocols',
-      'Schedule internal audit before certification',
-      'Focus on required questions first'
-    ],
-    trends: [
-      { date: '2024-01-15', overallScore: 45, completedQuestions: 12, complianceStatus: 'INCOMPLETE' },
-      { date: '2024-01-20', overallScore: 62, completedQuestions: 18, complianceStatus: 'PARTIAL' },
-      { date: '2024-01-25', overallScore: 78, completedQuestions: 24, complianceStatus: 'PARTIAL' }
-    ],
-    timeline: [
-      {
-        milestone: 'Complete Required Questions',
-        targetDate: '2024-02-01',
-        status: 'IN_PROGRESS',
-        progress: 75,
-        description: 'Answer all mandatory compliance questions'
-      },
-      {
-        milestone: 'Address Critical Gaps',
-        targetDate: '2024-02-15',
-        status: 'PENDING',
-        progress: 25,
-        description: 'Resolve identified compliance issues'
-      },
-      {
-        milestone: 'Internal Audit',
-        targetDate: '2024-03-01',
-        status: 'PENDING',
-        progress: 0,
-        description: 'Conduct internal assessment review'
-      },
-      {
-        milestone: 'Certification Submission',
-        targetDate: '2024-03-15',
-        status: 'PENDING',
-        progress: 0,
-        description: 'Submit for R2v3 certification'
-      }
-    ],
-    gapAnalysis: [
-      {
-        category: 'Legal Compliance',
-        currentScore: 85,
-        targetScore: 95,
-        gap: 10,
-        priority: 'HIGH',
-        estimatedEffort: '2-3 weeks',
-        recommendations: ['Complete EPA documentation', 'Update permit status']
-      },
-      {
-        category: 'Data Security',
-        currentScore: 70,
-        targetScore: 90,
-        gap: 20,
-        priority: 'HIGH',
-        estimatedEffort: '3-4 weeks',
-        recommendations: ['Implement encryption protocols', 'Update access controls']
-      },
-      {
-        category: 'Facility Operations',
-        currentScore: 75,
-        targetScore: 85,
-        gap: 10,
-        priority: 'MEDIUM',
-        estimatedEffort: '1-2 weeks',
-        recommendations: ['Improve security measures', 'Update procedures']
-      }
-    ],
+    criticalIssues: [],
+    recommendations: [],
+    trends: [],
+    timeline: [],
+    gapAnalysis: [],
     lastCalculated: new Date().toISOString()
   };
 
-  const displayAnalytics = analytics || defaultAnalytics;
+  const displayAnalytics = analytics || emptyAnalytics;
 
   if (loading) {
     return (
@@ -211,6 +288,26 @@ export default function AnalyticsTab() {
         <div className="text-center">
           <RefreshCw className="w-8 h-8 animate-spin text-jade mx-auto mb-4" />
           <p className="text-muted-foreground">Loading analytics...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <AlertTriangle className="w-8 h-8 text-pumpkin mx-auto mb-4" />
+          <p className="text-muted-foreground">{error}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchAnalytics}
+            className="mt-4"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Retry
+          </Button>
         </div>
       </div>
     );
@@ -325,7 +422,10 @@ export default function AnalyticsTab() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {displayAnalytics.categoryScores.map((category, index) => (
+              {displayAnalytics.categoryScores.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No category data available</p>
+              ) : (
+                displayAnalytics.categoryScores.map((category, index) => (
                 <div key={index} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
@@ -346,7 +446,8 @@ export default function AnalyticsTab() {
                     <span>Weight: {category.weight}</span>
                   </div>
                 </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -361,7 +462,10 @@ export default function AnalyticsTab() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {displayAnalytics.gapAnalysis.map((gap, index) => (
+              {displayAnalytics.gapAnalysis.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No gaps identified - all categories meet target scores</p>
+              ) : (
+                displayAnalytics.gapAnalysis.map((gap, index) => (
                 <div key={index} className="border border-border rounded-lg p-3">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium text-foreground">{gap.category}</span>
@@ -393,7 +497,8 @@ export default function AnalyticsTab() {
                     Estimated effort: {gap.estimatedEffort}
                   </div>
                 </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -411,7 +516,10 @@ export default function AnalyticsTab() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {displayAnalytics.timeline.map((milestone, index) => (
+              {displayAnalytics.timeline.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No timeline data available</p>
+              ) : (
+                displayAnalytics.timeline.map((milestone, index) => (
                 <div key={index} className="flex items-start space-x-3">
                   <div className={`w-3 h-3 rounded-full mt-2 flex-shrink-0 ${
                     milestone.status === 'COMPLETED' ? 'bg-jade' :
@@ -432,7 +540,8 @@ export default function AnalyticsTab() {
                     <Progress value={milestone.progress} className="h-1" />
                   </div>
                 </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -450,24 +559,32 @@ export default function AnalyticsTab() {
               <div>
                 <h4 className="text-sm font-medium text-foreground mb-2">Critical Issues</h4>
                 <div className="space-y-2">
-                  {displayAnalytics.criticalIssues.map((issue, index) => (
+                  {displayAnalytics.criticalIssues.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No critical issues identified</p>
+                  ) : (
+                    displayAnalytics.criticalIssues.map((issue, index) => (
                     <div key={index} className="flex items-start space-x-2">
                       <AlertTriangle className="w-4 h-4 text-pumpkin mt-0.5 flex-shrink-0" />
                       <span className="text-sm text-foreground">{issue}</span>
                     </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
 
               <div>
                 <h4 className="text-sm font-medium text-foreground mb-2">Top Recommendations</h4>
                 <div className="space-y-2">
-                  {displayAnalytics.recommendations.slice(0, 5).map((rec, index) => (
+                  {displayAnalytics.recommendations.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No recommendations available</p>
+                  ) : (
+                    displayAnalytics.recommendations.slice(0, 5).map((rec, index) => (
                     <div key={index} className="flex items-start space-x-2">
                       <CheckCircle className="w-4 h-4 text-jade mt-0.5 flex-shrink-0" />
                       <span className="text-sm text-foreground">{rec}</span>
                     </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
             </div>
