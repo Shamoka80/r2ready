@@ -2,19 +2,22 @@
 import { Router } from "express";
 import { z } from "zod";
 import { db } from "../db.js";
-import { assessments, questions, answers, evidenceObjects } from "../../shared/schema.js";
+import { assessments, questions, answers, evidenceObjects, clauses } from "../../shared/schema.js";
 import { eq, and, sql, desc, gt, lt, or } from "drizzle-orm";
 import { PaginationUtils, paginationParamsSchema } from "../utils/pagination.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs/promises";
 import crypto from "crypto";
-import { requireFacilityPermissionFromAssessment, getUserFacilityPermissions, type AuthenticatedRequest } from "../services/authService.js";
+import { AuthService, requireFacilityPermissionFromAssessment, getUserFacilityPermissions, type AuthenticatedRequest } from "../services/authService.js";
 import { evidenceService } from "../services/evidenceService.js";
 import { validation, securitySchemas, commonSchemas } from "../middleware/validationMiddleware.js";
 import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware.js';
 
 const router = Router();
+
+// All routes require authentication
+router.use(AuthService.authMiddleware);
 
 // Evidence-specific validation schemas
 const evidenceSchemas = {
@@ -647,16 +650,52 @@ router.get('/assessment/:assessmentId/summary',
   try {
     const { assessmentId } = req.params;
 
-    const answersWithEvidence = await db.select({
-      questionId: answers.questionId,
-      evidenceFiles: answers.evidenceFiles,
-      questionText: questions.text,
-      required: questions.required,
-      evidenceRequired: questions.evidenceRequired
+    // Get assessment to access its standard ID
+    const assessmentResult = await db.select({
+      id: assessments.id,
+      stdId: assessments.stdId
     })
-    .from(answers)
-    .leftJoin(questions, eq(answers.questionId, questions.id))
-    .where(eq(answers.assessmentId, assessmentId));
+    .from(assessments)
+    .where(eq(assessments.id, assessmentId))
+    .limit(1);
+
+    // Handle PostgreSQL result structure (array vs object)
+    const assessment = Array.isArray(assessmentResult) 
+      ? assessmentResult[0] 
+      : (assessmentResult as any).rows?.[0] || assessmentResult;
+
+    if (!assessment || !assessment.stdId) {
+      console.error('Assessment not found or missing stdId:', { assessmentId, assessment });
+      return res.status(404).json({ error: 'Assessment not found' });
+    }
+
+    // Query ALL questions that require evidence for this assessment's standard
+    // This includes both answered and unanswered questions
+    // Using leftJoin for clauses (same pattern as assessments route) and filter stdId in WHERE
+    console.log('🔍 Fetching questions requiring evidence for assessment:', assessmentId, 'stdId:', assessment.stdId);
+    
+    let questionsRequiringEvidence;
+    try {
+      questionsRequiringEvidence = await db.select({
+        questionId: questions.id, // UUID for API compatibility
+        questionTextId: questions.questionId, // Text identifier for display
+        questionText: questions.text,
+        required: questions.required,
+        evidenceRequired: questions.evidenceRequired
+      })
+      .from(questions)
+      .leftJoin(clauses, eq(questions.clauseId, clauses.id))
+      .where(and(
+        eq(clauses.stdId, assessment.stdId),
+        eq(questions.evidenceRequired, true),
+        eq(questions.isActive, true)
+      ));
+      
+      console.log('✅ Query executed successfully. Results count:', Array.isArray(questionsRequiringEvidence) ? questionsRequiringEvidence.length : 'unknown');
+    } catch (queryError) {
+      console.error('❌ Query failed:', queryError);
+      throw queryError;
+    }
 
     const summary = {
       totalQuestionsWithEvidence: 0,
@@ -667,34 +706,59 @@ router.get('/assessment/:assessmentId/summary',
       evidenceCompletionRate: 0
     };
 
-    for (const answer of answersWithEvidence) {
-      const fileCount = answer.evidenceFiles?.length || 0;
+    // Process all questions requiring evidence (answered or not)
+    // Drizzle returns results as an array directly
+    const questionsArray = Array.isArray(questionsRequiringEvidence) 
+      ? questionsRequiringEvidence 
+      : [];
+
+    console.log('📊 Processing', questionsArray.length, 'questions requiring evidence');
+
+    // Count evidence files from evidenceObjects table for each question
+    for (const question of questionsArray) {
+      if (!question || !question.questionId) {
+        console.warn('⚠️ Skipping invalid question entry:', question);
+        continue;
+      }
+      
+      // Count actual evidence files from evidenceObjects table (not from answers.evidenceFiles)
+      // This ensures we get accurate counts even if answer records don't exist
+      const evidenceCountResult = await db.select({
+        count: sql<number>`count(*)::int`
+      })
+      .from(evidenceObjects)
+      .where(and(
+        eq(evidenceObjects.assessmentId, assessmentId),
+        eq(evidenceObjects.questionId, question.questionId)
+      ));
+      
+      const fileCount = evidenceCountResult[0]?.count || 0;
+      
+      console.log(`📁 Question ${question.questionId}: ${fileCount} evidence files`);
       
       if (fileCount > 0) {
         summary.totalQuestionsWithEvidence++;
         summary.totalEvidenceFiles += fileCount;
       }
 
-      if (answer.evidenceRequired) {
-        summary.requiredEvidenceTotal++;
-        if (fileCount > 0) {
-          summary.requiredEvidenceCompleted++;
-        }
+      // All questions in this list require evidence
+      summary.requiredEvidenceTotal++;
+      if (fileCount > 0) {
+        summary.requiredEvidenceCompleted++;
       }
 
-      if (answer.evidenceRequired || fileCount > 0) {
-        summary.evidenceByQuestion.push({
-          questionId: answer.questionId,
-          questionText: answer.questionText,
-          required: answer.required,
-          evidenceRequired: answer.evidenceRequired,
-          fileCount,
-          status: answer.evidenceRequired 
-            ? (fileCount > 0 ? 'COMPLETE' : 'MISSING') 
-            : (fileCount > 0 ? 'PROVIDED' : 'NONE')
-        });
-      }
+      // Include all evidence-required questions in the list
+      summary.evidenceByQuestion.push({
+        questionId: question.questionId, // UUID for API compatibility
+        questionText: question.questionText || 'Unknown question',
+        required: question.required || false,
+        evidenceRequired: question.evidenceRequired !== undefined ? question.evidenceRequired : true,
+        fileCount,
+        status: fileCount > 0 ? 'COMPLETE' : 'MISSING'
+      });
     }
+
+    console.log('✅ Processed', summary.evidenceByQuestion.length, 'questions. Required total:', summary.requiredEvidenceTotal);
 
     summary.evidenceCompletionRate = summary.requiredEvidenceTotal > 0 
       ? Math.round((summary.requiredEvidenceCompleted / summary.requiredEvidenceTotal) * 100) 
@@ -704,7 +768,11 @@ router.get('/assessment/:assessmentId/summary',
 
   } catch (error) {
     console.error('Error generating evidence summary:', error);
-    res.status(500).json({ error: 'Failed to generate evidence summary' });
+    console.error('Error details:', error instanceof Error ? error.stack : String(error));
+    res.status(500).json({ 
+      error: 'Failed to generate evidence summary',
+      details: error instanceof Error ? error.message : String(error)
+    });
   }
 });
 

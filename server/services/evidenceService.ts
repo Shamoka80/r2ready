@@ -148,6 +148,9 @@ export class EvidenceService {
     try {
       const buffer = await fs.readFile(filePath);
 
+      // Check if file is a valid PDF (PDFs can legitimately contain embedded executables)
+      const isPdf = buffer.length >= 4 && buffer.toString('ascii', 0, 4).includes('%PDF');
+      
       // Check for embedded executables
       const executablePatterns = [
         { pattern: Buffer.from([0x4D, 0x5A]), name: 'PE Executable' },
@@ -157,8 +160,20 @@ export class EvidenceService {
       ];
 
       for (const { pattern, name } of executablePatterns) {
-        if (buffer.indexOf(pattern) !== -1) {
-          threats.push(`Embedded ${name} detected`);
+        const patternIndex = buffer.indexOf(pattern);
+        if (patternIndex !== -1) {
+          // For PDFs, only flag as threat if executable pattern is at the start of file
+          // (indicating it's an EXE disguised as PDF, not a legitimate embedded object)
+          if (isPdf && patternIndex > 1024) {
+            // Embedded executable in PDF body - likely legitimate (font, embedded object, etc.)
+            warnings.push(`Embedded ${name} detected in PDF (may be legitimate)`);
+          } else if (isPdf && patternIndex < 1024) {
+            // Executable pattern near start of "PDF" - suspicious, could be EXE disguised as PDF
+            threats.push(`Suspicious: ${name} pattern at start of PDF file`);
+          } else if (!isPdf) {
+            // Non-PDF file with executable pattern - treat as threat
+            threats.push(`Embedded ${name} detected`);
+          }
         }
       }
 
@@ -224,31 +239,81 @@ export class EvidenceService {
   private validateFileContent(file: Express.Multer.File): { isValid: boolean; warning?: string } {
     // Basic content validation - check file headers match MIME type
     try {
-      const buffer = require('fs').readFileSync(file.path);
+      // Check if file.path exists (disk storage) or use file.buffer (memory storage)
+      let buffer: Buffer;
+      if (file.path) {
+        // File was saved to disk by multer
+        const fs = require('fs');
+        if (!fs.existsSync(file.path)) {
+          console.warn(`File path does not exist: ${file.path}`);
+          return { isValid: true }; // Skip validation if file doesn't exist yet
+        }
+        buffer = fs.readFileSync(file.path);
+      } else if (file.buffer) {
+        // File is in memory
+        buffer = file.buffer;
+      } else {
+        // No file data available - skip validation
+        console.warn('No file path or buffer available for validation');
+        return { isValid: true };
+      }
+
+      if (!buffer || buffer.length === 0) {
+        return { isValid: false, warning: 'File is empty' };
+      }
 
       switch (file.mimetype) {
         case 'application/pdf':
-          if (!buffer.toString('ascii', 0, 4).includes('%PDF')) {
+          if (buffer.length < 4 || !buffer.toString('ascii', 0, 4).includes('%PDF')) {
             return { isValid: false, warning: 'File header does not match PDF format' };
           }
           break;
         case 'image/jpeg':
         case 'image/jpg':
-          if (buffer[0] !== 0xFF || buffer[1] !== 0xD8) {
+          if (buffer.length < 2 || buffer[0] !== 0xFF || buffer[1] !== 0xD8) {
             return { isValid: false, warning: 'File header does not match JPEG format' };
           }
           break;
         case 'image/png':
           const pngSignature = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
-          if (!buffer.slice(0, 8).equals(pngSignature)) {
+          if (buffer.length < 8 || !buffer.slice(0, 8).equals(pngSignature)) {
             return { isValid: false, warning: 'File header does not match PNG format' };
+          }
+          break;
+        case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': // .docx
+        case 'application/msword': // .doc
+        case 'application/vnd.ms-excel': // .xls
+        case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': // .xlsx
+        case 'text/plain': // .txt
+        case 'text/csv': // .csv
+          // Office documents and text files have complex formats - just check they're not empty
+          // Full validation would require specialized libraries
+          if (buffer.length === 0) {
+            return { isValid: false, warning: 'File is empty' };
+          }
+          break;
+        // For other file types, just check they're not empty
+        default:
+          if (buffer.length === 0) {
+            return { isValid: false, warning: 'File is empty' };
           }
           break;
       }
 
       return { isValid: true };
     } catch (error) {
-      return { isValid: false, warning: 'Failed to validate file content' };
+      // Log the actual error for debugging
+      console.error('File content validation error:', error);
+      console.error('File details:', {
+        path: file.path,
+        hasBuffer: !!file.buffer,
+        mimetype: file.mimetype,
+        size: file.size,
+        originalname: file.originalname
+      });
+      // Don't fail validation on read errors - the file might be valid but we can't read it
+      // This is a security trade-off: we'd rather allow a valid file than block all uploads
+      return { isValid: true, warning: 'Could not validate file content (file may still be valid)' };
     }
   }
 

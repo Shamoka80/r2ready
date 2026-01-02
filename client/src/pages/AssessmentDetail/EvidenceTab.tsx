@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRoute } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import {
 import { apiGet, apiPost } from "../../api";
 
 interface EvidenceFile {
+  id: string;
   filename: string;
   originalName: string;
   size: number;
@@ -48,7 +49,14 @@ export default function EvidenceTab() {
   const [match, params] = useRoute("/assessments/:id");
   const assessmentId = params?.id;
 
-  const [summary, setSummary] = useState<EvidenceSummary | null>(null);
+  const [summary, setSummary] = useState<EvidenceSummary | null>({
+    totalQuestionsWithEvidence: 0,
+    totalEvidenceFiles: 0,
+    requiredEvidenceCompleted: 0,
+    requiredEvidenceTotal: 0,
+    evidenceCompletionRate: 0,
+    evidenceByQuestion: []
+  });
   const [selectedQuestion, setSelectedQuestion] = useState<string | null>(null);
   const [questionEvidence, setQuestionEvidence] = useState<{
     evidenceFiles: EvidenceFile[];
@@ -57,15 +65,44 @@ export default function EvidenceTab() {
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [uploadNotes, setUploadNotes] = useState("");
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchSummary = async () => {
+  const fetchSummary = async (forceRefresh = false) => {
     if (!assessmentId) return;
 
     try {
-      const data = await apiGet<EvidenceSummary>(`/api/evidence/assessment/${assessmentId}/summary`);
-      setSummary(data);
+      // Add cache-busting parameter to force fresh data
+      const url = forceRefresh 
+        ? `/api/evidence/assessment/${assessmentId}/summary?_t=${Date.now()}`
+        : `/api/evidence/assessment/${assessmentId}/summary`;
+      
+      const data = await apiGet<EvidenceSummary>(url);
+      // Ensure evidenceByQuestion is always an array
+      setSummary({
+        ...data,
+        evidenceByQuestion: data.evidenceByQuestion || []
+      });
+      console.log('📊 Summary updated:', {
+        totalQuestions: data.evidenceByQuestion?.length || 0,
+        questionsWithFiles: data.evidenceByQuestion?.filter(q => q.fileCount > 0).length || 0,
+        fileCounts: data.evidenceByQuestion?.map(q => ({ 
+          questionId: q.questionId.substring(0, 8) + '...', 
+          fileCount: q.fileCount,
+          status: q.status
+        })) || []
+      });
     } catch (error) {
       console.error('Failed to fetch evidence summary:', error);
+      // Set empty summary on error to prevent undefined errors
+      setSummary({
+        totalQuestionsWithEvidence: 0,
+        totalEvidenceFiles: 0,
+        requiredEvidenceCompleted: 0,
+        requiredEvidenceTotal: 0,
+        evidenceCompletionRate: 0,
+        evidenceByQuestion: []
+      });
     } finally {
       setLoading(false);
     }
@@ -75,13 +112,38 @@ export default function EvidenceTab() {
     if (!assessmentId) return;
 
     try {
-      const data = await apiGet<{
-        evidenceFiles: EvidenceFile[];
-        notes: string;
+      const response = await apiGet<{
+        data: Array<{
+          id: string;
+          originalName: string;
+          size: number;
+          uploadedAt: string | Date;
+          downloadUrl: string;
+          mimeType?: string;
+        }>;
+        notes: string | null;
       }>(`/api/evidence/${assessmentId}/${questionId}`);
-      setQuestionEvidence(data);
+      
+      // Map the API response format to what the component expects
+      const mappedFiles: EvidenceFile[] = (response.data || []).map(file => ({
+        id: file.id,
+        filename: file.originalName, // Use originalName as filename for display
+        originalName: file.originalName,
+        size: file.size,
+        uploadedAt: typeof file.uploadedAt === 'string' ? file.uploadedAt : file.uploadedAt.toISOString(),
+        downloadUrl: file.downloadUrl
+      }));
+      
+      setQuestionEvidence({
+        evidenceFiles: mappedFiles,
+        notes: response.notes || ''
+      });
     } catch (error) {
       console.error('Failed to fetch question evidence:', error);
+      setQuestionEvidence({
+        evidenceFiles: [],
+        notes: ''
+      });
     }
   };
 
@@ -91,56 +153,169 @@ export default function EvidenceTab() {
 
   useEffect(() => {
     if (selectedQuestion) {
+      console.log('🔄 Question selected:', selectedQuestion);
+      // Refresh summary when switching questions to ensure file counts are up to date
+      fetchSummary(true); // Force refresh to show current file counts
       fetchQuestionEvidence(selectedQuestion);
+      // Reset upload state when switching questions
+      setUploadNotes("");
+      setUploading(false);
+      setUploadError(null);
+      // Reset file input when switching questions - use setTimeout to ensure DOM is ready
+      setTimeout(() => {
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+          console.log('✅ File input reset for question:', selectedQuestion);
+        }
+      }, 0);
     } else {
       setQuestionEvidence(null);
+      setUploadNotes("");
+      setUploadError(null);
+      setUploading(false);
+      setTimeout(() => {
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      }, 0);
     }
   }, [selectedQuestion]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files || !selectedQuestion || !assessmentId) return;
+    console.log('📎 File upload triggered:', {
+      hasFiles: !!event.target.files,
+      fileCount: event.target.files?.length || 0,
+      selectedQuestion,
+      assessmentId,
+      uploading
+    });
+
+    if (!event.target.files || !selectedQuestion || !assessmentId) {
+      const errorMsg = !selectedQuestion ? "Please select a question first" : "Missing assessment ID";
+      setUploadError(errorMsg);
+      console.error('❌ Upload blocked:', errorMsg);
+      return;
+    }
+
+    if (uploading) {
+      setUploadError("Please wait for the current upload to complete");
+      console.warn('⚠️ Upload already in progress');
+      return;
+    }
 
     const files = Array.from(event.target.files);
-    if (files.length === 0) return;
+    if (files.length === 0) {
+      setUploadError("Please select at least one file");
+      return;
+    }
 
     setUploading(true);
+    setUploadError(null);
 
     try {
       const formData = new FormData();
       files.forEach(file => formData.append('files', file));
       if (uploadNotes) formData.append('notes', uploadNotes);
 
+      // Get auth token for file upload
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('auth-token');
+      const headers: Record<string, string> = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      } else {
+        console.error('❌ No auth token found in localStorage');
+        setUploadError('Authentication required. Please log in again.');
+        setUploading(false);
+        return;
+      }
+
+      console.log('📤 Uploading files:', {
+        assessmentId,
+        questionId: selectedQuestion,
+        fileCount: files.length,
+        hasToken: !!token,
+        tokenLength: token?.length || 0
+      });
+
+      // Don't set Content-Type for FormData - browser will set it with boundary
       const response = await fetch(`/api/evidence/upload/${assessmentId}/${selectedQuestion}`, {
         method: 'POST',
+        headers,
         body: formData
+      });
+
+      console.log('📥 Upload response:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
+
+      if (response.ok) {
+        const responseData = await response.json().catch(() => ({}));
+        console.log('✅ Upload successful:', responseData);
+        
+        // Small delay to ensure files are fully saved to database before refreshing
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Refresh evidence for current question and update summary (force refresh to bypass cache)
+        await Promise.all([
+          fetchQuestionEvidence(selectedQuestion),
+          fetchSummary(true) // Force refresh to get updated file counts
+        ]);
+        
+        setUploadNotes("");
+        setUploadError(null);
+        setUploading(false); // Ensure uploading is reset
+        
+        // Clear file input - use setTimeout to ensure it happens after state updates
+        setTimeout(() => {
+          if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+          }
+          if (event.target) {
+            event.target.value = "";
+          }
+        }, 100);
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
+        const errorMessage = errorData.error || errorData.message || 'Upload failed';
+        console.error('❌ Upload failed:', errorMessage);
+        setUploadError(errorMessage);
+        setUploading(false);
+        throw new Error(errorMessage);
+      }
+    } catch (error) {
+      console.error('File upload error:', error);
+      setUploadError(error instanceof Error ? error.message : 'Failed to upload files. Please try again.');
+      setUploading(false); // Always reset uploading state on error
+    }
+  };
+
+  const handleFileDelete = async (evidenceId: string) => {
+    if (!selectedQuestion || !assessmentId) return;
+
+    try {
+      // Get auth token for delete request
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('auth-token');
+      const headers: Record<string, string> = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`/api/evidence/evidence/${evidenceId}`, {
+        method: 'DELETE',
+        headers
       });
 
       if (response.ok) {
         await fetchQuestionEvidence(selectedQuestion);
         await fetchSummary();
-        setUploadNotes("");
-        // Clear file input
-        event.target.value = "";
       } else {
-        throw new Error('Upload failed');
+        const errorData = await response.json().catch(() => ({ error: 'Delete failed' }));
+        console.error('File deletion failed:', errorData.error || 'Unknown error');
       }
-    } catch (error) {
-      console.error('File upload failed:', error);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleFileDelete = async (filename: string) => {
-    if (!selectedQuestion || !assessmentId) return;
-
-    try {
-      await fetch(`/api/evidence/${assessmentId}/${selectedQuestion}/${filename}`, {
-        method: 'DELETE'
-      });
-
-      await fetchQuestionEvidence(selectedQuestion);
-      await fetchSummary();
     } catch (error) {
       console.error('File deletion failed:', error);
     }
@@ -249,7 +424,7 @@ export default function EvidenceTab() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2" data-testid="list-questions">
-              {summary?.evidenceByQuestion.map((item, index) => (
+              {(summary?.evidenceByQuestion || []).map((item, index) => (
                 <div
                   key={index}
                   data-testid={`question-item-${item.questionId}`}
@@ -313,6 +488,7 @@ export default function EvidenceTab() {
                     <Upload className="w-8 h-8 mx-auto mb-4 text-muted-foreground" />
                     <div className="space-y-2">
                       <Input
+                        ref={fileInputRef}
                         type="file"
                         multiple
                         accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt,.csv"
@@ -335,6 +511,11 @@ export default function EvidenceTab() {
                         Uploading files...
                       </div>
                     )}
+                    {uploadError && (
+                      <div className="mt-2 text-sm text-pumpkin" data-testid="text-upload-error">
+                        {uploadError}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -348,7 +529,7 @@ export default function EvidenceTab() {
 
                 {/* Uploaded Files */}
                 <div className="space-y-2" data-testid="list-evidence-files">
-                  {questionEvidence?.evidenceFiles.map((file, index) => (
+                  {(questionEvidence?.evidenceFiles || []).map((file, index) => (
                     <div
                       key={index}
                       data-testid={`evidence-file-${index}`}
@@ -377,7 +558,7 @@ export default function EvidenceTab() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleFileDelete(file.filename)}
+                          onClick={() => handleFileDelete(file.id)}
                           className="text-red-600 hover:text-red-700"
                           data-testid={`button-delete-${index}`}
                         >

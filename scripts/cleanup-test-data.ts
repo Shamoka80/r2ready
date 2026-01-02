@@ -16,6 +16,7 @@ interface CleanupConfig {
 
 class TestDataCleaner {
   private db: any;
+  private connection: any;
   private config: CleanupConfig;
 
   constructor(config: CleanupConfig) {
@@ -25,8 +26,8 @@ class TestDataCleaner {
       throw new Error('DATABASE_URL environment variable is required');
     }
 
-    const connection = neon(process.env.DATABASE_URL);
-    this.db = drizzle(connection);
+    this.connection = neon(process.env.DATABASE_URL);
+    this.db = drizzle(this.connection);
   }
 
   async cleanup(): Promise<void> {
