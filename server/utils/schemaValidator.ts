@@ -104,15 +104,30 @@ export async function validateSchemaConsistency(): Promise<SchemaValidationResul
       const { tableName, columns } = tableDefinition;
 
       // Check if table exists
-      const tableExistsQuery = await db.execute(sql`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = 'public' 
-          AND table_name = ${tableName}
-        );
-      `);
+      let tableExistsQuery;
+      try {
+        tableExistsQuery = await db.execute(sql`
+          SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = ${tableName}
+          );
+        `);
+      } catch (queryError) {
+        const errorMsg = queryError instanceof Error ? queryError.message : String(queryError);
+        errors.push(`❌ Failed to check if table '${tableName}' exists: ${errorMsg}`);
+        continue;
+      }
 
-      const tableExists = (tableExistsQuery.rows[0] as any).exists;
+      let tableExists = false;
+      if (tableExistsQuery && tableExistsQuery.rows && Array.isArray(tableExistsQuery.rows) && tableExistsQuery.rows.length > 0) {
+        tableExists = (tableExistsQuery.rows[0] as any)?.exists ?? false;
+      } else if (Array.isArray(tableExistsQuery) && tableExistsQuery.length > 0) {
+        tableExists = (tableExistsQuery[0] as any)?.exists ?? false;
+      } else {
+        warnings.push(`⚠️  Could not determine if table '${tableName}' exists - unexpected result structure`);
+        continue;
+      }
 
       if (!tableExists) {
         errors.push(`❌ Critical table '${tableName}' does not exist in the database`);
@@ -120,19 +135,42 @@ export async function validateSchemaConsistency(): Promise<SchemaValidationResul
       }
 
       // Get actual columns from database
-      const columnsQuery = await db.execute(sql`
-        SELECT column_name, data_type, is_nullable
-        FROM information_schema.columns
-        WHERE table_schema = 'public' 
-        AND table_name = ${tableName}
-        ORDER BY ordinal_position;
-      `);
+      let columnsQuery;
+      try {
+        columnsQuery = await db.execute(sql`
+          SELECT column_name, data_type, is_nullable
+          FROM information_schema.columns
+          WHERE table_schema = 'public' 
+          AND table_name = ${tableName}
+          ORDER BY ordinal_position;
+        `);
+      } catch (queryError) {
+        const errorMsg = queryError instanceof Error ? queryError.message : String(queryError);
+        errors.push(`❌ Failed to get columns for table '${tableName}': ${errorMsg}`);
+        continue;
+      }
 
-      const actualColumns = columnsQuery.rows as Array<{
+      let actualColumns: Array<{
         column_name: string;
         data_type: string;
         is_nullable: string;
-      }>;
+      }> = [];
+      if (columnsQuery && columnsQuery.rows && Array.isArray(columnsQuery.rows)) {
+        actualColumns = columnsQuery.rows as Array<{
+          column_name: string;
+          data_type: string;
+          is_nullable: string;
+        }>;
+      } else if (Array.isArray(columnsQuery)) {
+        actualColumns = columnsQuery as Array<{
+          column_name: string;
+          data_type: string;
+          is_nullable: string;
+        }>;
+      } else {
+        warnings.push(`⚠️  Could not get columns for table '${tableName}' - unexpected result structure`);
+        continue;
+      }
 
       // Check each expected column
       for (const expectedColumn of columns) {
