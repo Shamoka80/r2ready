@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { z } from "zod";
-import { db } from '../db.js';
-import { assessments } from '../../shared/schema.js';
+import { db } from "../db";
+import { assessments } from "../../shared/schema";
 import { eq, and, isNotNull } from "drizzle-orm";
-import { AuthService } from '../services/authService.js';
-import observabilityService, { ObservabilityService } from '../services/observabilityService.js';
-import ComplianceAnalyticsService from '../services/complianceAnalyticsService.js';
+import { AuthService } from '../services/authService';
+import observabilityService, { ObservabilityService } from '../services/observabilityService';
+import ComplianceAnalyticsService from '../services/complianceAnalyticsService';
 const router = Router();
 // Apply auth middleware
 router.use(AuthService.authMiddleware);

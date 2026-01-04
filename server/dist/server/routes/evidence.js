@@ -2,7 +2,8 @@ import { Router } from "express";
 import { z } from "zod";
 import { db } from "../db.js";
 import { assessments, questions, answers, evidenceObjects } from "../../shared/schema.js";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc, gt, lt, or } from "drizzle-orm";
+import { PaginationUtils, paginationParamsSchema } from "../utils/pagination.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs/promises";
@@ -250,14 +251,39 @@ router.post('/upload/:assessmentId/:questionId', rateLimitMiddleware.evidenceUpl
         res.status(500).json({ error: 'Failed to upload evidence files' });
     }
 });
-// GET /api/evidence/:assessmentId/:questionId - Get evidence files for a question
+// GET /api/evidence/:assessmentId/:questionId - Get evidence files for a question (with pagination)
 router.get('/:assessmentId/:questionId', validation.request({
     params: evidenceSchemas.listParams
 }), requireFacilityPermissionFromAssessment('view_reports'), async (req, res) => {
     try {
         const { assessmentId, questionId } = req.params;
-        // Get evidence objects for this question with full categorization data
-        const evidenceFiles = await db.select({
+        // Parse and validate pagination parameters
+        const paginationParams = paginationParamsSchema.safeParse(req.query);
+        if (!paginationParams.success) {
+            return res.status(400).json({
+                error: "Invalid pagination parameters",
+                details: paginationParams.error.errors
+            });
+        }
+        const { limit, cursor, direction } = PaginationUtils.validateParams(paginationParams.data);
+        // Build base condition
+        let whereCondition = and(eq(evidenceObjects.assessmentId, assessmentId), eq(evidenceObjects.questionId, questionId));
+        // Build cursor condition for pagination using (createdAt DESC, id ASC) composite
+        if (cursor && cursor.timestamp) {
+            const cursorTimestamp = new Date(cursor.timestamp);
+            if (direction === 'forward') {
+                // Forward DESC: (createdAt < cursor.createdAt) OR (createdAt = cursor.createdAt AND id > cursor.id)
+                // Primary sort DESC uses <, tie-breaker ASC uses >
+                whereCondition = and(whereCondition, or(lt(evidenceObjects.createdAt, cursorTimestamp), and(eq(evidenceObjects.createdAt, cursorTimestamp), gt(evidenceObjects.id, cursor.id))));
+            }
+            else {
+                // Backward DESC: (createdAt > cursor.createdAt) OR (createdAt = cursor.createdAt AND id < cursor.id)
+                whereCondition = and(whereCondition, or(gt(evidenceObjects.createdAt, cursorTimestamp), and(eq(evidenceObjects.createdAt, cursorTimestamp), lt(evidenceObjects.id, cursor.id))));
+            }
+        }
+        // Get evidence objects with pagination (limit + 1 to check hasMore)
+        // For backward navigation, invert ORDER BY, then reverse results
+        let evidenceFiles = await db.select({
             id: evidenceObjects.id,
             originalName: evidenceObjects.originalName,
             size: evidenceObjects.size,
@@ -271,13 +297,26 @@ router.get('/:assessmentId/:questionId', validation.request({
             createdBy: evidenceObjects.createdBy
         })
             .from(evidenceObjects)
-            .where(and(eq(evidenceObjects.assessmentId, assessmentId), eq(evidenceObjects.questionId, questionId)));
-        // Get answer notes
+            .where(whereCondition)
+            .orderBy(direction === 'forward' ? desc(evidenceObjects.createdAt) : evidenceObjects.createdAt, direction === 'forward' ? evidenceObjects.id : desc(evidenceObjects.id))
+            .limit(limit + 1);
+        // For backward navigation, reverse the results to maintain natural order
+        if (direction === 'backward') {
+            evidenceFiles = evidenceFiles.reverse();
+        }
+        // Build paginated response
+        // For backward: sentinel is at START after reverse, skip it
+        // For forward: sentinel is at END, take first limit items
+        const hasMore = evidenceFiles.length > limit;
+        const data = hasMore
+            ? (direction === 'backward' ? evidenceFiles.slice(1) : evidenceFiles.slice(0, limit))
+            : evidenceFiles;
+        // Get answer notes (not paginated)
         const [answer] = await db.select({ notes: answers.notes })
             .from(answers)
             .where(and(eq(answers.assessmentId, assessmentId), eq(answers.questionId, questionId)));
         // Format evidence files with enhanced metadata
-        const formattedFiles = evidenceFiles.map(file => {
+        const formattedFiles = data.map(file => {
             const scanResults = file.scanResults || {};
             return {
                 id: file.id,
@@ -296,15 +335,41 @@ router.get('/:assessmentId/:questionId', validation.request({
                 checksum: file.checksum.substring(0, 8) + '...' // Truncated for security
             };
         });
+        // Build pagination cursors
+        let nextCursor = null;
+        let prevCursor = null;
+        if (data.length > 0) {
+            if (direction === 'forward' && hasMore) {
+                const lastItem = data[data.length - 1];
+                nextCursor = PaginationUtils.encodeCursor({
+                    id: lastItem.id,
+                    timestamp: lastItem.createdAt?.getTime(),
+                });
+            }
+            // Only provide prevCursor if not on first page
+            if (cursor) {
+                const firstItem = data[0];
+                prevCursor = PaginationUtils.encodeCursor({
+                    id: firstItem.id,
+                    timestamp: firstItem.createdAt?.getTime(),
+                });
+            }
+        }
         res.json({
-            evidenceFiles: formattedFiles,
+            data: formattedFiles,
             notes: answer?.notes || null,
             summary: {
-                totalFiles: formattedFiles.length,
+                totalReturned: formattedFiles.length,
                 cleanFiles: formattedFiles.filter(f => f.isClean).length,
                 pendingScans: formattedFiles.filter(f => f.scanStatus === 'pending').length,
                 evidenceTypes: [...new Set(formattedFiles.map(f => f.evidenceType))],
                 totalSize: formattedFiles.reduce((sum, f) => sum + f.size, 0)
+            },
+            pagination: {
+                hasMore,
+                nextCursor,
+                prevCursor,
+                totalReturned: formattedFiles.length,
             }
         });
     }

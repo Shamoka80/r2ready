@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { AuthService } from '../services/authService.js';
+import { AuthService } from "../services/authService";
 const router = Router();
 // Middleware - require authentication for all feature flag routes
 router.use(AuthService.authMiddleware);

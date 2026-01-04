@@ -1,7 +1,7 @@
-import { AuthService } from '../services/authService.js';
-import { deviceService } from '../services/deviceService.js';
-import { db } from '../db.js';
-import { userSessions, users } from '../../shared/schema.js';
+import { AuthService } from '../services/authService';
+import { deviceService } from '../services/deviceService';
+import { db } from '../db';
+import { userSessions, users } from '@shared/schema';
 import { sql } from 'drizzle-orm';
 /**
  * Authentication middleware that validates JWT access tokens

@@ -1,5 +1,5 @@
-import { db } from '../db.js';
-import { assessments, answers, questions, clauses, users, facilityProfiles, auditLog, licenses } from '../../shared/schema.js';
+import { db } from '../db';
+import { assessments, answers, questions, clauses, users, facilityProfiles, auditLog, licenses } from '@shared/schema';
 import { eq, and, sql, lte, desc, count, isNotNull, inArray } from 'drizzle-orm';
 /**
  * Dashboard Analytics Service
@@ -8,36 +8,29 @@ import { eq, and, sql, lte, desc, count, isNotNull, inArray } from 'drizzle-orm'
 export class DashboardAnalyticsService {
     /**
      * Get comprehensive KPIs for dashboard header
+     * Uses materialized view for optimized performance
      */
     static async getDashboardKPIs(tenantId) {
         try {
-            // Get assessment counts
-            const [assessmentCounts] = await db
-                .select({
-                total: count(),
-                inProgress: sql `count(*) FILTER (WHERE ${assessments.status} = 'IN_PROGRESS')`,
-                completed: sql `count(*) FILTER (WHERE ${assessments.status} = 'COMPLETED')`,
-                needsReview: sql `count(*) FILTER (WHERE ${assessments.status} = 'UNDER_REVIEW')`,
-            })
-                .from(assessments)
-                .where(eq(assessments.tenantId, tenantId));
-            // Get facility count
+            // Get assessment stats from materialized view
+            const statsResult = await db.execute(sql `
+        SELECT 
+          total_assessments,
+          in_progress_count,
+          completed_count,
+          under_review_count,
+          avg_readiness_score,
+          certification_ready_count
+        FROM assessment_stats
+        WHERE tenant_id = ${tenantId}
+      `);
+            const stats = statsResult.rows[0];
+            // Get facility count (separate query - not in materialized view)
             const [facilityCount] = await db
                 .select({ count: count() })
                 .from(facilityProfiles)
                 .where(eq(facilityProfiles.tenantId, tenantId));
-            // Calculate average readiness from completed assessments
-            const completedAssessments = await db
-                .select({
-                overallScore: assessments.overallScore,
-            })
-                .from(assessments)
-                .where(and(eq(assessments.tenantId, tenantId), eq(assessments.status, 'COMPLETED'), isNotNull(assessments.overallScore)));
-            const averageReadiness = completedAssessments.length > 0
-                ? completedAssessments.reduce((sum, a) => sum + (a.overallScore || 0), 0) / completedAssessments.length
-                : 0;
-            const certificationReady = completedAssessments.filter(a => (a.overallScore || 0) >= 90).length;
-            // Count critical gaps (answered "No" or "Partial" to critical questions)
+            // Count critical gaps (separate query - complex join, better left as-is)
             const criticalAnswers = await db
                 .select({ count: count() })
                 .from(answers)
@@ -46,16 +39,16 @@ export class DashboardAnalyticsService {
                 .where(and(eq(assessments.tenantId, tenantId), sql `${answers.value}::text IN ('No', 'Partial', 'Not Applicable')`));
             const criticalGapCount = criticalAnswers.length > 0 ? Number(criticalAnswers[0]?.count || 0) : 0;
             const kpis = {
-                totalAssessments: Number(assessmentCounts?.total || 0),
-                inProgress: Number(assessmentCounts?.inProgress || 0),
-                completed: Number(assessmentCounts?.completed || 0),
-                needsReview: Number(assessmentCounts?.needsReview || 0),
-                averageReadiness: Math.round(averageReadiness),
-                certificationReady,
+                totalAssessments: Number(stats?.total_assessments || 0),
+                inProgress: Number(stats?.in_progress_count || 0),
+                completed: Number(stats?.completed_count || 0),
+                needsReview: Number(stats?.under_review_count || 0),
+                averageReadiness: Math.round(Number(stats?.avg_readiness_score || 0)),
+                certificationReady: Number(stats?.certification_ready_count || 0),
                 criticalGaps: Math.max(0, criticalGapCount),
-                facilities: Number(facilityCount[0]?.count || 0),
+                facilities: Number(facilityCount?.count || 0),
             };
-            console.log(`✅ Dashboard KPIs calculated for tenant ${tenantId}:`, kpis);
+            console.log(`✅ Dashboard KPIs calculated for tenant ${tenantId} (using materialized view):`, kpis);
             return kpis;
         }
         catch (error) {
@@ -82,6 +75,10 @@ export class DashboardAnalyticsService {
                     return this.getDefaultReadinessSnapshot();
                 }
                 targetAssessmentId = latestAssessment.id;
+            }
+            // Ensure we have a valid assessment ID
+            if (!targetAssessmentId) {
+                return this.getDefaultReadinessSnapshot();
             }
             // Get assessment with scores
             const [assessment] = await db

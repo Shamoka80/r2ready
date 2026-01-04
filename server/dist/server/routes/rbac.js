@@ -1,10 +1,10 @@
 import { Router } from "express";
 import { z } from "zod";
-import { db } from '../db.js';
-import { users, facilityProfiles } from '../../shared/schema.js';
+import { db } from "../db";
+import { users, facilityProfiles } from "../../shared/schema";
 import { eq, and, sql } from "drizzle-orm";
-import { AuthService, requireFacilityPermission, getUserFacilityPermissions } from '../services/authService.js';
-import { requireFlag } from '../lib/flags.js';
+import { AuthService, requireFacilityPermission, getUserFacilityPermissions } from "../services/authService";
+import { requireFlag } from "../lib/flags";
 const router = Router();
 // All routes require authentication
 router.use(AuthService.authMiddleware);

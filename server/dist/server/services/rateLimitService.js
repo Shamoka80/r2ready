@@ -1,6 +1,6 @@
 import { eq, and, gte, lt } from 'drizzle-orm';
-import { db } from '../db.js';
-import { rateLimitEvents } from '../../shared/schema.js';
+import { db } from '../db';
+import { rateLimitEvents } from '@shared/schema';
 /**
  * Rate Limiting Service
  * Provides configurable rate limiting for different resources and actions
@@ -14,7 +14,8 @@ export class RateLimitService {
         'exports:pdf': { maxRequests: 10, windowSeconds: 60 }, // 10 exports per minute
         'exports:excel': { maxRequests: 10, windowSeconds: 60 }, // 10 exports per minute
         'uploads:evidence': { maxRequests: 20, windowSeconds: 60 }, // 20 uploads per minute
-        'api:general': { maxRequests: 100, windowSeconds: 60 }, // 100 API calls per minute
+        'api:general': { maxRequests: 200, windowSeconds: 60 }, // 200 API calls per minute (increased from 100)
+        'api:assessments': { maxRequests: 50, windowSeconds: 60 }, // 50 assessment creations per minute
         '2fa:setup': { maxRequests: 3, windowSeconds: 3600 }, // 3 setup attempts per hour
         '2fa:disable': { maxRequests: 2, windowSeconds: 3600 }, // 2 disable attempts per hour
         'device:register': { maxRequests: 5, windowSeconds: 300 }, // 5 device registrations per 5 minutes

@@ -1,6 +1,6 @@
-import { db } from '../db.js';
+import { db } from '../db';
 import { sql, eq, and } from 'drizzle-orm';
-import { assessments } from '../../shared/schema.js';
+import { assessments } from '../../shared/schema';
 export class CalendarService {
     async createEvent(tenantId, userId, eventData) {
         const eventId = crypto.randomUUID();

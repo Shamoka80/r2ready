@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
-import { db } from '../db.js';
-import { intakeFacilities, intakeForms, insertIntakeFacilitySchema } from '../../shared/schema.js';
+import { db } from "../db";
+import { intakeFacilities, intakeForms, insertIntakeFacilitySchema } from "../../shared/schema";
 import { eq, and } from "drizzle-orm";
-import { AuthService } from '../services/authService.js';
+import { AuthService } from "../services/authService";
 const router = Router();
 router.use(AuthService.authMiddleware);
 const updateIntakeFacilitySchema = z.object({

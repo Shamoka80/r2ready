@@ -1,6 +1,6 @@
 import { eq, and, gte, desc, count, or, like } from 'drizzle-orm';
-import { db } from '../db.js';
-import { securityAuditLog } from '../../shared/schema.js';
+import { db } from '../db';
+import { securityAuditLog } from '@shared/schema';
 /**
  * Brute-Force Detection and Alert Service
  *
@@ -100,8 +100,9 @@ export class BruteForceAlertService {
     async checkBruteForcePattern(resource, action, identifierValue, ipAddress, userId) {
         const actionKey = this.normalizeActionKey(action);
         if (!actionKey) {
-            console.log(`No alert threshold defined for action: ${action}`);
-            return; // No threshold defined for this action
+            // Silently skip non-security-critical actions (like 'general' API rate limits)
+            // These are normal rate limits and don't indicate brute-force attacks
+            return;
         }
         const threshold = this.alertThresholds[actionKey];
         // Count recent violations for this specific identifier and action

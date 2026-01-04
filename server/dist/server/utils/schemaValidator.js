@@ -1,4 +1,4 @@
-import { db } from '../db.js';
+import { db } from '../db';
 import { sql } from 'drizzle-orm';
 // Define critical tables and columns that must exist
 const CRITICAL_SCHEMA = [
@@ -82,27 +82,58 @@ export async function validateSchemaConsistency() {
         for (const tableDefinition of CRITICAL_SCHEMA) {
             const { tableName, columns } = tableDefinition;
             // Check if table exists
-            const tableExistsQuery = await db.execute(sql `
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = 'public' 
-          AND table_name = ${tableName}
-        );
-      `);
-            const tableExists = tableExistsQuery.rows[0].exists;
+            let tableExistsQuery;
+            try {
+                tableExistsQuery = await db.execute(sql `
+          SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = ${tableName}
+          );
+        `);
+            }
+            catch (queryError) {
+                const errorMsg = queryError instanceof Error ? queryError.message : String(queryError);
+                errors.push(`❌ Failed to check if table '${tableName}' exists: ${errorMsg}`);
+                continue;
+            }
+            // Handle both Neon (rows property) and PostgreSQL (direct array) result structures
+            let tableExists = false;
+            const tableExistsResult = tableExistsQuery.rows || tableExistsQuery;
+            if (Array.isArray(tableExistsResult) && tableExistsResult.length > 0) {
+                tableExists = tableExistsResult[0]?.exists ?? false;
+            }
+            else {
+                warnings.push(`⚠️  Could not determine if table '${tableName}' exists - unexpected result structure`);
+                continue;
+            }
             if (!tableExists) {
                 errors.push(`❌ Critical table '${tableName}' does not exist in the database`);
                 continue;
             }
             // Get actual columns from database
-            const columnsQuery = await db.execute(sql `
-        SELECT column_name, data_type, is_nullable
-        FROM information_schema.columns
-        WHERE table_schema = 'public' 
-        AND table_name = ${tableName}
-        ORDER BY ordinal_position;
-      `);
-            const actualColumns = columnsQuery.rows;
+            let columnsQuery;
+            try {
+                columnsQuery = await db.execute(sql `
+          SELECT column_name, data_type, is_nullable
+          FROM information_schema.columns
+          WHERE table_schema = 'public' 
+          AND table_name = ${tableName}
+          ORDER BY ordinal_position;
+        `);
+            }
+            catch (queryError) {
+                const errorMsg = queryError instanceof Error ? queryError.message : String(queryError);
+                errors.push(`❌ Failed to get columns for table '${tableName}': ${errorMsg}`);
+                continue;
+            }
+            // Handle both Neon (rows property) and PostgreSQL (direct array) result structures
+            const columnsResult = columnsQuery.rows || columnsQuery;
+            const actualColumns = Array.isArray(columnsResult) ? columnsResult : [];
+            if (actualColumns.length === 0) {
+                warnings.push(`⚠️  Could not get columns for table '${tableName}' - unexpected result structure`);
+                continue;
+            }
             // Check each expected column
             for (const expectedColumn of columns) {
                 const actualColumn = actualColumns.find((col) => col.column_name === expectedColumn.name);

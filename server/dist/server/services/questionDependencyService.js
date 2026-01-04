@@ -1,7 +1,7 @@
-import { db } from '../db.js';
-import { questions, answers, assessments } from '../../shared/schema.js';
+import { db } from '../db';
+import { questions, answers, assessments } from '@shared/schema';
 import { eq } from 'drizzle-orm';
-import ObservabilityService from './observabilityService.js';
+import ObservabilityService from './observabilityService';
 /**
  * Advanced Question Dependency Service
  * Implements intelligent question filtering and conditional logic for Phase 4

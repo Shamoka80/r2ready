@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, boolean, real, timestamp, json, pgEnum, serial, integer, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, boolean, real, timestamp, json, pgEnum, index, serial, integer, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 // === RBAC AND TENANT SYSTEM ===
@@ -439,6 +439,40 @@ export const errorLogs = pgTable("ErrorLog", {
     userAgent: text("userAgent"),
     timestamp: timestamp("timestamp").default(sql `now()`).notNull(),
 });
+// === BACKGROUND JOB QUEUE ===
+// Job status enum
+export const jobStatusEnum = pgEnum("JobStatus", [
+    "PENDING",
+    "PROCESSING",
+    "COMPLETED",
+    "FAILED"
+]);
+// Job priority enum
+export const jobPriorityEnum = pgEnum("JobPriority", [
+    "low",
+    "medium",
+    "high"
+]);
+// Jobs table - Background job queue with persistence
+export const jobs = pgTable("Job", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    tenantId: varchar("tenantId").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    // Job details
+    type: varchar("type").notNull(), // 'report_generation', 'email_sending', etc.
+    status: jobStatusEnum("status").notNull().default("PENDING"),
+    priority: jobPriorityEnum("priority").notNull().default("medium"),
+    // Job data
+    payload: jsonb("payload").notNull(), // Job parameters
+    result: jsonb("result"), // Job result (nullable)
+    error: text("error"), // Error message (nullable)
+    // Retry logic
+    attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("maxAttempts").notNull().default(3),
+    // Timestamps
+    createdAt: timestamp("createdAt").default(sql `now()`).notNull(),
+    updatedAt: timestamp("updatedAt").default(sql `now()`).notNull(),
+    completedAt: timestamp("completedAt"),
+});
 // === CONSULTANT CLIENT MANAGEMENT ===
 // Review workflow status enum
 export const reviewStatusEnum = pgEnum("ReviewStatus", [
@@ -623,7 +657,7 @@ export const clauses = pgTable("Clause", {
     order: integer("order").default(0).notNull(),
     isActive: boolean("isActive").default(true).notNull(),
 });
-// Questions within clauses
+// Questions within clauses - Enhanced for R2v3 Algorithm
 export const questions = pgTable("Question", {
     id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
     questionId: text("questionId").notNull().unique(),
@@ -642,6 +676,21 @@ export const questions = pgTable("Question", {
     order: integer("order").default(0).notNull(),
     isActive: boolean("isActive").default(true).notNull(),
     createdAt: timestamp("createdAt").default(sql `now()`).notNull(),
+    // R2v3 Algorithm Enhancements - Critical Gate Support
+    isMustPass: boolean("isMustPass").default(false).notNull(),
+    mustPassRuleId: varchar("mustPassRuleId").references(() => mustPassRules.id, { onDelete: "set null" }),
+    // R2v3 Algorithm Enhancements - Branching/Conditional Support
+    parentQuestionId: varchar("parentQuestionId").references(() => questions.id, { onDelete: "set null" }),
+    displayCondition: json("displayCondition"),
+    // R2v3 Algorithm Enhancements - Maturity Scoring Support
+    isMaturityQuestion: boolean("isMaturityQuestion").default(false).notNull(),
+    maturityCategory: text("maturityCategory"),
+    // R2v3 Algorithm Enhancements - Configuration Override Support
+    weightOverride: real("weightOverride"),
+    scoringConfigId: varchar("scoringConfigId").references(() => scoringConfigs.id, { onDelete: "set null" }),
+    // R2v3 Algorithm Enhancements - Metadata
+    effectiveDate: timestamp("effectiveDate").default(sql `now()`).notNull(),
+    deprecatedDate: timestamp("deprecatedDate"),
 });
 // Assessments with tenant isolation
 export const assessments = pgTable("Assessment", {
@@ -669,6 +718,13 @@ export const assessments = pgTable("Assessment", {
     criticalIssuesCount: integer("criticalIssuesCount").default(0),
     // REC mapping and intelligent filtering metadata
     filteringInfo: json("filteringInfo"),
+    // R2v3 Algorithm Enhancements - Readiness Classification
+    readinessClassification: text("readinessClassification"),
+    criticalBlockers: json("criticalBlockers"),
+    criticalBlockersCount: integer("criticalBlockersCount").default(0),
+    // R2v3 Algorithm Enhancements - Maturity & Configuration References
+    maturityScoreId: varchar("maturityScoreId").references(() => maturityScores.id, { onDelete: "set null" }),
+    scoringConfigId: varchar("scoringConfigId").references(() => scoringConfigs.id, { onDelete: "set null" }),
     // Timestamps
     createdAt: timestamp("createdAt").default(sql `now()`).notNull(),
     updatedAt: timestamp("updatedAt").default(sql `now()`).notNull(),
@@ -705,6 +761,178 @@ export const answers = pgTable("Answer", {
 //   complianceIdx: index("answer_compliance_idx").on(table.compliance),
 // })
 );
+// === R2V3 ALGORITHM ENHANCEMENT TABLES ===
+// Scoring configuration table - Externalized weights and thresholds
+export const scoringConfigs = pgTable("ScoringConfig", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    // Configuration identification
+    configName: text("configName").notNull(),
+    configVersion: text("configVersion").notNull().default("1.0"),
+    description: text("description"),
+    // Scope
+    standardId: varchar("standardId").references(() => standardVersions.id),
+    applicability: text("applicability").default("GLOBAL").notNull(),
+    // Weight configuration
+    weights: json("weights").notNull(),
+    appendixWeights: json("appendixWeights"),
+    // Scoring rules
+    naHandling: text("naHandling").default("EXCLUDE").notNull(),
+    requiredQuestionMultiplier: real("requiredQuestionMultiplier").default(1.5).notNull(),
+    // Threshold configuration
+    readinessThresholds: json("readinessThresholds").notNull(),
+    // Metadata
+    isActive: boolean("isActive").default(true).notNull(),
+    isDefault: boolean("isDefault").default(false).notNull(),
+    effectiveDate: timestamp("effectiveDate").default(sql `now()`).notNull(),
+    createdAt: timestamp("createdAt").default(sql `now()`).notNull(),
+    updatedAt: timestamp("updatedAt").default(sql `now()`).notNull(),
+});
+// Must-pass rules table - Critical gate enforcement
+export const mustPassRules = pgTable("MustPassRule", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    // Rule identification
+    ruleCode: text("ruleCode").notNull().unique(),
+    ruleName: text("ruleName").notNull(),
+    description: text("description"),
+    // Rule definition
+    ruleType: text("ruleType").notNull(),
+    // For THRESHOLD type (section-based rules)
+    thresholdSection: text("thresholdSection"),
+    thresholdOperator: text("thresholdOperator"),
+    thresholdValue: real("thresholdValue"),
+    // Blocker configuration
+    blockerSeverity: text("blockerSeverity").default("CRITICAL").notNull(),
+    blockerMessage: text("blockerMessage"),
+    maxReadinessLevel: text("maxReadinessLevel"),
+    // Metadata
+    isActive: boolean("isActive").default(true).notNull(),
+    priority: integer("priority").default(1).notNull(),
+    effectiveDate: timestamp("effectiveDate").default(sql `now()`).notNull(),
+    createdAt: timestamp("createdAt").default(sql `now()`).notNull(),
+    updatedAt: timestamp("updatedAt").default(sql `now()`).notNull(),
+});
+// Must-pass rule questions join table - Normalized question references
+export const mustPassRuleQuestions = pgTable("MustPassRuleQuestion", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    // Foreign keys with ON DELETE CASCADE
+    mustPassRuleId: varchar("mustPassRuleId").notNull().references(() => mustPassRules.id, { onDelete: "cascade" }),
+    questionId: varchar("questionId").notNull().references(() => questions.id, { onDelete: "cascade" }),
+    // Composite rule configuration
+    compositeLogicType: text("compositeLogicType"),
+    requiredCount: integer("requiredCount"),
+    // Acceptable values for this question
+    acceptableValues: json("acceptableValues").notNull(),
+    // Metadata
+    order: integer("order").default(0).notNull(),
+    isActive: boolean("isActive").default(true).notNull(),
+    createdAt: timestamp("createdAt").default(sql `now()`).notNull(),
+}, (table) => ({
+    uniqueRuleQuestion: uniqueIndex("unique_must_pass_rule_question")
+        .on(table.mustPassRuleId, table.questionId),
+}));
+// Conditional rules table - Dynamic question branching logic
+export const conditionalRules = pgTable("ConditionalRule", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    // Rule identification
+    ruleId: text("ruleId").notNull().unique(),
+    ruleName: text("ruleName").notNull(),
+    description: text("description"),
+    // Trigger configuration
+    triggeredBy: text("triggeredBy").notNull(),
+    triggerCondition: json("triggerCondition").notNull(),
+    // Action configuration
+    action: text("action").notNull(),
+    // Priority and logic
+    priority: integer("priority").default(1).notNull(),
+    evaluationLogic: text("evaluationLogic").default("AND").notNull(),
+    // Scope
+    ruleScope: text("ruleScope").default("ASSESSMENT").notNull(),
+    standardId: varchar("standardId").references(() => standardVersions.id),
+    // Metadata
+    isActive: boolean("isActive").default(true).notNull(),
+    effectiveDate: timestamp("effectiveDate").default(sql `now()`).notNull(),
+    createdAt: timestamp("createdAt").default(sql `now()`).notNull(),
+    updatedAt: timestamp("updatedAt").default(sql `now()`).notNull(),
+});
+// Conditional rule targets join table - Normalized question references
+export const conditionalRuleTargets = pgTable("ConditionalRuleTarget", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    // Foreign keys with ON DELETE CASCADE
+    conditionalRuleId: varchar("conditionalRuleId").notNull().references(() => conditionalRules.id, { onDelete: "cascade" }),
+    targetQuestionId: varchar("targetQuestionId").notNull().references(() => questions.id, { onDelete: "cascade" }),
+    // Target-specific overrides
+    actionOverride: text("actionOverride"),
+    // Metadata
+    order: integer("order").default(0).notNull(),
+    isActive: boolean("isActive").default(true).notNull(),
+    createdAt: timestamp("createdAt").default(sql `now()`).notNull(),
+}, (table) => ({
+    uniqueRuleTarget: uniqueIndex("unique_conditional_rule_target")
+        .on(table.conditionalRuleId, table.targetQuestionId),
+}));
+// Question dependencies table - Parent-child question relationships
+export const questionDependencies = pgTable("QuestionDependency", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    // Foreign keys with ON DELETE CASCADE
+    questionId: varchar("questionId").notNull().references(() => questions.id, { onDelete: "cascade" }),
+    dependsOnQuestionId: varchar("dependsOnQuestionId").notNull().references(() => questions.id, { onDelete: "cascade" }),
+    // Dependency condition
+    dependencyCondition: json("dependencyCondition").notNull(),
+    dependencyType: text("dependencyType").default("VISIBILITY").notNull(),
+    logic: text("logic").default("AND").notNull(),
+    // Metadata
+    isActive: boolean("isActive").default(true).notNull(),
+    priority: integer("priority").default(1).notNull(),
+    createdAt: timestamp("createdAt").default(sql `now()`).notNull(),
+}, (table) => ({
+    uniqueDependency: uniqueIndex("unique_question_dependency")
+        .on(table.questionId, table.dependsOnQuestionId),
+}));
+// Maturity scores table - Separate operational maturity tracking
+export const maturityScores = pgTable("MaturityScore", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    // Assessment reference
+    assessmentId: varchar("assessmentId").notNull().references(() => assessments.id, { onDelete: "cascade" }),
+    // Maturity dimensions
+    bcpScore: real("bcpScore").default(0),
+    ciScore: real("ciScore").default(0),
+    stakeholderScore: real("stakeholderScore").default(0),
+    overallMaturityScore: real("overallMaturityScore").default(0).notNull(),
+    maturityLevel: text("maturityLevel"),
+    // Metadata
+    calculatedAt: timestamp("calculatedAt").default(sql `now()`).notNull(),
+    calculatedBy: varchar("calculatedBy").references(() => users.id),
+    createdAt: timestamp("createdAt").default(sql `now()`).notNull(),
+    updatedAt: timestamp("updatedAt").default(sql `now()`).notNull(),
+});
+// Feature flags table - Phase 5 Integration (tenant-aware with hierarchical resolution)
+export const featureFlags = pgTable("FeatureFlag", {
+    // Primary key
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    // Tenant reference (nullable for global flags)
+    tenantId: varchar("tenantId").references(() => tenants.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    // Flag state
+    isEnabled: boolean("isEnabled").notNull().default(false),
+    defaultValue: boolean("defaultValue").notNull().default(false),
+    // Rollout configuration (supports percentage rollouts, whitelists, etc.)
+    rolloutLevel: jsonb("rolloutLevel").notNull().default(sql `'{}'::jsonb`),
+    // Metadata for admin UI
+    description: text("description"),
+    // Audit trail
+    createdAt: timestamp("createdAt").notNull().default(sql `now()`),
+    updatedAt: timestamp("updatedAt").notNull().default(sql `now()`),
+    createdBy: varchar("createdBy").references(() => users.id),
+}, (table) => ({
+    // Unique constraint on (tenantId, key) for tenant-specific flags
+    uniqueTenantFlag: uniqueIndex("FeatureFlag_tenant_key_idx")
+        .on(table.tenantId, table.key)
+        .where(sql `"tenantId" IS NOT NULL`),
+    // Unique constraint on key for global flags (where tenantId IS NULL)
+    uniqueGlobalFlag: uniqueIndex("FeatureFlag_key_global_idx")
+        .on(table.key)
+        .where(sql `"tenantId" IS NULL`),
+}));
 // === INTAKE SYSTEM ===
 export const intakeStatusEnum = pgEnum("IntakeStatus", [
     "DRAFT",
@@ -1133,6 +1361,19 @@ export const assessmentSessions = pgTable("AssessmentSession", {
     ipAddress: text("ipAddress"),
     userAgent: text("userAgent"),
 });
+// === PERFORMANCE MONITORING ===
+// Slow query log for performance tracking (Phase 3 Track 1)
+// Retention: 30 days (auto-purged by background job)
+export const slowQueryLog = pgTable("slow_query_log", {
+    id: varchar("id").primaryKey().default(sql `gen_random_uuid()`),
+    query: text("query").notNull(),
+    duration: real("duration").notNull(), // Duration in milliseconds
+    timestamp: timestamp("timestamp").default(sql `now()`).notNull(),
+    caller: text("caller"), // Optional caller context (route, service, etc.)
+}, (table) => ({
+    timestampIdx: index("idx_slow_query_timestamp").on(table.timestamp),
+    durationIdx: index("idx_slow_query_duration").on(table.duration),
+}));
 // === RELATIONS ===
 export const tenantsRelations = relations(tenants, ({ many }) => ({
     users: many(users),
@@ -1462,6 +1703,72 @@ export const userCloudStorageConnectionsRelations = relations(userCloudStorageCo
         references: [users.id],
     }),
 }));
+// === R2V3 ALGORITHM RELATIONS ===
+// Scoring Config relations
+export const scoringConfigsRelations = relations(scoringConfigs, ({ one, many }) => ({
+    standardVersion: one(standardVersions, {
+        fields: [scoringConfigs.standardId],
+        references: [standardVersions.id],
+    }),
+    questions: many(questions),
+    assessments: many(assessments),
+}));
+// Must-Pass Rule relations
+export const mustPassRulesRelations = relations(mustPassRules, ({ many }) => ({
+    ruleQuestions: many(mustPassRuleQuestions),
+}));
+// Must-Pass Rule Questions relations
+export const mustPassRuleQuestionsRelations = relations(mustPassRuleQuestions, ({ one }) => ({
+    rule: one(mustPassRules, {
+        fields: [mustPassRuleQuestions.mustPassRuleId],
+        references: [mustPassRules.id],
+    }),
+    question: one(questions, {
+        fields: [mustPassRuleQuestions.questionId],
+        references: [questions.id],
+    }),
+}));
+// Conditional Rule relations
+export const conditionalRulesRelations = relations(conditionalRules, ({ one, many }) => ({
+    standardVersion: one(standardVersions, {
+        fields: [conditionalRules.standardId],
+        references: [standardVersions.id],
+    }),
+    ruleTargets: many(conditionalRuleTargets),
+}));
+// Conditional Rule Targets relations
+export const conditionalRuleTargetsRelations = relations(conditionalRuleTargets, ({ one }) => ({
+    rule: one(conditionalRules, {
+        fields: [conditionalRuleTargets.conditionalRuleId],
+        references: [conditionalRules.id],
+    }),
+    targetQuestion: one(questions, {
+        fields: [conditionalRuleTargets.targetQuestionId],
+        references: [questions.id],
+    }),
+}));
+// Question Dependencies relations
+export const questionDependenciesRelations = relations(questionDependencies, ({ one }) => ({
+    question: one(questions, {
+        fields: [questionDependencies.questionId],
+        references: [questions.id],
+    }),
+    dependsOnQuestion: one(questions, {
+        fields: [questionDependencies.dependsOnQuestionId],
+        references: [questions.id],
+    }),
+}));
+// Maturity Scores relations
+export const maturityScoresRelations = relations(maturityScores, ({ one }) => ({
+    assessment: one(assessments, {
+        fields: [maturityScores.assessmentId],
+        references: [assessments.id],
+    }),
+    calculatedByUser: one(users, {
+        fields: [maturityScores.calculatedBy],
+        references: [users.id],
+    }),
+}));
 // === ZOD SCHEMAS ===
 export const insertTenantSchema = createInsertSchema(tenants).omit({
     id: true,
@@ -1545,6 +1852,39 @@ export const insertEvidenceObjectSchema = createInsertSchema(evidenceObjects).om
     id: true,
     createdAt: true,
 });
+// === R2V3 ALGORITHM SCHEMAS ===
+export const insertScoringConfigSchema = createInsertSchema(scoringConfigs).omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+});
+export const insertMustPassRuleSchema = createInsertSchema(mustPassRules).omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+});
+export const insertMustPassRuleQuestionSchema = createInsertSchema(mustPassRuleQuestions).omit({
+    id: true,
+    createdAt: true,
+});
+export const insertConditionalRuleSchema = createInsertSchema(conditionalRules).omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+});
+export const insertConditionalRuleTargetSchema = createInsertSchema(conditionalRuleTargets).omit({
+    id: true,
+    createdAt: true,
+});
+export const insertQuestionDependencySchema = createInsertSchema(questionDependencies).omit({
+    id: true,
+    createdAt: true,
+});
+export const insertMaturityScoreSchema = createInsertSchema(maturityScores).omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+});
 // === PHASE 5 SECURITY SCHEMAS ===
 // Two-Factor Authentication schemas
 export const insertUserTwoFactorAuthSchema = createInsertSchema(userTwoFactorAuth).omit({
@@ -1579,3 +1919,85 @@ export const insertUserCloudStorageConnectionSchema = createInsertSchema(userClo
     createdAt: true,
     updatedAt: true,
 });
+export const insertJobSchema = createInsertSchema(jobs).omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+});
+// Feature flag schemas and types
+export const insertFeatureFlagSchema = createInsertSchema(featureFlags).omit({
+    createdAt: true,
+    updatedAt: true,
+});
+// === MATERIALIZED VIEW DEFINITIONS ===
+// Materialized view for client organization stats (performance optimization)
+// This eliminates N+1 queries by pre-aggregating stats for all client organizations
+// Fixed to use CTEs to avoid Cartesian product double-counting bug
+export const clientOrgStatsViewSQL = `
+CREATE MATERIALIZED VIEW IF NOT EXISTS client_org_stats AS
+WITH facility_counts AS (
+  SELECT 
+    cf."clientOrganizationId" as client_organization_id,
+    co."consultantTenantId" as tenant_id,
+    COUNT(*) as facility_count
+  FROM "ClientFacility" cf
+  JOIN "ClientOrganization" co ON cf."clientOrganizationId" = co.id
+  GROUP BY cf."clientOrganizationId", co."consultantTenantId"
+),
+assessment_stats AS (
+  SELECT
+    "clientOrganizationId" as client_organization_id,
+    "tenantId" as tenant_id,
+    COUNT(*) as assessment_count,
+    COUNT(CASE WHEN status IN ('IN_PROGRESS', 'DRAFT') THEN 1 END) as active_count,
+    COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END) as completed_count
+  FROM "Assessment"
+  WHERE "clientOrganizationId" IS NOT NULL
+  GROUP BY "clientOrganizationId", "tenantId"
+)
+SELECT 
+  co.id as client_organization_id,
+  co."consultantTenantId" as tenant_id,
+  co."legalName" as legal_name,
+  COALESCE(fc.facility_count, 0) as facility_count,
+  COALESCE(ast.assessment_count, 0) as assessment_count,
+  COALESCE(ast.active_count, 0) as active_count,
+  COALESCE(ast.completed_count, 0) as completed_count,
+  NOW() as last_refreshed
+FROM "ClientOrganization" co
+LEFT JOIN facility_counts fc ON co.id = fc.client_organization_id AND co."consultantTenantId" = fc.tenant_id
+LEFT JOIN assessment_stats ast ON co.id = ast.client_organization_id AND co."consultantTenantId" = ast.tenant_id;
+`;
+// Indexes for the materialized view (must be created separately)
+export const clientOrgStatsIndexSQL = [
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_client_org_stats_pk ON client_org_stats (client_organization_id);`,
+    `CREATE INDEX IF NOT EXISTS idx_client_org_stats_tenant ON client_org_stats (tenant_id);`
+];
+// SQL to refresh the materialized view
+export const refreshClientOrgStatsSQL = `REFRESH MATERIALIZED VIEW CONCURRENTLY client_org_stats;`;
+// SQL to drop the materialized view (for migrations/cleanup)
+export const dropClientOrgStatsViewSQL = `DROP MATERIALIZED VIEW IF EXISTS client_org_stats;`;
+// Materialized view for assessment stats (performance optimization)
+// This eliminates multiple queries in getDashboardKPIs by pre-aggregating stats per tenant
+export const assessmentStatsViewSQL = `
+CREATE MATERIALIZED VIEW IF NOT EXISTS assessment_stats AS
+SELECT 
+  "tenantId" as tenant_id,
+  COUNT(*) as total_assessments,
+  COUNT(CASE WHEN status = 'IN_PROGRESS' THEN 1 END) as in_progress_count,
+  COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END) as completed_count,
+  COUNT(CASE WHEN status = 'UNDER_REVIEW' THEN 1 END) as under_review_count,
+  COUNT(CASE WHEN status = 'DRAFT' THEN 1 END) as draft_count,
+  AVG(CASE WHEN status = 'COMPLETED' AND "overallScore" IS NOT NULL THEN "overallScore" END) as avg_readiness_score,
+  COUNT(CASE WHEN status = 'COMPLETED' AND "overallScore" >= 90 THEN 1 END) as certification_ready_count
+FROM "Assessment"
+GROUP BY "tenantId";
+`;
+// Indexes for the assessment_stats materialized view
+export const assessmentStatsIndexSQL = [
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_assessment_stats_tenant_id ON assessment_stats (tenant_id);`
+];
+// SQL to refresh the assessment_stats materialized view
+export const refreshAssessmentStatsSQL = `REFRESH MATERIALIZED VIEW CONCURRENTLY assessment_stats;`;
+// SQL to drop the assessment_stats materialized view (for migrations/cleanup)
+export const dropAssessmentStatsViewSQL = `DROP MATERIALIZED VIEW IF EXISTS assessment_stats;`;
