@@ -109,7 +109,10 @@ export default function Licenses() {
   // Fetch current licenses
   const { data: licenses = [], isLoading: licensesLoading, refetch: refetchLicenses } = useQuery<License[]>({
     queryKey: ['licenses'],
-    queryFn: () => apiGet<License[]>('/api/licenses'),
+    queryFn: async () => {
+      const response = await apiGet<{ licenses: License[]; count: number }>('/api/licenses');
+      return response.licenses || [];
+    },
   });
 
   // Fetch available license configurations

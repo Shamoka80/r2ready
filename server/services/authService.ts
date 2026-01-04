@@ -788,13 +788,13 @@ export const requireFacilityPermissionFromAssessment = (permission: string) => {
       }
 
       // For admin roles, allow access
-      const userRole = req.user!.businessRole;
+      const userRole = req.user.businessRole;
       if (['business_owner', 'account_admin'].includes(userRole)) {
         return next();
       }
 
       // Check facility-specific permission
-      const facilityPermissions = await getUserFacilityPermissions(req.user!.id, assessment.facilityId);
+      const facilityPermissions = await getUserFacilityPermissions(req.user.id, assessment.facilityId);
 
       if (!facilityPermissions.facilities.includes(assessment.facilityId)) {
         return res.status(403).json({ error: 'Access denied: No facility access' });

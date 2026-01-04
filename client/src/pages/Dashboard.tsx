@@ -1,5 +1,6 @@
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { 
   Plus, 
   FileText, 
@@ -12,7 +13,9 @@ import {
   Download,
   Eye,
   Play,
-  MoreHorizontal
+  MoreHorizontal,
+  LogOut,
+  X
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -122,8 +125,10 @@ interface Assessment {
 }
 
 function Dashboard() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { t } = useTranslation();
+  const [location, setLocation] = useLocation();
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch dashboard overview
   const { data: dashboardResponse, isLoading: dashboardLoading } = useQuery<{ 
@@ -151,7 +156,20 @@ function Dashboard() {
   });
   
   // Ensure assessments is always an array
-  const assessments = Array.isArray(assessmentsData) ? assessmentsData : [];
+  const allAssessments = Array.isArray(assessmentsData) ? assessmentsData : [];
+
+  // Filter assessments based on search query
+  const assessments = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return allAssessments;
+    }
+    const query = searchQuery.toLowerCase();
+    return allAssessments.filter((assessment) => 
+      assessment.title?.toLowerCase().includes(query) ||
+      assessment.status?.toLowerCase().includes(query) ||
+      assessment.id?.toLowerCase().includes(query)
+    );
+  }, [allAssessments, searchQuery]);
 
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { variant: 'default' | 'secondary' | 'outline' | 'destructive', label: string }> = {
@@ -176,9 +194,29 @@ function Dashboard() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
                 placeholder="Search facilities, users, or assessments..." 
-                className="pl-10"
+                className="pl-10 pr-10"
                 data-testid="input-global-search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && searchQuery.trim()) {
+                    // If Enter is pressed, you could navigate to a search results page
+                    // For now, just keep the filtered results visible
+                    e.preventDefault();
+                  }
+                }}
               />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6"
+                  onClick={() => setSearchQuery('')}
+                  data-testid="button-clear-search"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
@@ -193,15 +231,15 @@ function Dashboard() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLocation('/facilities?new=true')}>
                   <Building2 className="h-4 w-4 mr-2" />
                   New Facility
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLocation('/assessments/new')}>
                   <FileText className="h-4 w-4 mr-2" />
                   New Assessment
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLocation('/team?invite=true')}>
                   <Users className="h-4 w-4 mr-2" />
                   Invite User
                 </DropdownMenuItem>
@@ -215,12 +253,23 @@ function Dashboard() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLocation('/settings')}>
                   <Settings className="h-4 w-4 mr-2" />
                   Settings
                 </DropdownMenuItem>
-                <DropdownMenuItem>Profile</DropdownMenuItem>
-                <DropdownMenuItem>Logout</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLocation('/settings')}>
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => {
+                    logout();
+                    setLocation('/');
+                  }}
+                  className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
