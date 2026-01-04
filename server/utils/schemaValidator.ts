@@ -111,6 +111,7 @@ export async function validateSchemaConsistency(): Promise<SchemaValidationResul
           AND table_name = ${tableName}
         ) as exists;
       `);
+
       const tableExists = (tableExistsQuery.rows[0] as any)?.exists ?? false;
 
       if (!tableExists) {
@@ -126,6 +127,7 @@ export async function validateSchemaConsistency(): Promise<SchemaValidationResul
         AND table_name = ${tableName}
         ORDER BY ordinal_position;
       `);
+
       const actualColumns = columnsQuery.rows as Array<{
         column_name: string;
         data_type: string;
