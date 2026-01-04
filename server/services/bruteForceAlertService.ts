@@ -128,8 +128,7 @@ export class BruteForceAlertService {
     const actionKey = this.normalizeActionKey(action);
     
     if (!actionKey) {
-      console.log(`No alert threshold defined for action: ${action}`);
-      return; // No threshold defined for this action
+      return;
     }
 
     const threshold = this.alertThresholds[actionKey];
