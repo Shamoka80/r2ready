@@ -109,14 +109,10 @@ export async function validateSchemaConsistency(): Promise<SchemaValidationResul
           SELECT FROM information_schema.tables 
           WHERE table_schema = 'public' 
           AND table_name = ${tableName}
-        ) as exists;
+        );
       `);
 
-      // Handle both Neon (rows property) and PostgreSQL (direct array) result structures
-      const tableExistsResult = (tableExistsQuery as any).rows || tableExistsQuery;
-      const tableExists = Array.isArray(tableExistsResult) && tableExistsResult.length > 0 
-        ? (tableExistsResult[0] as any)?.exists ?? false
-        : false;
+      const tableExists = (tableExistsQuery.rows[0] as any).exists;
 
       if (!tableExists) {
         errors.push(`❌ Critical table '${tableName}' does not exist in the database`);
@@ -132,9 +128,7 @@ export async function validateSchemaConsistency(): Promise<SchemaValidationResul
         ORDER BY ordinal_position;
       `);
 
-      // Handle both Neon (rows property) and PostgreSQL (direct array) result structures
-      const columnsResult = (columnsQuery as any).rows || columnsQuery;
-      const actualColumns = Array.isArray(columnsResult) ? columnsResult : [] as Array<{
+      const actualColumns = columnsQuery.rows as Array<{
         column_name: string;
         data_type: string;
         is_nullable: string;
