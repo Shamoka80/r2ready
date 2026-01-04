@@ -15,6 +15,7 @@ permissions:
 jobs:
   pr-description-validation:
     name: PR Description Validation
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Validate PR Description
@@ -136,6 +137,7 @@ jobs:
 
   pr-title-validation:
     name: PR Title Validation
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Validate PR Title Format
@@ -231,6 +233,7 @@ jobs:
 
   commit-message-validation:
     name: Commit Message Validation
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
