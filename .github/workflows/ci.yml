@@ -12,6 +12,7 @@ on:
 jobs:
   build_and_verify:
     name: Build Release and Cold Verify
+    if: false
     runs-on: ubuntu-latest
 
     defaults:

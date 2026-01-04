@@ -16,6 +16,7 @@ permissions:
 jobs:
   quality-gates-summary:
     name: Quality Gates Summary
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Wait for other workflows

@@ -17,8 +17,11 @@
     "seed:mappings:fresh": "SEED_MODE=fresh CONFIRM_FRESH=yes tsx tools/seed-question-mappings.ts"
   },
   "dependencies": {
+    "@types/nodemailer": "^7.0.4",
     "@types/speakeasy": "^2.0.10",
+    "dotenv": "^17.2.3",
     "express-rate-limit": "^7.1.5",
+    "nodemailer": "^7.0.11",
     "qrcode": "^1.5.3",
     "sharp": "^0.33.2",
     "speakeasy": "^2.0.0"
@@ -37,7 +40,11 @@
     "preset": "ts-jest",
     "testEnvironment": "node",
     "moduleNameMapper": {
-      "^(\\.{1,2}/.*)(\\.js)$": ["$1.ts", "$1.tsx", "$1$2"],
+      "^(\\.{1,2}/.*)(\\.js)$": [
+        "$1.ts",
+        "$1.tsx",
+        "$1$2"
+      ],
       "^@shared/(.*)$": "<rootDir>/../shared/$1"
     },
     "roots": [
