@@ -107,25 +107,72 @@ export class DashboardAnalyticsService {
    */
   static async getDashboardKPIs(tenantId: string): Promise<DashboardKPIs> {
     try {
-      // Get assessment stats from materialized view
-      const statsResult = await db.execute(sql`
-        SELECT 
-          total_assessments,
-          in_progress_count,
-          completed_count,
-          under_review_count,
-          avg_readiness_score,
-          certification_ready_count
-        FROM assessment_stats
-        WHERE tenant_id = ${tenantId}
-      `);
-
-      // Safe access to stats result - handle both Neon and PostgreSQL result structures
+      // Try to get assessment stats from materialized view first
       let stats: any = null;
-      if (statsResult && statsResult.rows && Array.isArray(statsResult.rows) && statsResult.rows.length > 0) {
-        stats = statsResult.rows[0];
-      } else if (Array.isArray(statsResult) && statsResult.length > 0) {
-        stats = statsResult[0];
+      let usingMaterializedView = false;
+      
+      try {
+        const statsResult = await db.execute(sql`
+          SELECT 
+            total_assessments,
+            in_progress_count,
+            completed_count,
+            under_review_count,
+            avg_readiness_score,
+            certification_ready_count
+          FROM assessment_stats
+          WHERE tenant_id = ${tenantId}
+        `);
+
+        // Safe access to stats result - handle both Neon and PostgreSQL result structures
+        const statsResultAny = statsResult as any;
+        if (statsResultAny && statsResultAny.rows && Array.isArray(statsResultAny.rows) && statsResultAny.rows.length > 0) {
+          stats = statsResultAny.rows[0];
+          usingMaterializedView = true;
+        } else if (Array.isArray(statsResultAny) && statsResultAny.length > 0) {
+          stats = statsResultAny[0];
+          usingMaterializedView = true;
+        }
+      } catch (viewError: any) {
+        // Materialized view doesn't exist or query failed - fall back to direct calculation
+        console.warn(`⚠️ Materialized view not available, calculating stats directly:`, viewError.message);
+        usingMaterializedView = false;
+      }
+
+      // If materialized view didn't work, calculate stats directly
+      if (!stats) {
+        const allAssessments = await db
+          .select({
+            status: assessments.status,
+            overallScore: assessments.overallScore,
+          })
+          .from(assessments)
+          .where(eq(assessments.tenantId, tenantId));
+
+        const totalAssessments = allAssessments.length;
+        const inProgressCount = allAssessments.filter(a => a.status === 'IN_PROGRESS').length;
+        const completedCount = allAssessments.filter(a => a.status === 'COMPLETED').length;
+        const underReviewCount = allAssessments.filter(a => a.status === 'UNDER_REVIEW').length;
+        
+        const completedWithScores = allAssessments.filter(
+          a => a.status === 'COMPLETED' && a.overallScore !== null
+        );
+        const avgReadinessScore = completedWithScores.length > 0
+          ? completedWithScores.reduce((sum, a) => sum + Number(a.overallScore || 0), 0) / completedWithScores.length
+          : 0;
+        
+        const certificationReadyCount = allAssessments.filter(
+          a => a.status === 'COMPLETED' && a.overallScore !== null && Number(a.overallScore) >= 90
+        ).length;
+
+        stats = {
+          total_assessments: totalAssessments,
+          in_progress_count: inProgressCount,
+          completed_count: completedCount,
+          under_review_count: underReviewCount,
+          avg_readiness_score: avgReadinessScore,
+          certification_ready_count: certificationReadyCount,
+        };
       }
 
       // Get facility count (separate query - not in materialized view)
@@ -133,6 +180,7 @@ export class DashboardAnalyticsService {
         .select({ count: count() })
         .from(facilityProfiles)
         .where(eq(facilityProfiles.tenantId, tenantId));
+      
       const facilityCount = facilityCountResult.length > 0 ? facilityCountResult[0] : null;
 
       // Count critical gaps (separate query - complex join, better left as-is)
@@ -169,7 +217,7 @@ export class DashboardAnalyticsService {
         facilities: Number(facilityCount?.count || 0),
       };
 
-      console.log(`✅ Dashboard KPIs calculated for tenant ${tenantId} (using materialized view):`, kpis);
+      console.log(`✅ Dashboard KPIs calculated for tenant ${tenantId} (${usingMaterializedView ? 'using materialized view' : 'calculated directly'}):`, kpis);
       return kpis;
     } catch (error) {
       console.error('Error getting dashboard KPIs:', error);
