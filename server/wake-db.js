@@ -1,3 +1,4 @@
+
 import { neon } from '@neondatabase/serverless';
 
 async function wakeDatabase() {
