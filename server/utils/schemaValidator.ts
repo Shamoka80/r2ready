@@ -109,7 +109,7 @@ export async function validateSchemaConsistency(): Promise<SchemaValidationResul
           SELECT FROM information_schema.tables 
           WHERE table_schema = 'public' 
           AND table_name = ${tableName}
-        );
+        ) as exists;
       `);
 
       const tableExists = (tableExistsQuery.rows[0] as any)?.exists ?? false;
