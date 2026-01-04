@@ -1,14 +1,3 @@
-// Load environment variables from server/.env file FIRST
-import { config } from 'dotenv';
-import { fileURLToPath } from 'url';
-import path from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Load .env file from server directory before accessing process.env
-config({ path: path.join(__dirname, '.env') });
-
 import { neon, neonConfig } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from "../shared/schema";
