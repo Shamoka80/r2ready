@@ -109,7 +109,7 @@ export async function validateSchemaConsistency(): Promise<SchemaValidationResul
           SELECT FROM information_schema.tables 
           WHERE table_schema = 'public' 
           AND table_name = ${tableName}
-        );
+        ) as exists;
       `);
 
       // Handle both Neon (rows property) and PostgreSQL (direct array) result structures

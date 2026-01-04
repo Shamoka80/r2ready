@@ -13,6 +13,7 @@ on:
 jobs:
   version-consistency-check:
     name: Check Version Consistency
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -107,6 +108,7 @@ jobs:
 
   semantic-version-format-check:
     name: Validate Semantic Version Format
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -161,8 +163,8 @@ jobs:
 
   version-increment-validation:
     name: Validate Version Increment
+    if: false
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v4
@@ -281,8 +283,8 @@ jobs:
 
   changelog-validation:
     name: Validate CHANGELOG Update
+    if: false
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

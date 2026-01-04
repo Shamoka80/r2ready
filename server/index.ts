@@ -1,8 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cors from 'cors';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import fs from "fs";
+import path from "path";
+import { fileURLToPath } from 'url';
 import { Socket } from 'net';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { registerRoutes } from "./routes.js";
@@ -23,7 +23,9 @@ import { handleStripeWebhook } from './routes/stripe-webhooks.js';
 import { jobWorker } from './workers/jobWorker.js';
 import { jobQueueService } from './services/jobQueue.js';
 import { QueryMonitoringService } from './services/queryMonitoring.js';
+import { emailService } from './services/emailService.js';
 
+// Define __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -193,7 +195,6 @@ async function scheduleDailyPurgeJob() {
         priority: 'low',
         maxAttempts: 2,
       });
-      console.log(`📅 Scheduled daily purge job: ${jobId}`);
     } catch (error) {
       console.error('Failed to enqueue purge job:', error);
     }
@@ -312,6 +313,14 @@ async function startServer() {
     console.warn('⚠️  Database error:', error instanceof Error ? error.message : 'Unknown error');
   }
 
+  // Initialize email service and check Microsoft 365 SMTP connection
+  try {
+    await emailService.ensureInitialized();
+    await emailService.healthCheck();
+  } catch (error) {
+    // Email service initialization error - logged by service
+  }
+
   // Validate database schema consistency (fail-fast on critical errors)
   try {
     const schemaValidation = await validateSchemaConsistency();
@@ -394,14 +403,7 @@ async function startServer() {
   // Fix path resolution - in compiled JS, __dirname points to server/dist/server/
   const distDir = path.resolve(__dirname, "../../../client/dist");
 
-  console.log(`🔍 Checking dist directory: ${distDir}`);
-  console.log(`📂 Directory exists: ${fs.existsSync(distDir)}`);
-  if (fs.existsSync(distDir)) {
-    console.log(`📁 Directory contents:`, fs.readdirSync(distDir));
-  }
-
   if (isProduction || fs.existsSync(distDir)) {
-    console.log(`📁 Production mode: Serving static files from: ${distDir}`);
 
     // Serve static assets with proper caching headers and compression
     app.use(express.static(distDir, {
@@ -480,7 +482,6 @@ async function startServer() {
       }
     });
   } else {
-    console.log(`🔧 Development mode: Proxying frontend to Vite`);
 
     // Create Vite proxy once and reuse it (fixes EventEmitter memory leak)
     const viteProxy = createProxyMiddleware({
