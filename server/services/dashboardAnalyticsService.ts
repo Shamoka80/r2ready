@@ -184,19 +184,27 @@ export class DashboardAnalyticsService {
       const facilityCount = facilityCountResult.length > 0 ? facilityCountResult[0] : null;
 
       // Count critical gaps (separate query - complex join, better left as-is)
-      const criticalAnswers = await db
-        .select({ count: count() })
-        .from(answers)
-        .innerJoin(assessments, eq(answers.assessmentId, assessments.id))
-        .innerJoin(questions, eq(answers.questionId, questions.id))
-        .where(
-          and(
-            eq(assessments.tenantId, tenantId),
-            sql`${answers.value}::text IN ('No', 'Partial', 'Not Applicable')`
-          )
-        );
+      let criticalGapCount = 0;
+      try {
+        const criticalAnswers = await db
+          .select({ count: count() })
+          .from(answers)
+          .innerJoin(assessments, eq(answers.assessmentId, assessments.id))
+          .innerJoin(questions, eq(answers.questionId, questions.id))
+          .where(
+            and(
+              eq(assessments.tenantId, tenantId),
+              sql`${answers.value}::text IN ('No', 'Partial', 'Not Applicable')`
+            )
+          );
 
-      const criticalGapCount = criticalAnswers.length > 0 ? Number(criticalAnswers[0]?.count || 0) : 0;
+        criticalGapCount = (criticalAnswers && Array.isArray(criticalAnswers) && criticalAnswers.length > 0)
+          ? Number(criticalAnswers[0]?.count || 0)
+          : 0;
+      } catch (criticalError) {
+        console.warn('⚠️  Error getting critical gaps, using default:', criticalError);
+        criticalGapCount = 0;
+      }
 
       const kpis = {
         totalAssessments: Number(stats?.total_assessments || 0),
@@ -213,7 +221,17 @@ export class DashboardAnalyticsService {
       return kpis;
     } catch (error) {
       console.error('Error getting dashboard KPIs:', error);
-      throw error;
+      // Return safe defaults instead of throwing to prevent dashboard from breaking
+      return {
+        totalAssessments: 0,
+        inProgress: 0,
+        completed: 0,
+        needsReview: 0,
+        averageReadiness: 0,
+        certificationReady: 0,
+        criticalGaps: 0,
+        facilities: 0,
+      };
     }
   }
 
@@ -226,24 +244,33 @@ export class DashboardAnalyticsService {
 
       // If no assessment specified, get the most recent completed one
       if (!targetAssessmentId) {
-        const [latestAssessment] = await db
-          .select({ id: assessments.id })
-          .from(assessments)
-          .where(
-            and(
-              eq(assessments.tenantId, tenantId),
-              eq(assessments.status, 'COMPLETED')
+        try {
+          const latestAssessmentResult = await db
+            .select({ id: assessments.id })
+            .from(assessments)
+            .where(
+              and(
+                eq(assessments.tenantId, tenantId),
+                eq(assessments.status, 'COMPLETED')
+              )
             )
-          )
-          .orderBy(desc(assessments.completedAt))
-          .limit(1);
+            .orderBy(desc(assessments.completedAt))
+            .limit(1);
 
-        if (!latestAssessment) {
-          // Return default empty snapshot if no assessments
+          const latestAssessment = (latestAssessmentResult && Array.isArray(latestAssessmentResult) && latestAssessmentResult.length > 0)
+            ? latestAssessmentResult[0]
+            : null;
+
+          if (!latestAssessment) {
+            // Return default empty snapshot if no assessments
+            return this.getDefaultReadinessSnapshot();
+          }
+
+          targetAssessmentId = latestAssessment.id;
+        } catch (error) {
+          console.warn('⚠️  Error getting latest assessment, using default snapshot:', error);
           return this.getDefaultReadinessSnapshot();
         }
-
-        targetAssessmentId = latestAssessment.id;
       }
 
       // Ensure we have a valid assessment ID
@@ -252,10 +279,20 @@ export class DashboardAnalyticsService {
       }
 
       // Get assessment with scores
-      const [assessment] = await db
-        .select()
-        .from(assessments)
-        .where(eq(assessments.id, targetAssessmentId));
+      let assessment: any = null;
+      try {
+        const assessmentResult = await db
+          .select()
+          .from(assessments)
+          .where(eq(assessments.id, targetAssessmentId));
+
+        assessment = (assessmentResult && Array.isArray(assessmentResult) && assessmentResult.length > 0)
+          ? assessmentResult[0]
+          : null;
+      } catch (error) {
+        console.warn('⚠️  Error getting assessment, using default snapshot:', error);
+        return this.getDefaultReadinessSnapshot();
+      }
 
       if (!assessment) {
         return this.getDefaultReadinessSnapshot();
