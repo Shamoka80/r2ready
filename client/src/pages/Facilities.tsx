@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Factory, MapPin, Settings, Trash2, Star, Building, Users, UserPlus } from 'lucide-react';
@@ -60,6 +60,16 @@ export default function Facilities() {
   
   // Check if multi_facility feature is enabled
   const isMultiFacilityEnabled = useFeatureFlag('multi_facility');
+
+  // Check URL query params to auto-open dialog
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('new') === 'true') {
+      setIsCreateDialogOpen(true);
+      // Clean up URL
+      window.history.replaceState({}, '', '/facilities');
+    }
+  }, []);
 
   // Fetch facilities
   const { data: facilitiesData, isLoading, error } = useQuery({
