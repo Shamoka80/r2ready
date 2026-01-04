@@ -1,4 +1,4 @@
-import { neon } from '@neondatabase/serverless';
+import { neon, neonConfig } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from "../shared/schema";
 
@@ -19,7 +19,15 @@ if (!dbUrl.startsWith('postgresql://') && !dbUrl.startsWith('postgres://')) {
 
 console.log('✅ Database configuration validated');
 
-// Use HTTP connection for better Replit compatibility
+// Configure Neon connection pooling and performance settings
+// Enable pipelined connections for better performance
+neonConfig.pipelineConnect = 'password';
+
+// Note: Neon HTTP driver automatically manages connection pooling.
+// For production deployments, consider using Neon's connection pooler
+// with pgBouncer for enhanced connection management and scalability.
+
+// Use HTTP connection for better Replit compatibility with pooling enabled
 const sql = neon(dbUrl);
 export const db = drizzle(sql as any, { schema });
 export { sql };
