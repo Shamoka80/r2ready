@@ -187,10 +187,10 @@ function Dashboard() {
     <div className="min-h-screen bg-background">
       {/* Header Bar */}
       <div className="border-b bg-card sticky top-0 z-10">
-        <div className="flex items-center justify-between px-6 py-3">
-          <div className="flex items-center gap-4 flex-1">
-            <h1 className="text-2xl font-bold">Dashboard</h1>
-            <div className="relative max-w-md flex-1">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 sm:px-6 py-3">
+          <div className="flex items-center gap-2 sm:gap-4 flex-1 w-full sm:w-auto">
+            <h1 className="text-xl sm:text-2xl font-bold">Dashboard</h1>
+            <div className="relative max-w-md flex-1 hidden md:block">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
                 placeholder="Search facilities, users, or assessments..." 
@@ -219,23 +219,15 @@ function Dashboard() {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="outline" 
-              size="icon" 
-              data-testid="button-notifications"
-              onClick={() => {
-                // TODO: Open notifications dropdown or panel
-                console.log('Notifications clicked');
-              }}
-            >
+          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
+            <Button variant="outline" size="icon" data-testid="button-notifications" className="h-9 w-9 sm:h-10 sm:w-10">
               <Bell className="h-4 w-4" />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" data-testid="button-quick-add">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Quick Add
+                <Button variant="outline" size="sm" data-testid="button-quick-add" className="h-9 sm:h-10">
+                  <Plus className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Quick Add</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -255,8 +247,8 @@ function Dashboard() {
             </DropdownMenu>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" data-testid="button-user-menu">
-                  <span className="mr-2">{user?.firstName || 'User'}</span>
+                <Button variant="outline" size="sm" data-testid="button-user-menu" className="h-9 sm:h-10">
+                  <span className="hidden sm:inline mr-2">{user?.firstName || 'User'}</span>
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -285,7 +277,7 @@ function Dashboard() {
       </div>
 
       {/* Main Content */}
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Welcome Context */}
         <Card data-testid="welcome-card">
           <CardHeader>
@@ -328,9 +320,9 @@ function Dashboard() {
         </div>
 
         {/* Main Dashboard Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Left Column - Readiness & Gaps */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <ReadinessGauge
               score={dashboardData?.readiness.overallScore || 0}
               level={dashboardData?.readiness.readinessLevel || 'Not Ready'}
@@ -359,15 +351,16 @@ function Dashboard() {
         {/* Saved Assessments Table */}
         <Card data-testid="assessments-table">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
               <div>
-                <CardTitle>Saved Assessments</CardTitle>
-                <CardDescription>All your assessments in one place</CardDescription>
+                <CardTitle className="text-lg sm:text-xl">Saved Assessments</CardTitle>
+                <CardDescription className="text-sm">All your assessments in one place</CardDescription>
               </div>
-              <Link href="/assessments/new">
-                <Button data-testid="button-start-new-assessment">
+              <Link href="/assessments/new" className="w-full sm:w-auto">
+                <Button data-testid="button-start-new-assessment" className="w-full sm:w-auto">
                   <Plus className="h-4 w-4 mr-2" />
-                  Start New Assessment
+                  <span className="hidden sm:inline">Start New Assessment</span>
+                  <span className="sm:hidden">START NEW</span>
                 </Button>
               </Link>
             </div>
@@ -378,84 +371,101 @@ function Dashboard() {
                 {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full" />)}
               </div>
             ) : assessments.length === 0 ? (
-              <div className="text-center py-12">
-                <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground mb-4">
-                  {searchQuery.trim() 
-                    ? `No assessments found matching "${searchQuery}"` 
-                    : 'No assessments yet'}
-                </p>
+              <div className="text-center py-8 sm:py-12">
+                <FileText className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground mb-4 text-sm sm:text-base">No assessments yet</p>
                 <Link href="/assessments/new">
-                  <Button data-testid="button-create-first-assessment">
+                  <Button data-testid="button-create-first-assessment" className="w-full sm:w-auto">
                     Create Your First Assessment
                   </Button>
                 </Link>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Assessment Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Progress</TableHead>
-                    <TableHead>Last Updated</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {assessments.slice(0, 10).map((assessment) => (
-                    <TableRow key={assessment.id} data-testid={`assessment-row-${assessment.id}`}>
-                      <TableCell className="font-medium">{assessment.title}</TableCell>
-                      <TableCell>{getStatusBadge(assessment.status)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 bg-muted rounded-full h-2">
-                            <div 
-                              className="bg-primary h-2 rounded-full transition-all"
-                              style={{ width: `${assessment.progress || 0}%` }}
-                            />
-                          </div>
-                          <span className="text-sm text-muted-foreground">{assessment.progress || 0}%</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {format(new Date(assessment.updatedAt), 'MMM d, yyyy')}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" data-testid={`button-actions-${assessment.id}`}>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link href={`/assessments/${assessment.id}`}>
-                                <Play className="h-4 w-4 mr-2" />
-                                {assessment.status === 'COMPLETED' ? 'View' : 'Resume'}
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Eye className="h-4 w-4 mr-2" />
-                              View Report
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Download className="h-4 w-4 mr-2" />
-                              Export
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[150px]">Assessment Name</TableHead>
+                      <TableHead className="hidden sm:table-cell">Status</TableHead>
+                      <TableHead className="hidden md:table-cell">Progress</TableHead>
+                      <TableHead className="hidden lg:table-cell">Last Updated</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {assessments.slice(0, 10).map((assessment) => (
+                      <TableRow key={assessment.id} data-testid={`assessment-row-${assessment.id}`}>
+                        <TableCell className="font-medium">
+                          <div className="flex flex-col gap-1">
+                            <span>{assessment.title}</span>
+                            <div className="flex items-center gap-2 sm:hidden">
+                              {getStatusBadge(assessment.status)}
+                              <span className="text-xs text-muted-foreground">
+                                {format(new Date(assessment.updatedAt), 'MMM d, yyyy')}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 md:hidden lg:hidden sm:flex">
+                              <div className="flex-1 bg-muted rounded-full h-2">
+                                <div 
+                                  className="bg-primary h-2 rounded-full transition-all"
+                                  style={{ width: `${assessment.progress || 0}%` }}
+                                />
+                              </div>
+                              <span className="text-xs text-muted-foreground">{assessment.progress || 0}%</span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">{getStatusBadge(assessment.status)}</TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 bg-muted rounded-full h-2">
+                              <div 
+                                className="bg-primary h-2 rounded-full transition-all"
+                                style={{ width: `${assessment.progress || 0}%` }}
+                              />
+                            </div>
+                            <span className="text-sm text-muted-foreground">{assessment.progress || 0}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                          {format(new Date(assessment.updatedAt), 'MMM d, yyyy')}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" data-testid={`button-actions-${assessment.id}`}>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem asChild>
+                                <Link href={`/assessments/${assessment.id}`}>
+                                  <Play className="h-4 w-4 mr-2" />
+                                  {assessment.status === 'COMPLETED' ? 'View' : 'Resume'}
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Report
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Download className="h-4 w-4 mr-2" />
+                                Export
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>
 
         {/* Activity & Deadlines */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           <ActivityFeed
             activities={dashboardData?.activities || []}
             isLoading={dashboardLoading}
