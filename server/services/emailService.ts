@@ -1,16 +1,16 @@
 /**
  * Email Service Infrastructure
  *
- * Provides a flexible email service with support for multiple providers:
- * - Resend: Production mode (sends via Resend API)
- * - SendGrid: Production mode (sends via SendGrid API)
- * - SMTP: Production mode (sends via SMTP - Office 365, Gmail, etc.)
- * - Console: Development mode (logs to console)
+ * Provides email service using Microsoft 365 (Exchange Online) SMTP:
+ * - Microsoft 365 SMTP: Primary production mode (sends via Microsoft 365 SMTP)
+ *   - Supports Basic Authentication (username/password)
+ *   - Supports OAuth2 Authentication (Azure App Credentials)
+ * - Console: Development fallback (logs to console when SMTP not configured)
  */
 
-import { Resend } from 'resend';
 import { ConsistentLogService } from './consistentLogService';
 import { jobQueueService } from './jobQueue';
+import microsoft365SmtpService from './microsoft365Smtp';
 
 interface EmailOptions {
   to: string;
@@ -24,70 +24,50 @@ interface EmailProvider {
   name: string;
   transporter: any | null;
   isConfigured: boolean;
-  resendClient?: any;
 }
 
 class EmailService {
   private providers: EmailProvider[] = [];
   private currentProviderIndex = 0;
   private logger = ConsistentLogService.getInstance();
+  private ms365Transporter: any = null;
+
+  private initialized = false;
 
   constructor() {
-    this.initializeProviders();
+    // Initialize providers asynchronously
+    this.initializeProviders().catch((error) => {
+      this.logger.error('Failed to initialize email providers', error as any);
+    });
   }
 
-  private initializeProviders() {
-    // Priority 1: Resend (Primary)
-    if (process.env.RESEND_API_KEY) {
+  private async initializeProviders() {
+    if (this.initialized) return;
+    
+    // Priority 1: Microsoft 365 SMTP (Primary Production Provider)
+    const isConfigured = microsoft365SmtpService.isConfigured();
+    
+    if (isConfigured) {
       try {
-        const resendClient = new Resend(process.env.RESEND_API_KEY);
-        this.providers.push({
-          name: 'Resend',
-          transporter: null as any,
-          isConfigured: true,
-          resendClient
-        });
-        this.logger.info('Email service initialized with Resend provider');
-        return;
-      } catch (error) {
-        this.logger.error('Failed to initialize Resend provider', error as any);
+        this.ms365Transporter = await microsoft365SmtpService.initialize();
+        if (this.ms365Transporter) {
+          this.providers.push({
+            name: 'Microsoft365',
+            transporter: this.ms365Transporter,
+            isConfigured: true
+          });
+          this.logger.info('Email service initialized with Microsoft 365 SMTP provider');
+        } else {
+          this.logger.warn('Microsoft 365 SMTP configuration failed - connection could not be established');
+        }
+      } catch (error: any) {
+        this.logger.error('Failed to initialize Microsoft 365 SMTP provider', error as any);
       }
+    } else {
+      this.logger.warn('Microsoft 365 SMTP not configured - check environment variables');
     }
 
-    // Priority 2: SendGrid (Fallback #1) - If SENDGRID_API_KEY and SENDGRID_FROM_EMAIL exist
-    if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_FROM_EMAIL) {
-      try {
-        // Note: SendGrid provider is kept for compatibility but Resend is prioritized.
-        // Nodemailer is used here for SendGrid as Resend SDK is for Resend only.
-        const nodemailer = require('nodemailer'); // Import nodemailer only if needed
-        this.providers.push({
-          name: 'SendGrid',
-          transporter: null,
-          isConfigured: true
-        });
-        this.logger.info('Email service configured with SendGrid provider (Resend is prioritized)');
-      } catch (error) {
-        this.logger.warn('Failed to initialize SendGrid provider', error as any);
-      }
-    }
-
-    // Priority 3: SMTP (Fallback #2) - If SMTP credentials exist
-    if (process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.SMTP_USER && process.env.SMTP_PASSWORD && process.env.SMTP_FROM_EMAIL) {
-      try {
-        const nodemailer = require('nodemailer'); // Import nodemailer only if needed
-        // Note: SMTP provider is kept for compatibility but Resend is prioritized.
-        this.providers.push({
-          name: 'SMTP',
-          transporter: null,
-          isConfigured: true
-        });
-        this.logger.info(`Email service configured with SMTP provider (${process.env.SMTP_HOST}) (Resend is prioritized)`);
-      } catch (error) {
-        this.logger.warn('Failed to initialize SMTP provider', error as any);
-      }
-    }
-
-    // Priority 4: Console (Development fallback)
+    // Priority 2: Console (Development fallback)
     if (this.providers.length === 0 || !this.providers.some(p => p.isConfigured)) {
       this.logger.warn('No production email providers configured - emails will be logged to console');
       this.providers.push({
@@ -95,7 +75,6 @@ class EmailService {
         transporter: null,
         isConfigured: true
       });
-      this.logger.info('Email service initialized with Console provider');
     }
 
     // Use metadata wrapper for extra properties not in LogContext
@@ -103,10 +82,24 @@ class EmailService {
       providers: this.providers.map(p => `${p.name}${p.isConfigured ? '' : ' (Not Configured)'}`),
       activeProvider: this.providers.find(p => p.isConfigured)?.name || 'None'
     };
+    
     this.logger.info('Email service provider initialization complete', { metadata });
+    this.initialized = true;
+  }
+
+  /**
+   * Ensure providers are initialized before sending
+   * Can be called externally to force initialization
+   */
+  async ensureInitialized() {
+    if (!this.initialized) {
+      await this.initializeProviders();
+    }
   }
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
+    // Ensure providers are initialized
+    await this.ensureInitialized();
     const maxAttempts = this.providers.length;
     let lastError: Error | null = null;
 
@@ -129,8 +122,13 @@ class EmailService {
           }
         } as any);
 
+        // Build from address with optional name
+        const fromEmail = options.from || microsoft365SmtpService.getFromEmail() || 'noreply@example.com';
+        const fromName = microsoft365SmtpService.getFromName();
+        const fromAddress = fromName ? `${fromName} <${fromEmail}>` : fromEmail;
+
         const emailData = {
-          from: options.from || process.env.RESEND_FROM_EMAIL || 'no-reply@wrekdtech.com',
+          from: fromAddress,
           to: options.to,
           subject: options.subject,
           html: options.html,
@@ -138,36 +136,20 @@ class EmailService {
         };
 
         if (provider.name === 'Console') {
-          console.log('\n╔════════════════════════════════════════════════════════════╗');
-          console.log('║           📧 EMAIL: Logged to Console (Development)         ║');
-          console.log('╠════════════════════════════════════════════════════════════╣');
-          console.log(`  From: ${emailData.from}`);
-          console.log(`  To: ${emailData.to}`);
-          console.log(`  Subject: ${emailData.subject}`);
-          console.log('────────────────────────────────────────────────────────────');
-          console.log(emailData.html);
-          console.log('╚════════════════════════════════════════════════════════════╝\n');
           // Reset index if successful
           this.currentProviderIndex = 0;
           return true;
         }
 
-        if (provider.name === 'Resend' && provider.resendClient) {
-          const { data, error } = await provider.resendClient.emails.send({
-            from: emailData.from,
-            to: emailData.to,
-            subject: emailData.subject,
-            html: emailData.html
-          });
-
-          if (error) {
-            throw new Error(`Resend error: ${error.message}`);
-          }
-
-          this.logger.info('Email sent successfully via Resend', {
+        // Microsoft 365 SMTP sending
+        if (provider.name === 'Microsoft365' && provider.transporter) {
+          const result = await provider.transporter.sendMail(emailData);
+          
+          this.logger.info('Email sent successfully via Microsoft 365 SMTP', {
             metadata: {
-              messageId: data?.id,
-              to: options.to
+              messageId: result.messageId,
+              to: options.to,
+              from: emailData.from
             }
           } as any);
 
@@ -175,23 +157,7 @@ class EmailService {
           return true;
         }
 
-        // Fallback to Nodemailer for SendGrid and SMTP if they are configured
-        // This requires nodemailer to be imported and configured transporters to be available.
-        // For simplicity and due to the interface change, these are currently marked as configured
-        // but the actual sending logic using nodemailer is commented out.
-        // If SendGrid/SMTP are to be used, the EmailProvider interface and initialization
-        // would need to be re-evaluated to store transporters.
-
-        // Placeholder for SendGrid/SMTP sending logic using Nodemailer if needed:
-        // Example (requires nodemailer and transporter setup):
-        // if ((provider.name === 'SendGrid' || provider.name === 'SMTP') && provider.transporter) {
-        //   const result = await provider.transporter.sendMail(emailData);
-        //   this.logger.info(`Email sent successfully via ${provider.name}`, { messageId: result.messageId, to: options.to });
-        //   this.currentProviderIndex = 0;
-        //   return true;
-        // }
-
-        // If we reach here, it means the provider is marked configured but doesn't have active sending logic implemented in this simplified version.
+        // If we reach here, it means the provider is marked configured but doesn't have active sending logic
         this.logger.warn(`Sending logic not fully implemented for provider: ${provider.name}`);
         lastError = new Error(`Sending logic not fully implemented for provider: ${provider.name}`);
         this.currentProviderIndex = (this.currentProviderIndex + 1) % this.providers.length; // Move to next provider
@@ -204,6 +170,8 @@ class EmailService {
           metadata: {
             provider: provider.name,
             error: lastError.message,
+            errorCode: error.code,
+            errorCommand: error.command,
             attempt: attempt + 1,
             to: options.to
           }
@@ -311,7 +279,7 @@ If you didn't request this password reset, please ignore this email.
       subject: subject,
       html: htmlContent,
       text: textContent,
-      from: 'no-reply@wrekdtech.com' // Use verified wrekdtech.com domain
+      from: microsoft365SmtpService.getFromEmail() || 'noreply@example.com'
     });
   }
 
@@ -431,38 +399,16 @@ If you didn't request this password reset, please ignore this email.
       return true; // Console provider is always healthy
     }
 
-    if (primaryProvider.name === 'Resend' && primaryProvider.resendClient) {
+    if (primaryProvider.name === 'Microsoft365' && primaryProvider.transporter) {
       try {
-        // Resend doesn't have a direct 'verify' method like nodemailer.
-        // We can simulate a health check by trying to send a minimal email.
-        // For a more robust check, consider a dedicated Resend status endpoint if available.
-        await primaryProvider.resendClient.emails.send({
-          from: process.env.RESEND_FROM_EMAIL || 'no-reply@wrekdtech.com',
-          to: ['test@example.com'], // Use a dummy recipient for health check
-          subject: 'Resend Health Check',
-          html: '<div>Resend service is healthy.</div>',
-        });
-        this.logger.info('Resend service health check passed.');
+        await primaryProvider.transporter.verify();
+        this.logger.info('Microsoft 365 SMTP health check passed.');
         return true;
       } catch (error: any) {
-        this.logger.error('Resend service health check failed', error as any);
+        this.logger.error('Microsoft 365 SMTP health check failed', error as any);
         return false;
       }
     }
-
-    // Placeholder for SendGrid/SMTP health check if needed and transporters were stored
-    // if ((primaryProvider.name === 'SendGrid' || primaryProvider.name === 'SMTP') && primaryProvider.transporter) {
-    //   try {
-    //     await primaryProvider.transporter.verify();
-    //     return true;
-    //   } catch (error) {
-    //     this.logger.error(`Email service health check failed for ${primaryProvider.name}`, {
-    //       provider: primaryProvider.name,
-    //       error: (error as Error).message
-    //     });
-    //     return false;
-    //   }
-    // }
 
     this.logger.warn(`Health check not fully implemented for provider: ${primaryProvider.name}`);
     return false; // Default to false if health check is not implemented for the provider
@@ -499,7 +445,6 @@ If you didn't request this password reset, please ignore this email.
       payload
     });
 
-    console.log(`[EmailService] Queued email to ${options.to}: ${options.subject} (jobId: ${jobId})`);
     return jobId;
   }
 
@@ -507,10 +452,7 @@ If you didn't request this password reset, please ignore this email.
    * Get default sender email from environment
    */
   private getDefaultSender(): string {
-    return process.env.RESEND_FROM_EMAIL || 
-           process.env.SENDGRID_FROM_EMAIL || 
-           process.env.SMTP_FROM_EMAIL || 
-           'noreply@example.com';
+    return microsoft365SmtpService.getFromEmail() || 'noreply@example.com';
   }
 
   private stripHtml(html: string): string {
