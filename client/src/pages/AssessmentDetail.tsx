@@ -245,8 +245,8 @@ export default function AssessmentDetail() {
   };
 
   const handleExport = () => {
-    // Placeholder for export logic
-    console.log("Export clicked");
+    // Open exports tab to show export options
+    setActiveTab("exports");
   };
 
   // Questions array properly handled
@@ -266,54 +266,10 @@ export default function AssessmentDetail() {
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 <span className="text-sm sm:text-base">Back to Dashboard</span>
               </Button>
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-                {displayAssessment.title}
-              </h1>
-            </div>
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-            <Button variant="outline" onClick={handleExport} className="min-h-[44px] text-sm sm:text-base">
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-            <Button onClick={() => setIsEditing(!isEditing)} className="min-h-[44px] text-sm sm:text-base">
-              <Edit className="h-4 w-4 mr-2" />
-              {isEditing ? 'Cancel' : 'Edit'}
-            </Button>
-          </div>
-        </div>
-        <p className="text-sm sm:text-base text-muted-foreground">{displayAssessment.description}</p>
-      </div>
-
-      <div className="px-4 sm:px-6 lg:px-8 space-y-6">
-        {/* Header - Moved into the main container, adjusted styling */}
-        {/* <div className="border-b border-glass-border glass-morphism">
-          <div className="px-6 py-4">
-            <div className="flex items-center space-x-4">
-              <Link href="/dashboard">
-                <button className="p-2 hover:bg-muted rounded-md transition-colors" data-testid="button-back">
-                  <ArrowLeft className="w-5 h-5 text-muted-foreground" />
-                </button>
-              </Link>
-              <div className="flex-1">
-                <h2 className="text-xl font-bold text-foreground" data-testid="text-assessment-title">
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
                   {displayAssessment.title}
-                </h2>
-                <p className="text-sm text-muted-foreground">{displayAssessment.description}</p>
-              </div>
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-sunglow/10 text-sunglow">
-                In Progress
-              </span>
-            </div>
-          </div>
-        </div> */}
-
-        {/* Main Content Area - Adjusted for responsiveness */}
-        {/* <div className="px-6 py-6 space-y-6"> */}
-          {/* Header - Replaced with the responsive version above */}
-          <div className="flex flex-col sm:flex-row items-center justify-between mb-6 sm:mb-8">
-            <div>
-              <div className="flex items-center space-x-2">
-                <h2 className="text-2xl font-bold text-foreground">{assessment.title}</h2>
+                </h1>
                 {filteringInfo && (
                   <Badge variant="secondary" className="bg-jade/10 text-jade border-jade/20">
                     <Target className="h-3 w-3 mr-1" />
@@ -321,19 +277,26 @@ export default function AssessmentDetail() {
                   </Badge>
                 )}
               </div>
-              <p className="text-muted-foreground mt-1">{assessment.description}</p>
             </div>
-            <div className="flex space-x-2 mt-4 sm:mt-0">
-              <Button variant="outline" size="sm" className="text-sm">
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => loadAssessment(assessment.id)} className="text-sm">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
-              </Button>
-            </div>
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <Button variant="outline" onClick={handleExport} className="min-h-[44px] text-sm sm:text-base">
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+            <Button variant="outline" onClick={() => loadAssessment(assessment.id)} className="min-h-[44px] text-sm sm:text-base">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+            <Button onClick={() => setIsEditing(!isEditing)} className="min-h-[44px] text-sm sm:text-base">
+              <Edit className="h-4 w-4 mr-2" />
+              {isEditing ? 'Cancel' : 'Edit'}
+            </Button>
           </div>
+        </div>
+        <p className="text-sm sm:text-base text-muted-foreground px-4 sm:px-6 lg:px-8">{displayAssessment.description}</p>
+      </div>
+
+      <div className="px-4 sm:px-6 lg:px-8 space-y-6">
 
           {/* Intelligent Filtering Status */}
           {filteringInfo && (
@@ -535,7 +498,7 @@ export default function AssessmentDetail() {
             </TabsContent>
 
             <TabsContent value="analytics" className="mt-6">
-              <AnalyticsTab />
+              <AnalyticsTab assessmentId={assessment.id} intakeFormId={assessment.intakeFormId} />
             </TabsContent>
 
             <TabsContent value="findings">
