@@ -21,7 +21,7 @@ if (!process.env.DATABASE_URL) {
 }
 
 const connection = neon(process.env.DATABASE_URL);
-const db = drizzle(connection);
+const db = drizzle(connection, { schema });
 
 async function purgeTestUsers() {
   console.log("🗑️  Starting test user purge operation...");
