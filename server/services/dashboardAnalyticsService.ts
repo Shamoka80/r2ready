@@ -107,55 +107,33 @@ export class DashboardAnalyticsService {
    */
   static async getDashboardKPIs(tenantId: string): Promise<DashboardKPIs> {
     try {
-      // Get assessment stats from materialized view (may not exist in local DB)
-      let statsResult: any = null;
+      // Get assessment stats from materialized view
+      const statsResult = await db.execute(sql`
+        SELECT 
+          total_assessments,
+          in_progress_count,
+          completed_count,
+          under_review_count,
+          avg_readiness_score,
+          certification_ready_count
+        FROM assessment_stats
+        WHERE tenant_id = ${tenantId}
+      `);
+
+      // Safe access to stats result - handle both Neon and PostgreSQL result structures
       let stats: any = null;
-      
-      try {
-        statsResult = await db.execute(sql`
-          SELECT 
-            total_assessments,
-            in_progress_count,
-            completed_count,
-            under_review_count,
-            avg_readiness_score,
-            certification_ready_count
-          FROM assessment_stats
-          WHERE tenant_id = ${tenantId}
-        `);
-        
-        // Safe access to stats result - handle both Neon and PostgreSQL result structures
-        if (statsResult) {
-          if (statsResult.rows && Array.isArray(statsResult.rows) && statsResult.rows.length > 0) {
-            stats = statsResult.rows[0];
-          } else if (Array.isArray(statsResult) && statsResult.length > 0) {
-            stats = statsResult[0];
-          } else if (statsResult && typeof statsResult === 'object' && !Array.isArray(statsResult) && !statsResult.rows) {
-            // Handle case where result might be a single object directly
-            stats = statsResult;
-          }
-        }
-      } catch (queryError: any) {
-        // Materialized view might not exist in local DB - use defaults
-        console.warn('⚠️  assessment_stats view not available, using defaults:', queryError?.message || queryError);
-        stats = null; // Will use defaults below
+      if (statsResult && statsResult.rows && Array.isArray(statsResult.rows) && statsResult.rows.length > 0) {
+        stats = statsResult.rows[0];
+      } else if (Array.isArray(statsResult) && statsResult.length > 0) {
+        stats = statsResult[0];
       }
 
       // Get facility count (separate query - not in materialized view)
-      let facilityCount: any = null;
-      try {
-        const facilityCountResult = await db
-          .select({ count: count() })
-          .from(facilityProfiles)
-          .where(eq(facilityProfiles.tenantId, tenantId));
-        
-        facilityCount = (facilityCountResult && Array.isArray(facilityCountResult) && facilityCountResult.length > 0) 
-          ? facilityCountResult[0] 
-          : null;
-      } catch (facilityError) {
-        console.warn('⚠️  Error getting facility count, using default:', facilityError);
-        facilityCount = null;
-      }
+      const facilityCountResult = await db
+        .select({ count: count() })
+        .from(facilityProfiles)
+        .where(eq(facilityProfiles.tenantId, tenantId));
+      const facilityCount = facilityCountResult.length > 0 ? facilityCountResult[0] : null;
 
       // Count critical gaps (separate query - complex join, better left as-is)
       let criticalGapCount = 0;
