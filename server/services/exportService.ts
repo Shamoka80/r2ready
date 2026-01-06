@@ -7,68 +7,6 @@ import { eq, and } from 'drizzle-orm';
 import AdvancedScoringService from './advancedScoringService';
 import { templateProcessor } from './templateProcessor';
 
-// Placeholder for TemplateProcessor and DocumentGenerationOptions, assuming they exist elsewhere
-// In a real scenario, these would be imported from their respective files.
-class TemplateProcessor {
-  async generateExecutiveSummaryPDF(assessmentId: string, tenantId: string): Promise<Buffer> { console.log('Generating Executive Summary PDF for', assessmentId, tenantId); return Buffer.from(''); }
-  async generateGapAnalysisPDF(assessmentId: string, tenantId: string): Promise<Buffer> { console.log('Generating Gap Analysis PDF for', assessmentId, tenantId); return Buffer.from(''); }
-  async generateComplianceReportPDF(assessmentId: string, tenantId: string): Promise<Buffer> { console.log('Generating Compliance Report PDF for', assessmentId, tenantId); return Buffer.from(''); }
-  async generatePDFTechnicalReport(assessmentId: string, tenantId: string): Promise<Buffer> { console.log('Generating Technical Report PDF for', assessmentId, tenantId); return Buffer.from(''); }
-  async generateAnalyticsDashboard(assessmentId: string, tenantId: string): Promise<Buffer> { console.log('Generating Analytics Dashboard for', assessmentId, tenantId); return Buffer.from(''); }
-  async generateGapTrackingSheet(assessmentId: string, tenantId: string): Promise<Buffer> { console.log('Generating Gap Tracking Sheet for', assessmentId, tenantId); return Buffer.from(''); }
-  async generateExcelDashboard(assessmentId: string, tenantId: string): Promise<Buffer> { console.log('Generating Excel Dashboard for', assessmentId, tenantId); return Buffer.from(''); }
-  async generateActionPlanDocument(assessmentId: string, tenantId: string): Promise<Buffer> { console.log('Generating Action Plan Document for', assessmentId, tenantId); return Buffer.from(''); }
-  async generateComplianceManual(assessmentId: string, tenantId: string): Promise<Buffer> { console.log('Generating Compliance Manual for', assessmentId, tenantId); return Buffer.from(''); }
-  async generateWordReport(assessmentId: string, tenantId: string): Promise<Buffer> { console.log('Generating Word Report for', assessmentId, tenantId); return Buffer.from(''); }
-  async generateProgressUpdateEmail(assessmentId: string, tenantId: string): Promise<string> { console.log('Generating Progress Update Email for', assessmentId, tenantId); return ''; }
-  async generateCompletionNoticeEmail(assessmentId: string, tenantId: string): Promise<string> { console.log('Generating Completion Notice Email for', assessmentId, tenantId); return ''; }
-  async generateEmailSummary(assessmentId: string, tenantId: string): Promise<string> { console.log('Generating Email Summary for', assessmentId, tenantId); return ''; }
-
-  // Placeholder methods for template processing and generation
-  private async populateTemplateWithRealData(templateContent: string, assessmentData: AssessmentExportData, format: string): Promise<string> {
-    console.log(`Populating template for ${format} with data for assessment ${assessmentData.assessment.id}`);
-    // In a real implementation, this would parse templateContent and inject assessmentData
-    return templateContent;
-  }
-
-  private async generatePDFFromTemplate(populatedTemplate: string, assessmentData: AssessmentExportData): Promise<Buffer> {
-    console.log(`Generating PDF from populated template for assessment ${assessmentData.assessment.id}`);
-    // Use pdfkit or another library to generate PDF from populatedTemplate
-    return Buffer.from(`PDF content for ${assessmentData.assessment.title}`);
-  }
-
-  private async generateExcelFromTemplate(populatedTemplate: string, assessmentData: AssessmentExportData): Promise<Buffer> {
-    console.log(`Generating Excel from populated template for assessment ${assessmentData.assessment.id}`);
-    // Use ExcelJS to generate Excel from populatedTemplate
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Report');
-    worksheet.addRow([populatedTemplate]); // Simplified for example
-    const buffer = await workbook.xlsx.writeBuffer();
-    return Buffer.from(buffer);
-  }
-
-  private async generateWordFromTemplate(populatedTemplate: string, assessmentData: AssessmentExportData): Promise<Buffer> {
-    console.log(`Generating Word from populated template for assessment ${assessmentData.assessment.id}`);
-    // Use docx library to generate Word document from populatedTemplate
-    const doc = new Document({
-      sections: [{
-        properties: {},
-        children: [new Paragraph(populatedTemplate)]
-      }]
-    });
-    return Packer.toBuffer(doc);
-  }
-
-  private getMimeType(format: string): string {
-    switch (format) {
-      case 'pdf': return 'application/pdf';
-      case 'excel': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-      case 'word': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-      default: return 'application/octet-stream';
-    }
-  }
-}
-
 interface DocumentGenerationOptions {
   assessmentId: string;
   tenantId: string;
@@ -112,18 +50,18 @@ class ExportService {
   // Production-ready export endpoints with proper error handling
   static async generatePDF(assessmentId: string, tenantId: string, templateType: string = 'technical-report'): Promise<Buffer> {
     try {
-      const processor = new TemplateProcessor();
+      console.log(`[ExportService] Generating PDF for assessment ${assessmentId}, template: ${templateType}`);
 
-      switch (templateType) {
-        case 'executive-summary':
-          return processor.generateExecutiveSummaryPDF(assessmentId, tenantId);
-        case 'gap-analysis':
-          return processor.generateGapAnalysisPDF(assessmentId, tenantId);
-        case 'compliance-report':
-          return processor.generateComplianceReportPDF(assessmentId, tenantId);
-        default:
-          return processor.generatePDFTechnicalReport(assessmentId, tenantId);
+      // All template types use the technical report generator
+      // (executive-summary, gap-analysis, compliance-report are mapped to technical-report)
+      const buffer = await templateProcessor.generatePDFTechnicalReport(assessmentId, tenantId);
+      
+      if (!buffer || buffer.length === 0) {
+        throw new Error('PDF generation returned empty buffer');
       }
+      
+      console.log(`[ExportService] PDF generated successfully, size: ${buffer.length} bytes`);
+      return buffer;
     } catch (error) {
       console.error('PDF generation failed:', error);
       throw new Error(`PDF generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -132,15 +70,13 @@ class ExportService {
 
   static async generateExcel(assessmentId: string, tenantId: string, templateType: string = 'dashboard'): Promise<Buffer> {
     try {
-      const processor = new TemplateProcessor();
-
       switch (templateType) {
         case 'analytics':
-          return processor.generateAnalyticsDashboard(assessmentId, tenantId);
+          return await templateProcessor.generateAnalyticsDashboard(assessmentId, tenantId);
         case 'gap-tracker':
-          return processor.generateGapTrackingSheet(assessmentId, tenantId);
+          return await templateProcessor.generateGapTrackingSheet(assessmentId, tenantId);
         default:
-          return processor.generateExcelDashboard(assessmentId, tenantId);
+          return await templateProcessor.generateExcelDashboard(assessmentId, tenantId);
       }
     } catch (error) {
       console.error('Excel generation failed:', error);
@@ -150,15 +86,13 @@ class ExportService {
 
   static async generateWord(assessmentId: string, tenantId: string, templateType: string = 'executive-summary'): Promise<Buffer> {
     try {
-      const processor = new TemplateProcessor();
-
       switch (templateType) {
         case 'action-plan':
-          return processor.generateActionPlanDocument(assessmentId, tenantId);
+          return await templateProcessor.generateActionPlanDocument(assessmentId, tenantId);
         case 'compliance-manual':
-          return processor.generateComplianceManual(assessmentId, tenantId);
+          return await templateProcessor.generateComplianceManual(assessmentId, tenantId);
         default:
-          return processor.generateWordReport(assessmentId, tenantId);
+          return await templateProcessor.generateWordReport(assessmentId, tenantId);
       }
     } catch (error) {
       console.error('Word generation failed:', error);
@@ -168,15 +102,13 @@ class ExportService {
 
   static async generateEmail(assessmentId: string, tenantId: string, templateType: string = 'consultation'): Promise<string> {
     try {
-      const processor = new TemplateProcessor();
-
       switch (templateType) {
         case 'progress-update':
-          return processor.generateProgressUpdateEmail(assessmentId, tenantId);
+          return await templateProcessor.generateProgressUpdateEmail(assessmentId, tenantId);
         case 'completion-notice':
-          return processor.generateCompletionNoticeEmail(assessmentId, tenantId);
+          return await templateProcessor.generateCompletionNoticeEmail(assessmentId, tenantId);
         default:
-          return processor.generateEmailSummary(assessmentId, tenantId);
+          return await templateProcessor.generateEmailSummary(assessmentId, tenantId);
       }
     } catch (error) {
       console.error('Email generation failed:', error);
