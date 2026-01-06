@@ -1,7 +1,7 @@
-import { db } from '../db.js';
-import { assessments, answers, questions, clientOrganizations, clientFacilities, facilityProfiles, users, reviewWorkflows } from '../../shared/schema.js';
+import { db } from '../db';
+import { assessments, answers, questions, clientOrganizations, clientFacilities, facilityProfiles, users, reviewWorkflows } from '@shared/schema';
 import { eq, and, sql, desc, inArray } from 'drizzle-orm';
-import ObservabilityService from './observabilityService.js';
+import ObservabilityService from './observabilityService';
 /**
  * Client Portal Service
  * Provides scoped data access ensuring clients only see their organization's data

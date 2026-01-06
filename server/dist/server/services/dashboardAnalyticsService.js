@@ -1,5 +1,5 @@
-import { db } from '../db.js';
-import { assessments, answers, questions, clauses, users, facilityProfiles, auditLog, licenses } from '../../shared/schema.js';
+import { db } from '../db';
+import { assessments, answers, questions, clauses, users, facilityProfiles, auditLog, licenses } from '@shared/schema';
 import { eq, and, sql, lte, desc, count, isNotNull, inArray } from 'drizzle-orm';
 /**
  * Dashboard Analytics Service
@@ -8,59 +8,117 @@ import { eq, and, sql, lte, desc, count, isNotNull, inArray } from 'drizzle-orm'
 export class DashboardAnalyticsService {
     /**
      * Get comprehensive KPIs for dashboard header
+     * Uses materialized view for optimized performance
      */
     static async getDashboardKPIs(tenantId) {
         try {
-            // Get assessment counts
-            const [assessmentCounts] = await db
-                .select({
-                total: count(),
-                inProgress: sql `count(*) FILTER (WHERE ${assessments.status} = 'IN_PROGRESS')`,
-                completed: sql `count(*) FILTER (WHERE ${assessments.status} = 'COMPLETED')`,
-                needsReview: sql `count(*) FILTER (WHERE ${assessments.status} = 'UNDER_REVIEW')`,
-            })
-                .from(assessments)
-                .where(eq(assessments.tenantId, tenantId));
-            // Get facility count
-            const [facilityCount] = await db
+            // Try to get assessment stats from materialized view first
+            let stats = null;
+            let usingMaterializedView = false;
+            try {
+                const statsResult = await db.execute(sql `
+          SELECT 
+            total_assessments,
+            in_progress_count,
+            completed_count,
+            under_review_count,
+            avg_readiness_score,
+            certification_ready_count
+          FROM assessment_stats
+          WHERE tenant_id = ${tenantId}
+        `);
+                // Safe access to stats result - handle both Neon and PostgreSQL result structures
+                const statsResultAny = statsResult;
+                if (statsResultAny && statsResultAny.rows && Array.isArray(statsResultAny.rows) && statsResultAny.rows.length > 0) {
+                    stats = statsResultAny.rows[0];
+                    usingMaterializedView = true;
+                }
+                else if (Array.isArray(statsResultAny) && statsResultAny.length > 0) {
+                    stats = statsResultAny[0];
+                    usingMaterializedView = true;
+                }
+            }
+            catch (viewError) {
+                // Materialized view doesn't exist or query failed - fall back to direct calculation
+                console.warn(`⚠️ Materialized view not available, calculating stats directly:`, viewError.message);
+                usingMaterializedView = false;
+            }
+            // If materialized view didn't work, calculate stats directly
+            if (!stats) {
+                const allAssessments = await db
+                    .select({
+                    status: assessments.status,
+                    overallScore: assessments.overallScore,
+                })
+                    .from(assessments)
+                    .where(eq(assessments.tenantId, tenantId));
+                const totalAssessments = allAssessments.length;
+                const inProgressCount = allAssessments.filter(a => a.status === 'IN_PROGRESS').length;
+                const completedCount = allAssessments.filter(a => a.status === 'COMPLETED').length;
+                const underReviewCount = allAssessments.filter(a => a.status === 'UNDER_REVIEW').length;
+                const completedWithScores = allAssessments.filter(a => a.status === 'COMPLETED' && a.overallScore !== null);
+                const avgReadinessScore = completedWithScores.length > 0
+                    ? completedWithScores.reduce((sum, a) => sum + Number(a.overallScore || 0), 0) / completedWithScores.length
+                    : 0;
+                const certificationReadyCount = allAssessments.filter(a => a.status === 'COMPLETED' && a.overallScore !== null && Number(a.overallScore) >= 90).length;
+                stats = {
+                    total_assessments: totalAssessments,
+                    in_progress_count: inProgressCount,
+                    completed_count: completedCount,
+                    under_review_count: underReviewCount,
+                    avg_readiness_score: avgReadinessScore,
+                    certification_ready_count: certificationReadyCount,
+                };
+            }
+            // Get facility count (separate query - not in materialized view)
+            const facilityCountResult = await db
                 .select({ count: count() })
                 .from(facilityProfiles)
                 .where(eq(facilityProfiles.tenantId, tenantId));
-            // Calculate average readiness from completed assessments
-            const completedAssessments = await db
-                .select({
-                overallScore: assessments.overallScore,
-            })
-                .from(assessments)
-                .where(and(eq(assessments.tenantId, tenantId), eq(assessments.status, 'COMPLETED'), isNotNull(assessments.overallScore)));
-            const averageReadiness = completedAssessments.length > 0
-                ? completedAssessments.reduce((sum, a) => sum + (a.overallScore || 0), 0) / completedAssessments.length
-                : 0;
-            const certificationReady = completedAssessments.filter(a => (a.overallScore || 0) >= 90).length;
-            // Count critical gaps (answered "No" or "Partial" to critical questions)
-            const criticalAnswers = await db
-                .select({ count: count() })
-                .from(answers)
-                .innerJoin(assessments, eq(answers.assessmentId, assessments.id))
-                .innerJoin(questions, eq(answers.questionId, questions.id))
-                .where(and(eq(assessments.tenantId, tenantId), sql `${answers.value}::text IN ('No', 'Partial', 'Not Applicable')`));
-            const criticalGapCount = criticalAnswers.length > 0 ? Number(criticalAnswers[0]?.count || 0) : 0;
+            const facilityCount = facilityCountResult.length > 0 ? facilityCountResult[0] : null;
+            // Count critical gaps (separate query - complex join, better left as-is)
+            let criticalGapCount = 0;
+            try {
+                const criticalAnswers = await db
+                    .select({ count: count() })
+                    .from(answers)
+                    .innerJoin(assessments, eq(answers.assessmentId, assessments.id))
+                    .innerJoin(questions, eq(answers.questionId, questions.id))
+                    .where(and(eq(assessments.tenantId, tenantId), sql `${answers.value}::text IN ('No', 'Partial', 'Not Applicable')`));
+                criticalGapCount = (criticalAnswers && Array.isArray(criticalAnswers) && criticalAnswers.length > 0)
+                    ? Number(criticalAnswers[0]?.count || 0)
+                    : 0;
+            }
+            catch (criticalError) {
+                console.warn('⚠️  Error getting critical gaps, using default:', criticalError);
+                criticalGapCount = 0;
+            }
             const kpis = {
-                totalAssessments: Number(assessmentCounts?.total || 0),
-                inProgress: Number(assessmentCounts?.inProgress || 0),
-                completed: Number(assessmentCounts?.completed || 0),
-                needsReview: Number(assessmentCounts?.needsReview || 0),
-                averageReadiness: Math.round(averageReadiness),
-                certificationReady,
+                totalAssessments: Number(stats?.total_assessments || 0),
+                inProgress: Number(stats?.in_progress_count || 0),
+                completed: Number(stats?.completed_count || 0),
+                needsReview: Number(stats?.under_review_count || 0),
+                averageReadiness: Math.round(Number(stats?.avg_readiness_score || 0)),
+                certificationReady: Number(stats?.certification_ready_count || 0),
                 criticalGaps: Math.max(0, criticalGapCount),
-                facilities: Number(facilityCount[0]?.count || 0),
+                facilities: Number(facilityCount?.count || 0),
             };
-            console.log(`✅ Dashboard KPIs calculated for tenant ${tenantId}:`, kpis);
+            console.log(`✅ Dashboard KPIs calculated for tenant ${tenantId} (${usingMaterializedView ? 'using materialized view' : 'calculated directly'}):`, kpis);
             return kpis;
         }
         catch (error) {
             console.error('Error getting dashboard KPIs:', error);
-            throw error;
+            // Return safe defaults instead of throwing to prevent dashboard from breaking
+            return {
+                totalAssessments: 0,
+                inProgress: 0,
+                completed: 0,
+                needsReview: 0,
+                averageReadiness: 0,
+                certificationReady: 0,
+                criticalGaps: 0,
+                facilities: 0,
+            };
         }
     }
     /**
@@ -71,23 +129,46 @@ export class DashboardAnalyticsService {
             let targetAssessmentId = assessmentId;
             // If no assessment specified, get the most recent completed one
             if (!targetAssessmentId) {
-                const [latestAssessment] = await db
-                    .select({ id: assessments.id })
-                    .from(assessments)
-                    .where(and(eq(assessments.tenantId, tenantId), eq(assessments.status, 'COMPLETED')))
-                    .orderBy(desc(assessments.completedAt))
-                    .limit(1);
-                if (!latestAssessment) {
-                    // Return default empty snapshot if no assessments
+                try {
+                    const latestAssessmentResult = await db
+                        .select({ id: assessments.id })
+                        .from(assessments)
+                        .where(and(eq(assessments.tenantId, tenantId), eq(assessments.status, 'COMPLETED')))
+                        .orderBy(desc(assessments.completedAt))
+                        .limit(1);
+                    const latestAssessment = (latestAssessmentResult && Array.isArray(latestAssessmentResult) && latestAssessmentResult.length > 0)
+                        ? latestAssessmentResult[0]
+                        : null;
+                    if (!latestAssessment) {
+                        // Return default empty snapshot if no assessments
+                        return this.getDefaultReadinessSnapshot();
+                    }
+                    targetAssessmentId = latestAssessment.id;
+                }
+                catch (error) {
+                    console.warn('⚠️  Error getting latest assessment, using default snapshot:', error);
                     return this.getDefaultReadinessSnapshot();
                 }
-                targetAssessmentId = latestAssessment.id;
+            }
+            // Ensure we have a valid assessment ID
+            if (!targetAssessmentId) {
+                return this.getDefaultReadinessSnapshot();
             }
             // Get assessment with scores
-            const [assessment] = await db
-                .select()
-                .from(assessments)
-                .where(eq(assessments.id, targetAssessmentId));
+            let assessment = null;
+            try {
+                const assessmentResult = await db
+                    .select()
+                    .from(assessments)
+                    .where(eq(assessments.id, targetAssessmentId));
+                assessment = (assessmentResult && Array.isArray(assessmentResult) && assessmentResult.length > 0)
+                    ? assessmentResult[0]
+                    : null;
+            }
+            catch (error) {
+                console.warn('⚠️  Error getting assessment, using default snapshot:', error);
+                return this.getDefaultReadinessSnapshot();
+            }
             if (!assessment) {
                 return this.getDefaultReadinessSnapshot();
             }

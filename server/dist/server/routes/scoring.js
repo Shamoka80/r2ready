@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { db } from '../db.js';
-import { assessments, questions, answers, clauses } from '../../shared/schema.js';
+import { db } from "../db";
+import { assessments, questions, answers, clauses } from "../../shared/schema";
 import { eq, and } from "drizzle-orm";
-import { requireFacilityPermissionFromAssessment } from '../services/authService.js';
+import { requireFacilityPermissionFromAssessment } from "../services/authService";
+import { ScoringOrchestrator } from "../services/scoringOrchestrator";
 const router = Router();
 // Scoring configuration based on question categories and intake complexity
 const SCORING_WEIGHTS = {
@@ -60,16 +61,11 @@ router.get('/:id/scoring', requireFacilityPermissionFromAssessment('view_reports
                 console.warn('Failed to get intake scope for scoring:', error);
             }
         }
-        // Calculate comprehensive scoring
-        const scoringResult = await calculateAssessmentScore(id, intakeScope);
+        // Calculate comprehensive scoring with Phase 5 enhancements
+        const scoringResult = await ScoringOrchestrator.calculateEnhancedScore(id, calculateAssessmentScore, intakeScope);
         // Update assessment record with latest score (if not realtime)
         if (!realtime) {
-            await db.update(assessments)
-                .set({
-                progress: scoringResult.scorePercentage,
-                updatedAt: new Date()
-            })
-                .where(eq(assessments.id, id));
+            await ScoringOrchestrator.updateAssessmentWithResults(id, scoringResult);
         }
         res.json(scoringResult);
     }
@@ -88,13 +84,13 @@ router.post('/:id/scoring/refresh', requireFacilityPermissionFromAssessment('man
             const { IntakeProcessor } = await import('./intakeLogic');
             intakeScope = await IntakeProcessor.generateAssessmentScope(intakeFormId);
         }
-        const scoringResult = await calculateAssessmentScore(id, intakeScope);
+        // Calculate scoring with Phase 5 enhancements
+        const scoringResult = await ScoringOrchestrator.calculateEnhancedScore(id, calculateAssessmentScore, intakeScope);
         // Update assessment with fresh scoring
+        await ScoringOrchestrator.updateAssessmentWithResults(id, scoringResult);
         await db.update(assessments)
             .set({
-            progress: scoringResult.scorePercentage,
             status: scoringResult.complianceStatus === 'COMPLIANT' ? 'COMPLETED' : 'IN_PROGRESS',
-            updatedAt: new Date(),
             ...(scoringResult.complianceStatus === 'COMPLIANT' && { completedAt: new Date() })
         })
             .where(eq(assessments.id, id));
@@ -220,11 +216,18 @@ function calculateCategoryScore(categoryKey, questions, intakeScope) {
     let answeredQuestions = 0;
     const criticalGaps = [];
     for (const question of questions) {
-        const answerValue = question.answerValue;
+        // Normalize answer value (handle JSON-encoded values from database)
+        let answerValue = question.answerValue;
+        if (answerValue) {
+            // Remove JSON encoding if present (e.g., """Yes""" -> "Yes")
+            answerValue = typeof answerValue === 'string' ? answerValue.replace(/^"+|"+$/g, '') : answerValue;
+        }
         maxScore += 100; // Each question worth 100 points
         if (answerValue) {
             answeredQuestions++;
-            const score = ANSWER_SCORES[answerValue] ?? 0;
+            // Case-insensitive lookup for robustness
+            const normalizedValue = Object.keys(ANSWER_SCORES).find(key => key.toLowerCase() === answerValue.toLowerCase());
+            const score = normalizedValue ? ANSWER_SCORES[normalizedValue] : 0;
             totalScore += score;
             // Check for critical gaps
             if (question.required && score < 100) {

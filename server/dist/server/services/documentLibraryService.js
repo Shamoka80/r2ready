@@ -1,7 +1,7 @@
 import { writeFile, readFile, mkdir, access } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
-import ObservabilityService from './observabilityService.js';
+import ObservabilityService from './observabilityService';
 /**
  * Professional Document Library Service
  * Manages downloadable templates, policies, and procedures for R2v3 compliance

@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { db } from '../db.js';
-import { questions, clauses } from '../../shared/schema.js';
+import { db } from '../db';
+import { questions, clauses } from '../../shared/schema';
 import { count, like, sql } from 'drizzle-orm';
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 // TODO: Import functionality temporarily disabled to avoid including tools directory in build
 // Import the function from CLI tool
-// import { importQuestions } from '../tools/import-questions.js';
+// import { importQuestions } from '../tools/import-questions';
 router.post('/import-questions', upload.single('file'), async (req, res) => {
     // TODO: Re-enable this functionality after refactoring tools to not be included in server build
     return res.status(501).json({

@@ -2,8 +2,8 @@
 #!/usr/bin/env tsx
 
 import chalk from 'chalk';
-import { drizzle } from 'drizzle-orm/neon-http';
-import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
 import { sql } from 'drizzle-orm';
 import { users, tenants, assessments, facilities, licenses } from '../shared/schema';
 import { and, like, lt } from 'drizzle-orm';
@@ -26,8 +26,8 @@ class TestDataCleaner {
       throw new Error('DATABASE_URL environment variable is required');
     }
 
-    const connection = neon(process.env.DATABASE_URL);
-    this.db = drizzle(connection);
+    this.client = postgres(process.env.DATABASE_URL);
+    this.db = drizzle(this.client);
   }
 
   async cleanup(): Promise<void> {

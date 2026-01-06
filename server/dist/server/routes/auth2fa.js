@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { twoFactorAuthService } from '../services/twoFactorAuthService.js';
-import { jwtService } from '../services/jwtService.js';
-import { deviceService } from '../services/deviceService.js';
-import { authenticateUser } from '../middleware/authMiddleware.js';
-import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware.js';
+import { twoFactorAuthService } from '../services/twoFactorAuthService';
+import { jwtService } from '../services/jwtService';
+import { deviceService } from '../services/deviceService';
+import { authenticateUser } from '../middleware/authMiddleware';
+import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware';
 const router = Router();
 // Request validation schemas
 const initializeSetupSchema = z.object({

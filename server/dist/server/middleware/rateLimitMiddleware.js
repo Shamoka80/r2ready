@@ -1,7 +1,7 @@
-import { rateLimitService } from '../services/rateLimitService.js';
-import { bruteForceAlertService } from '../services/bruteForceAlertService.js';
-import { isTestEmail } from './testUserGuard.js';
-import { isDevelopment } from '../config/environment.js';
+import { rateLimitService } from '../services/rateLimitService';
+import { bruteForceAlertService } from '../services/bruteForceAlertService';
+import { isTestEmail } from './testUserGuard';
+import { isDevelopment } from '../config/environment';
 /**
  * Rate limiting middleware factory
  * Creates middleware for specific resources and actions
@@ -127,6 +127,7 @@ export const createRateLimit = (resource, action, options) => {
 export const rateLimitMiddleware = {
     // Authentication rate limits
     login: createRateLimit('auth', 'login', { identifierType: 'ip' }),
+    register: createRateLimit('auth', 'register', { identifierType: 'ip' }), // More lenient for registration
     passwordReset: createRateLimit('auth', 'password_reset', { identifierType: 'ip' }),
     tokenRefresh: createRateLimit('auth', 'token_refresh', { identifierType: 'ip' }),
     // 2FA rate limits

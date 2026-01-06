@@ -404,8 +404,24 @@ router.get("/:assessmentId/pdf/:templateType?",
         validatedTemplateType || 'technical-report'
       );
 
+      // Validate buffer before sending
+      if (!buffer || buffer.length === 0) {
+        console.error('[Exports] Generated PDF buffer is empty');
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to generate PDF export',
+          details: 'PDF buffer is empty'
+        });
+      }
+
+      console.log(`[Exports] PDF generated successfully, size: ${buffer.length} bytes`);
+
+      // Set proper headers for PDF download - MUST be set before sending
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${assessment.title}_report.pdf"`);
+      res.setHeader('Content-Disposition', 'attachment; filename="R2v3_Technical_Report.pdf"');
+      res.setHeader('Content-Length', buffer.length.toString());
+      
+      // Send binary buffer directly - do NOT use res.json()
       res.send(buffer);
 
     } catch (error) {

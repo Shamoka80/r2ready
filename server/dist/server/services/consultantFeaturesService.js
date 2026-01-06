@@ -1,7 +1,7 @@
-import { db } from '../db.js';
-import { users, assessments, clientOrganizations, clientFacilities } from '../../shared/schema.js';
+import { db } from '../db';
+import { users, assessments, clientOrganizations, clientFacilities } from '@shared/schema';
 import { eq, and, sql, inArray, desc } from 'drizzle-orm';
-import ObservabilityService from './observabilityService.js';
+import ObservabilityService from './observabilityService';
 /**
  * Advanced Consultant Features Service
  * Enterprise-grade multi-client management and white-label capabilities

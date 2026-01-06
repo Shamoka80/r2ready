@@ -880,10 +880,10 @@ export class TemplateProcessor {
 
   // New template-based PDF generation using actual template files
   async generatePDFTechnicalReport(assessmentId: string, tenantId: string): Promise<Buffer> {
-    if (!this.validateTemplateExists('pdf_temp_export.pdf')) {
-      throw new Error('PDF template not found: pdf_temp_export.pdf');
-    }
-
+    // Note: Template validation is optional - we generate PDFs programmatically
+    // The template file check is for future template-based generation
+    // For now, we always generate PDFs directly using PDFKit
+    
     // Fetch comprehensive data for template population
     const templateData = await this.fetchTemplateData(assessmentId, tenantId);
 

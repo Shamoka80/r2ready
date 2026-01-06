@@ -1,6 +1,6 @@
 import { eq, sql, and, gte, lte } from 'drizzle-orm';
-import { db } from '../db.js';
-import { systemLogs, performanceMetrics, errorLogs, assessments, answers } from '../../shared/schema.js';
+import { db } from '../db';
+import { systemLogs, performanceMetrics, errorLogs, assessments, answers } from '@shared/schema';
 export class ObservabilityDashboardService {
     async getSystemMetrics(timeRange = '24h') {
         const endTime = new Date();

@@ -1,8 +1,8 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { eq, and, lt, gt } from 'drizzle-orm';
-import { db } from '../db.js';
-import { refreshTokens, securityAuditLog } from '../../shared/schema.js';
+import { db } from '../db';
+import { refreshTokens, securityAuditLog } from '@shared/schema';
 /**
  * JWT and Session Management Service
  * Handles short-lived access tokens, refresh tokens, and secure session management

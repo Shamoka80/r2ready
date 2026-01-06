@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
-import { db } from '../db.js';
-import { permissions, rolePermissions } from '../../shared/schema.js';
+import { db } from "../db";
+import { permissions, rolePermissions } from "../../shared/schema";
 import { eq, sql } from "drizzle-orm";
-import { AuthService } from '../services/authService.js';
+import { AuthService } from "../services/authService";
 const router = Router();
 // All routes require authentication
 router.use(AuthService.authMiddleware);

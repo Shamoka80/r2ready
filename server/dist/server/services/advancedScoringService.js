@@ -1,7 +1,7 @@
-import { db } from '../db.js';
-import { assessments, answers, questions, clauses, intakeForms } from '../../shared/schema.js';
+import { db } from "../db";
+import { assessments, answers, questions, clauses, intakeForms } from "../../shared/schema";
 import { eq, desc } from "drizzle-orm";
-import { IntakeProcessor } from '../routes/intakeLogic.js';
+import { IntakeProcessor } from "../routes/intakeLogic";
 class AdvancedScoringService {
     // R2v3 Core Requirement Weights (based on SERI R2v3 standard)
     static CORE_WEIGHTS = {

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
-import { executeQuery } from '../db.js';
-import { AuthService } from '../services/authService.js';
+import { executeQuery } from "../db";
+import { AuthService } from "../services/authService";
 const router = Router();
 // Validation schemas
 const createTemplateSchema = z.object({

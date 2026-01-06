@@ -1,5 +1,5 @@
-import { db } from '../db.js';
-import { licenses, facilityProfiles } from '../../shared/schema.js';
+import { db } from "../db";
+import { licenses, facilityProfiles } from "../../shared/schema";
 import { eq, and, count } from "drizzle-orm";
 export class LicenseService {
     /**
