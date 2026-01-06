@@ -1,7 +1,7 @@
-import { db } from '../db.js';
-import { assessments, answers, questions, facilityProfiles, organizationProfiles } from '../../shared/schema.js';
+import { db } from '../db';
+import { assessments, answers, questions, facilityProfiles, organizationProfiles } from '@shared/schema';
 import { eq } from 'drizzle-orm';
-import ObservabilityService from './observabilityService.js';
+import ObservabilityService from './observabilityService';
 /**
  * Executive Summary Service
  * Generates comprehensive executive summaries for R2v3 assessments

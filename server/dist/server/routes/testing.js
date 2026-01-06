@@ -5,8 +5,8 @@
  * They provide helper functions for E2E testing
  */
 import express from 'express';
-import { db } from '../db.js';
-import { users } from '../../shared/schema.js';
+import { db } from '../db';
+import { users } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 const router = express.Router();
 // Security check: only allow in non-production environments

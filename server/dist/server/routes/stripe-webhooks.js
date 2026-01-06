@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db } from '../db.js';
-import { licenses, licenseEvents, assessments } from '../../shared/schema.js';
+import { db } from "../db";
+import { licenses, licenseEvents, assessments } from "../../shared/schema";
 import { eq, and, ne } from "drizzle-orm";
 const router = Router();
 // Exported handler function for Stripe webhook events

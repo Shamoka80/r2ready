@@ -1,8 +1,8 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { db } from '../db.js';
-import { users, tenants, userSessions, rolePermissions, auditLog, facilityProfiles, assessments } from '../../shared/schema.js';
+import { db } from '../db';
+import { users, tenants, userSessions, rolePermissions, auditLog, facilityProfiles, assessments } from '../../shared/schema';
 import { eq, and, sql } from 'drizzle-orm';
 class JWTManager {
     config;

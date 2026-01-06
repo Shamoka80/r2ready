@@ -1,17 +1,20 @@
 import { Router } from "express";
 import { z } from "zod";
 import { db } from "../db.js";
-import { assessments, questions, answers, evidenceObjects } from "../../shared/schema.js";
-import { eq, and } from "drizzle-orm";
+import { assessments, questions, answers, evidenceObjects, clauses } from "../../shared/schema.js";
+import { eq, and, sql, desc, gt, lt, or } from "drizzle-orm";
+import { PaginationUtils, paginationParamsSchema } from "../utils/pagination.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs/promises";
 import crypto from "crypto";
-import { requireFacilityPermissionFromAssessment, getUserFacilityPermissions } from "../services/authService.js";
+import { AuthService, requireFacilityPermissionFromAssessment, getUserFacilityPermissions } from "../services/authService.js";
 import { evidenceService } from "../services/evidenceService.js";
 import { validation } from "../middleware/validationMiddleware.js";
 import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware.js';
 const router = Router();
+// All routes require authentication
+router.use(AuthService.authMiddleware);
 // Evidence-specific validation schemas
 const evidenceSchemas = {
     uploadParams: z.object({
@@ -250,14 +253,39 @@ router.post('/upload/:assessmentId/:questionId', rateLimitMiddleware.evidenceUpl
         res.status(500).json({ error: 'Failed to upload evidence files' });
     }
 });
-// GET /api/evidence/:assessmentId/:questionId - Get evidence files for a question
+// GET /api/evidence/:assessmentId/:questionId - Get evidence files for a question (with pagination)
 router.get('/:assessmentId/:questionId', validation.request({
     params: evidenceSchemas.listParams
 }), requireFacilityPermissionFromAssessment('view_reports'), async (req, res) => {
     try {
         const { assessmentId, questionId } = req.params;
-        // Get evidence objects for this question with full categorization data
-        const evidenceFiles = await db.select({
+        // Parse and validate pagination parameters
+        const paginationParams = paginationParamsSchema.safeParse(req.query);
+        if (!paginationParams.success) {
+            return res.status(400).json({
+                error: "Invalid pagination parameters",
+                details: paginationParams.error.errors
+            });
+        }
+        const { limit, cursor, direction } = PaginationUtils.validateParams(paginationParams.data);
+        // Build base condition
+        let whereCondition = and(eq(evidenceObjects.assessmentId, assessmentId), eq(evidenceObjects.questionId, questionId));
+        // Build cursor condition for pagination using (createdAt DESC, id ASC) composite
+        if (cursor && cursor.timestamp) {
+            const cursorTimestamp = new Date(cursor.timestamp);
+            if (direction === 'forward') {
+                // Forward DESC: (createdAt < cursor.createdAt) OR (createdAt = cursor.createdAt AND id > cursor.id)
+                // Primary sort DESC uses <, tie-breaker ASC uses >
+                whereCondition = and(whereCondition, or(lt(evidenceObjects.createdAt, cursorTimestamp), and(eq(evidenceObjects.createdAt, cursorTimestamp), gt(evidenceObjects.id, cursor.id))));
+            }
+            else {
+                // Backward DESC: (createdAt > cursor.createdAt) OR (createdAt = cursor.createdAt AND id < cursor.id)
+                whereCondition = and(whereCondition, or(gt(evidenceObjects.createdAt, cursorTimestamp), and(eq(evidenceObjects.createdAt, cursorTimestamp), lt(evidenceObjects.id, cursor.id))));
+            }
+        }
+        // Get evidence objects with pagination (limit + 1 to check hasMore)
+        // For backward navigation, invert ORDER BY, then reverse results
+        let evidenceFiles = await db.select({
             id: evidenceObjects.id,
             originalName: evidenceObjects.originalName,
             size: evidenceObjects.size,
@@ -271,13 +299,26 @@ router.get('/:assessmentId/:questionId', validation.request({
             createdBy: evidenceObjects.createdBy
         })
             .from(evidenceObjects)
-            .where(and(eq(evidenceObjects.assessmentId, assessmentId), eq(evidenceObjects.questionId, questionId)));
-        // Get answer notes
+            .where(whereCondition)
+            .orderBy(direction === 'forward' ? desc(evidenceObjects.createdAt) : evidenceObjects.createdAt, direction === 'forward' ? evidenceObjects.id : desc(evidenceObjects.id))
+            .limit(limit + 1);
+        // For backward navigation, reverse the results to maintain natural order
+        if (direction === 'backward') {
+            evidenceFiles = evidenceFiles.reverse();
+        }
+        // Build paginated response
+        // For backward: sentinel is at START after reverse, skip it
+        // For forward: sentinel is at END, take first limit items
+        const hasMore = evidenceFiles.length > limit;
+        const data = hasMore
+            ? (direction === 'backward' ? evidenceFiles.slice(1) : evidenceFiles.slice(0, limit))
+            : evidenceFiles;
+        // Get answer notes (not paginated)
         const [answer] = await db.select({ notes: answers.notes })
             .from(answers)
             .where(and(eq(answers.assessmentId, assessmentId), eq(answers.questionId, questionId)));
         // Format evidence files with enhanced metadata
-        const formattedFiles = evidenceFiles.map(file => {
+        const formattedFiles = data.map(file => {
             const scanResults = file.scanResults || {};
             return {
                 id: file.id,
@@ -296,15 +337,41 @@ router.get('/:assessmentId/:questionId', validation.request({
                 checksum: file.checksum.substring(0, 8) + '...' // Truncated for security
             };
         });
+        // Build pagination cursors
+        let nextCursor = null;
+        let prevCursor = null;
+        if (data.length > 0) {
+            if (direction === 'forward' && hasMore) {
+                const lastItem = data[data.length - 1];
+                nextCursor = PaginationUtils.encodeCursor({
+                    id: lastItem.id,
+                    timestamp: lastItem.createdAt?.getTime(),
+                });
+            }
+            // Only provide prevCursor if not on first page
+            if (cursor) {
+                const firstItem = data[0];
+                prevCursor = PaginationUtils.encodeCursor({
+                    id: firstItem.id,
+                    timestamp: firstItem.createdAt?.getTime(),
+                });
+            }
+        }
         res.json({
-            evidenceFiles: formattedFiles,
+            data: formattedFiles,
             notes: answer?.notes || null,
             summary: {
-                totalFiles: formattedFiles.length,
+                totalReturned: formattedFiles.length,
                 cleanFiles: formattedFiles.filter(f => f.isClean).length,
                 pendingScans: formattedFiles.filter(f => f.scanStatus === 'pending').length,
                 evidenceTypes: [...new Set(formattedFiles.map(f => f.evidenceType))],
                 totalSize: formattedFiles.reduce((sum, f) => sum + f.size, 0)
+            },
+            pagination: {
+                hasMore,
+                nextCursor,
+                prevCursor,
+                totalReturned: formattedFiles.length,
             }
         });
     }
@@ -458,16 +525,44 @@ router.delete('/evidence/:evidenceId', async (req, res) => {
 router.get('/assessment/:assessmentId/summary', requireFacilityPermissionFromAssessment('view_reports'), async (req, res) => {
     try {
         const { assessmentId } = req.params;
-        const answersWithEvidence = await db.select({
-            questionId: answers.questionId,
-            evidenceFiles: answers.evidenceFiles,
-            questionText: questions.text,
-            required: questions.required,
-            evidenceRequired: questions.evidenceRequired
+        // Get assessment to access its standard ID
+        const assessmentResult = await db.select({
+            id: assessments.id,
+            stdId: assessments.stdId
         })
-            .from(answers)
-            .leftJoin(questions, eq(answers.questionId, questions.id))
-            .where(eq(answers.assessmentId, assessmentId));
+            .from(assessments)
+            .where(eq(assessments.id, assessmentId))
+            .limit(1);
+        // Handle PostgreSQL result structure (array vs object)
+        const assessment = Array.isArray(assessmentResult)
+            ? assessmentResult[0]
+            : assessmentResult.rows?.[0] || assessmentResult;
+        if (!assessment || !assessment.stdId) {
+            console.error('Assessment not found or missing stdId:', { assessmentId, assessment });
+            return res.status(404).json({ error: 'Assessment not found' });
+        }
+        // Query ALL questions that require evidence for this assessment's standard
+        // This includes both answered and unanswered questions
+        // Using leftJoin for clauses (same pattern as assessments route) and filter stdId in WHERE
+        console.log('🔍 Fetching questions requiring evidence for assessment:', assessmentId, 'stdId:', assessment.stdId);
+        let questionsRequiringEvidence;
+        try {
+            questionsRequiringEvidence = await db.select({
+                questionId: questions.id, // UUID for API compatibility
+                questionTextId: questions.questionId, // Text identifier for display
+                questionText: questions.text,
+                required: questions.required,
+                evidenceRequired: questions.evidenceRequired
+            })
+                .from(questions)
+                .leftJoin(clauses, eq(questions.clauseId, clauses.id))
+                .where(and(eq(clauses.stdId, assessment.stdId), eq(questions.evidenceRequired, true), eq(questions.isActive, true)));
+            console.log('✅ Query executed successfully. Results count:', Array.isArray(questionsRequiringEvidence) ? questionsRequiringEvidence.length : 'unknown');
+        }
+        catch (queryError) {
+            console.error('❌ Query failed:', queryError);
+            throw queryError;
+        }
         const summary = {
             totalQuestionsWithEvidence: 0,
             totalEvidenceFiles: 0,
@@ -476,31 +571,47 @@ router.get('/assessment/:assessmentId/summary', requireFacilityPermissionFromAss
             evidenceByQuestion: [],
             evidenceCompletionRate: 0
         };
-        for (const answer of answersWithEvidence) {
-            const fileCount = answer.evidenceFiles?.length || 0;
+        // Process all questions requiring evidence (answered or not)
+        // Drizzle returns results as an array directly
+        const questionsArray = Array.isArray(questionsRequiringEvidence)
+            ? questionsRequiringEvidence
+            : [];
+        console.log('📊 Processing', questionsArray.length, 'questions requiring evidence');
+        // Count evidence files from evidenceObjects table for each question
+        for (const question of questionsArray) {
+            if (!question || !question.questionId) {
+                console.warn('⚠️ Skipping invalid question entry:', question);
+                continue;
+            }
+            // Count actual evidence files from evidenceObjects table (not from answers.evidenceFiles)
+            // This ensures we get accurate counts even if answer records don't exist
+            const evidenceCountResult = await db.select({
+                count: sql `count(*)::int`
+            })
+                .from(evidenceObjects)
+                .where(and(eq(evidenceObjects.assessmentId, assessmentId), eq(evidenceObjects.questionId, question.questionId)));
+            const fileCount = evidenceCountResult[0]?.count || 0;
+            console.log(`📁 Question ${question.questionId}: ${fileCount} evidence files`);
             if (fileCount > 0) {
                 summary.totalQuestionsWithEvidence++;
                 summary.totalEvidenceFiles += fileCount;
             }
-            if (answer.evidenceRequired) {
-                summary.requiredEvidenceTotal++;
-                if (fileCount > 0) {
-                    summary.requiredEvidenceCompleted++;
-                }
+            // All questions in this list require evidence
+            summary.requiredEvidenceTotal++;
+            if (fileCount > 0) {
+                summary.requiredEvidenceCompleted++;
             }
-            if (answer.evidenceRequired || fileCount > 0) {
-                summary.evidenceByQuestion.push({
-                    questionId: answer.questionId,
-                    questionText: answer.questionText,
-                    required: answer.required,
-                    evidenceRequired: answer.evidenceRequired,
-                    fileCount,
-                    status: answer.evidenceRequired
-                        ? (fileCount > 0 ? 'COMPLETE' : 'MISSING')
-                        : (fileCount > 0 ? 'PROVIDED' : 'NONE')
-                });
-            }
+            // Include all evidence-required questions in the list
+            summary.evidenceByQuestion.push({
+                questionId: question.questionId, // UUID for API compatibility
+                questionText: question.questionText || 'Unknown question',
+                required: question.required || false,
+                evidenceRequired: question.evidenceRequired !== undefined ? question.evidenceRequired : true,
+                fileCount,
+                status: fileCount > 0 ? 'COMPLETE' : 'MISSING'
+            });
         }
+        console.log('✅ Processed', summary.evidenceByQuestion.length, 'questions. Required total:', summary.requiredEvidenceTotal);
         summary.evidenceCompletionRate = summary.requiredEvidenceTotal > 0
             ? Math.round((summary.requiredEvidenceCompleted / summary.requiredEvidenceTotal) * 100)
             : 100;
@@ -508,7 +619,11 @@ router.get('/assessment/:assessmentId/summary', requireFacilityPermissionFromAss
     }
     catch (error) {
         console.error('Error generating evidence summary:', error);
-        res.status(500).json({ error: 'Failed to generate evidence summary' });
+        console.error('Error details:', error instanceof Error ? error.stack : String(error));
+        res.status(500).json({
+            error: 'Failed to generate evidence summary',
+            details: error instanceof Error ? error.message : String(error)
+        });
     }
 });
 // GET /api/evidence/audit/:evidenceId - Get evidence audit trail

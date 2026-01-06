@@ -1,11 +1,13 @@
 import { Router } from "express";
 import { z } from "zod";
-import { db } from '../db.js';
-import { standardVersions, assessments, questions, clauses, answers, intakeForms, facilityProfiles, clientOrganizations, clientFacilities } from '../../shared/schema.js';
-import { eq, and, desc, sql, inArray, or } from "drizzle-orm";
-import { AuthService } from '../services/authService.js';
+import { db } from "../db";
+import { standardVersions, assessments, questions, clauses, answers, intakeForms, facilityProfiles, clientOrganizations, clientFacilities } from "../../shared/schema";
+import { eq, and, desc, sql, inArray, or, lt, gt } from "drizzle-orm";
+import { PaginationUtils, paginationParamsSchema } from "../utils/pagination.js";
+import { AuthService } from "../services/authService";
 import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware.js';
-import { IntakeProcessor } from './intakeLogic.js';
+import { IntakeProcessor } from './intakeLogic';
+import { refreshClientOrgStats, refreshAssessmentStats } from '../services/materializedViews';
 const router = Router();
 // Helper function to get user's accessible facilities
 async function getUserAccessibleFacilities(userId, tenantId) {
@@ -297,6 +299,15 @@ router.post("/", rateLimitMiddleware.general, async (req, res) => {
             auditDetails.facilityName = facilityName;
         }
         await AuthService.logAuditEvent(req.tenant.id, req.user.id, 'ASSESSMENT_CREATED', 'assessment', assessment.id, undefined, auditDetails);
+        // Refresh materialized views (non-blocking)
+        refreshAssessmentStats().catch(err => {
+            console.error('[Assessment] Failed to refresh assessment stats after creation:', err);
+        });
+        if (assessment.clientOrganizationId) {
+            refreshClientOrgStats().catch(err => {
+                console.error('[Assessment] Failed to refresh client org stats after creation:', err);
+            });
+        }
         // Return comprehensive response for frontend
         const responseData = {
             success: true,
@@ -321,19 +332,26 @@ router.post("/", rateLimitMiddleware.general, async (req, res) => {
         res.status(500).json({ error: "Failed to create assessment" });
     }
 });
-// GET /api/assessments - List assessments for tenant with explicit Business/Consultant filtering
+// GET /api/assessments - List assessments for tenant with cursor-based pagination
 router.get("/", rateLimitMiddleware.general, async (req, res) => {
     try {
-        const { page = 1, limit = 10, status, facilityId } = req.query;
-        const offset = (Number(page) - 1) * Number(limit);
+        const { status, facilityId } = req.query;
+        // Parse and validate pagination parameters
+        const paginationParams = paginationParamsSchema.safeParse(req.query);
+        if (!paginationParams.success) {
+            return res.status(400).json({
+                error: "Invalid pagination parameters",
+                details: paginationParams.error.errors
+            });
+        }
+        const { limit, cursor, direction } = PaginationUtils.validateParams(paginationParams.data);
         // Get facility context from header
         const facilityContext = req.headers['x-facility-context'];
         const tenantType = req.tenant.tenantType;
-        // CRITICAL: Explicit tenant-based filtering for security
+        // CRITICAL: Explicit tenant-based filtering for security (preserved from original)
         let whereCondition;
         if (tenantType === 'CONSULTANT') {
             // CONSULTANT PATH: Show only client assessments
-            // Filter assessments where clientOrganizationId is set AND belongs to this consultant's clients
             console.log(`🔒 CONSULTANT filtering for tenant ${req.tenant.id}`);
             // Get all client organizations managed by this consultant
             const clientOrgs = await db.query.clientOrganizations.findMany({
@@ -344,8 +362,8 @@ router.get("/", rateLimitMiddleware.general, async (req, res) => {
             if (clientOrgIds.length === 0) {
                 // Consultant has no clients yet, return empty results
                 return res.json({
-                    assessments: [],
-                    pagination: { page: Number(page), limit: Number(limit), total: 0, pages: 0 }
+                    data: [],
+                    pagination: { hasMore: false, nextCursor: null, prevCursor: null, totalReturned: 0 }
                 });
             }
             // Filter to assessments linked to this consultant's client organizations
@@ -382,8 +400,8 @@ router.get("/", rateLimitMiddleware.general, async (req, res) => {
                 else {
                     // User has no facility access, return empty results
                     return res.json({
-                        assessments: [],
-                        pagination: { page: Number(page), limit: Number(limit), total: 0, pages: 0 }
+                        data: [],
+                        pagination: { hasMore: false, nextCursor: null, prevCursor: null, totalReturned: 0 }
                     });
                 }
             }
@@ -392,11 +410,27 @@ router.get("/", rateLimitMiddleware.general, async (req, res) => {
         if (status) {
             whereCondition = and(whereCondition, eq(assessments.status, status));
         }
-        const allAssessments = await db.query.assessments.findMany({
+        // Build cursor condition for pagination using (updatedAt DESC, id ASC) composite
+        if (cursor && cursor.timestamp) {
+            const cursorTimestamp = new Date(cursor.timestamp);
+            if (direction === 'forward') {
+                // Forward DESC: (updatedAt < cursor.updatedAt) OR (updatedAt = cursor.updatedAt AND id > cursor.id)
+                // Primary sort DESC uses <, tie-breaker ASC uses >
+                whereCondition = and(whereCondition, or(lt(assessments.updatedAt, cursorTimestamp), and(eq(assessments.updatedAt, cursorTimestamp), gt(assessments.id, cursor.id))));
+            }
+            else {
+                // Backward DESC: (updatedAt > cursor.updatedAt) OR (updatedAt = cursor.updatedAt AND id < cursor.id)
+                whereCondition = and(whereCondition, or(gt(assessments.updatedAt, cursorTimestamp), and(eq(assessments.updatedAt, cursorTimestamp), lt(assessments.id, cursor.id))));
+            }
+        }
+        // Query limit + 1 to determine if there are more results
+        // For backward navigation, invert ORDER BY, then reverse results
+        let allAssessments = await db.query.assessments.findMany({
             where: whereCondition,
-            orderBy: [desc(assessments.updatedAt)],
-            limit: Number(limit),
-            offset,
+            orderBy: direction === 'forward'
+                ? [desc(assessments.updatedAt), assessments.id]
+                : [assessments.updatedAt, desc(assessments.id)],
+            limit: limit + 1,
             with: {
                 standard: {
                     columns: {
@@ -438,20 +472,44 @@ router.get("/", rateLimitMiddleware.general, async (req, res) => {
                 }
             }
         });
-        // Get total count for pagination
-        const totalResult = await db
-            .select({ count: sql `count(*)` })
-            .from(assessments)
-            .where(whereCondition);
-        const total = totalResult[0]?.count || 0;
-        console.log(`✅ Returned ${allAssessments.length} assessments for ${tenantType} tenant ${req.tenant.id}`);
+        // For backward navigation, reverse the results to maintain natural order
+        if (direction === 'backward') {
+            allAssessments = allAssessments.reverse();
+        }
+        // Build paginated response
+        // For backward: sentinel is at START after reverse, skip it
+        // For forward: sentinel is at END, take first limit items
+        const hasMore = allAssessments.length > limit;
+        const data = hasMore
+            ? (direction === 'backward' ? allAssessments.slice(1) : allAssessments.slice(0, limit))
+            : allAssessments;
+        let nextCursor = null;
+        let prevCursor = null;
+        if (data.length > 0) {
+            if (direction === 'forward' && hasMore) {
+                const lastItem = data[data.length - 1];
+                nextCursor = PaginationUtils.encodeCursor({
+                    id: lastItem.id,
+                    timestamp: lastItem.updatedAt?.getTime(),
+                });
+            }
+            // Only provide prevCursor if not on first page
+            if (cursor) {
+                const firstItem = data[0];
+                prevCursor = PaginationUtils.encodeCursor({
+                    id: firstItem.id,
+                    timestamp: firstItem.updatedAt?.getTime(),
+                });
+            }
+        }
+        console.log(`✅ Returned ${data.length} assessments for ${tenantType} tenant ${req.tenant.id}`);
         res.json({
-            assessments: allAssessments,
+            data,
             pagination: {
-                page: Number(page),
-                limit: Number(limit),
-                total,
-                pages: Math.ceil(total / Number(limit)),
+                hasMore,
+                nextCursor,
+                prevCursor,
+                totalReturned: data.length,
             }
         });
     }
@@ -608,6 +666,19 @@ router.put("/:id", rateLimitMiddleware.general, async (req, res) => {
             .returning();
         // Log audit event
         await AuthService.logAuditEvent(req.tenant.id, req.user.id, 'ASSESSMENT_UPDATED', 'assessment', id, { title: existingAssessment.title, status: existingAssessment.status }, { title: updatedAssessment.title, status: updatedAssessment.status });
+        // Refresh materialized views if status or overallScore changed (affects stats)
+        const statusChanged = existingAssessment.status !== updatedAssessment.status;
+        const scoreChanged = existingAssessment.overallScore !== updatedAssessment.overallScore;
+        if (statusChanged || scoreChanged) {
+            refreshAssessmentStats().catch(err => {
+                console.error('[Assessment] Failed to refresh assessment stats after update:', err);
+            });
+        }
+        if (updatedAssessment.clientOrganizationId && statusChanged) {
+            refreshClientOrgStats().catch(err => {
+                console.error('[Assessment] Failed to refresh client org stats after update:', err);
+            });
+        }
         res.json(updatedAssessment);
     }
     catch (error) {
@@ -760,6 +831,22 @@ router.get("/:id/questions", rateLimitMiddleware.general, async (req, res) => {
             .offset(offset);
         // Apply answered filter if specified
         const questionResults = await questionsQuery;
+        // Debug logging for answer retrieval
+        const questionsWithAnswers = questionResults.filter(q => q.answerValue !== null);
+        console.log(`📊 [Questions Endpoint] Assessment ${id}:`, {
+            totalQuestions: questionResults.length,
+            questionsWithAnswers: questionsWithAnswers.length,
+            sampleWithAnswer: questionsWithAnswers.slice(0, 2).map(q => ({
+                questionId: q.questionId,
+                id: q.id,
+                answerValue: q.answerValue,
+                answerScore: q.answerScore
+            })),
+            sampleWithoutAnswer: questionResults.filter(q => q.answerValue === null).slice(0, 2).map(q => ({
+                questionId: q.questionId,
+                id: q.id
+            }))
+        });
         let filteredQuestions = questionResults;
         if (answered === 'true') {
             filteredQuestions = questionResults.filter(q => q.answerValue !== null);
@@ -894,6 +981,15 @@ router.delete("/:id", rateLimitMiddleware.general, async (req, res) => {
             .where(eq(assessments.id, id));
         // Log audit event
         await AuthService.logAuditEvent(req.tenant.id, req.user.id, 'ASSESSMENT_ARCHIVED', 'assessment', id, { status: existingAssessment.status }, { status: 'ARCHIVED' });
+        // Refresh materialized views (archiving affects counts)
+        refreshAssessmentStats().catch(err => {
+            console.error('[Assessment] Failed to refresh assessment stats after deletion:', err);
+        });
+        if (existingAssessment.clientOrganizationId) {
+            refreshClientOrgStats().catch(err => {
+                console.error('[Assessment] Failed to refresh client org stats after deletion:', err);
+            });
+        }
         res.json({ message: "Assessment archived successfully" });
     }
     catch (error) {
@@ -945,6 +1041,50 @@ router.get("/:id/progress", rateLimitMiddleware.general, async (req, res) => {
     catch (error) {
         console.error("Error fetching assessment progress:", error);
         res.status(500).json({ error: "Failed to fetch assessment progress" });
+    }
+});
+// GET /api/assessments/:id/analytics - Get comprehensive analytics
+router.get("/:id/analytics", rateLimitMiddleware.general, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { intakeFormId } = req.query;
+        // Verify assessment exists and user has access
+        const assessment = await db.query.assessments.findFirst({
+            where: and(eq(assessments.id, id), eq(assessments.tenantId, req.tenant.id)),
+        });
+        if (!assessment) {
+            return res.status(404).json({ error: 'Assessment not found' });
+        }
+        // Import scoring function
+        const { calculateAssessmentScore } = await import('./scoring');
+        // Get intake-based scope if provided
+        let intakeScope = null;
+        if (intakeFormId && typeof intakeFormId === 'string') {
+            try {
+                const { IntakeProcessor } = await import('./intakeLogic');
+                intakeScope = await IntakeProcessor.generateAssessmentScope(intakeFormId);
+            }
+            catch (error) {
+                console.warn('Failed to get intake scope for analytics:', error);
+            }
+        }
+        const scoringData = await calculateAssessmentScore(id, intakeScope);
+        res.json({
+            assessmentId: id,
+            overallScore: scoringData.scorePercentage,
+            complianceStatus: scoringData.complianceStatus,
+            readinessLevel: scoringData.readinessLevel,
+            estimatedAuditSuccess: scoringData.estimatedAuditSuccess,
+            categoryScores: scoringData.categoryScores,
+            criticalIssues: scoringData.criticalIssues,
+            recommendations: scoringData.recommendations,
+            lastCalculated: scoringData.lastCalculated,
+            intakeBasedAnalytics: scoringData.intakeBasedScoring
+        });
+    }
+    catch (error) {
+        console.error('Error generating analytics:', error);
+        res.status(500).json({ error: 'Failed to generate analytics' });
     }
 });
 export default router;

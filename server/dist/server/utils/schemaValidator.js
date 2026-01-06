@@ -1,4 +1,4 @@
-import { db } from '../db.js';
+import { db } from '../db';
 import { sql } from 'drizzle-orm';
 // Define critical tables and columns that must exist
 const CRITICAL_SCHEMA = [
@@ -87,9 +87,9 @@ export async function validateSchemaConsistency() {
           SELECT FROM information_schema.tables 
           WHERE table_schema = 'public' 
           AND table_name = ${tableName}
-        );
+        ) as exists;
       `);
-            const tableExists = tableExistsQuery.rows[0].exists;
+            const tableExists = tableExistsQuery.rows[0]?.exists ?? false;
             if (!tableExists) {
                 errors.push(`❌ Critical table '${tableName}' does not exist in the database`);
                 continue;

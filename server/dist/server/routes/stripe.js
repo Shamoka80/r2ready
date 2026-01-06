@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { z } from "zod";
 import Stripe from "stripe";
-import { db } from '../db.js';
-import { licenses, licenseEvents } from '../../shared/schema.js';
+import { db } from "../db";
+import { licenses, licenseEvents } from "../../shared/schema";
 import { eq } from "drizzle-orm";
-import { AuthService } from '../services/authService.js';
-import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware.js';
+import { AuthService } from "../services/authService";
+import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware';
 const router = Router();
 // Helper function to get the correct base URL for redirects
 const getBaseUrl = () => {

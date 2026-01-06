@@ -1,0 +1,872 @@
+# Database Switch: Neon to Local PostgreSQL
+
+**Date:** Current Session  
+**Purpose:** Switch from Neon (serverless PostgreSQL) to local PostgreSQL for local development
+
+---
+
+## Quick Reference
+
+### Files Modified (11 total)
+
+| File | Change Type | Revert Required |
+|------|-------------|----------------|
+| `server/db.ts` | Database driver + dotenv + fixes | ✅ Yes |
+| `server/wake-db.js` | Database driver | ✅ Yes |
+| `scripts/seed-test-users.ts` | Database driver | ✅ Yes |
+| `scripts/seed-demo-tenants.ts` | Database driver | ✅ Yes |
+| `scripts/purge-users.ts` | Database driver | ✅ Yes |
+| `scripts/migrate-database.ts` | Database driver | ✅ Yes |
+| `scripts/cleanup-test-data.ts` | Database driver | ✅ Yes |
+| `server/tools/import-questions.ts` | CSV import with REC mapping integration | ✅ Yes (when reverting) |
+| `server/routes/auth.ts` | Syntax fixes (unrelated) | ❌ No (pre-existing bugs) |
+| `server/utils/schemaValidator.ts` | Error handling fix (PostgreSQL compatibility) | ⚠️ Optional (improvement, but may be needed) |
+| `server/services/dashboardAnalyticsService.ts` | Dashboard KPIs fix (PostgreSQL compatibility) | ⚠️ Optional (prevents crashes, recommended to keep) |
+
+### Change Pattern (All Database Files)
+
+**BEFORE (Neon):**
+```typescript
+import { neon, neonConfig } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
+const sql = neon(process.env.DATABASE_URL);
+const db = drizzle(sql, { schema });
+```
+
+**AFTER (PostgreSQL):**
+```typescript
+import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/postgres-js';
+const client = postgres(process.env.DATABASE_URL);
+const db = drizzle(client, { schema });
+```
+
+---
+
+## Detailed Changes by File
+
+### 1. `server/db.ts` - Main Database Connection
+
+#### A. Environment Variable Loading (ADDED - Keep on revert)
+**Location:** Top of file (before imports)
+
+**Code Added:**
+```typescript
+// Load environment variables from server/.env file FIRST
+import { config } from 'dotenv';
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env file from server directory before accessing process.env
+config({ path: path.join(__dirname, '.env') });
+```
+
+**Revert:** ❌ KEEP THIS - Useful for both Neon and PostgreSQL
+
+---
+
+#### B. Imports Changed
+**BEFORE:**
+```typescript
+import { neon, neonConfig } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
+```
+
+**AFTER:**
+```typescript
+import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/postgres-js';
+```
+
+**Revert:** Change back to Neon imports
+
+---
+
+#### C. Connection Setup Changed
+**BEFORE:**
+```typescript
+neonConfig.pipelineConnect = 'password';
+const sql = neon(dbUrl);
+export const db = drizzle(sql as any, { schema });
+export { sql };
+```
+
+**AFTER:**
+```typescript
+const client = postgres(dbUrl);
+const sql = client; // Create local reference for use in this module
+export const db = drizzle(client, { schema });
+export { sql };
+```
+
+**Revert:** 
+- Remove `const sql = client;` line
+- Change `const client = postgres(dbUrl)` to `const sql = neon(dbUrl)`
+- Add `neonConfig.pipelineConnect = 'password';` after imports
+- Change `drizzle(client, { schema })` to `drizzle(sql as any, { schema })`
+
+---
+
+#### D. executeQuery Function Changed
+**BEFORE:** Used Neon's tagged template syntax with complex parameter binding
+
+**AFTER:**
+```typescript
+export async function executeQuery(query: string, params: any[] = []) {
+  if (params.length === 0) {
+    const rows = await sql.unsafe(query);
+    return { rows, rowCount: rows.length };
+  }
+  const rows = await sql.unsafe(query, params);
+  return { rows, rowCount: rows.length };
+}
+```
+
+**Revert:** Restore original Neon-specific parameter binding logic
+
+---
+
+### 2. `server/wake-db.js` - Database Wake Script
+
+**BEFORE:**
+```javascript
+import { neon } from '@neondatabase/serverless';
+const sql = neon(process.env.DATABASE_URL);
+const result = await sql`SELECT NOW() as current_time, 'Database is awake!' as message`;
+```
+
+**AFTER:**
+```javascript
+import postgres from 'postgres';
+const client = postgres(process.env.DATABASE_URL);
+const result = await client`SELECT NOW() as current_time, 'Database is connected!' as message`;
+await client.end(); // Close connection after use
+```
+
+**Revert:**
+- Change import back to Neon
+- Change `const client = postgres(...)` to `const sql = neon(...)`
+- Change `client\`...\`` to `sql\`...\``
+- Remove `await client.end();`
+
+---
+
+### 3. `scripts/seed-test-users.ts` - Test User Seeding Script
+
+**BEFORE:**
+```typescript
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
+const connection = neon(process.env.DATABASE_URL);
+const db = drizzle(connection, { schema });
+```
+
+**AFTER:**
+```typescript
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
+const client = postgres(process.env.DATABASE_URL);
+const db = drizzle(client, { schema });
+```
+
+**Revert:** Apply reverse pattern (same as file #2)
+
+---
+
+### 4. `scripts/seed-demo-tenants.ts` - Demo Tenant Seeding Script
+
+**BEFORE:**
+```typescript
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
+const connection = neon(process.env.DATABASE_URL);
+const db = drizzle(connection, { schema });
+```
+
+**AFTER:**
+```typescript
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
+const client = postgres(process.env.DATABASE_URL);
+const db = drizzle(client, { schema });
+```
+
+**Revert:** Apply reverse pattern (same as file #3)
+
+---
+
+### 5. `scripts/purge-users.ts` - User Purge Script
+
+**BEFORE:**
+```typescript
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
+const connection = neon(process.env.DATABASE_URL);
+this.db = drizzle(connection);
+```
+
+**AFTER:**
+```typescript
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
+this.client = postgres(process.env.DATABASE_URL);
+this.db = drizzle(this.client);
+```
+
+**Revert:** Apply reverse pattern (same as file #3)
+
+---
+
+### 6. `scripts/migrate-database.ts` - Database Migration Script
+
+**BEFORE:**
+```typescript
+import { drizzle } from 'drizzle-orm/neon-http';
+import { migrate } from 'drizzle-orm/neon-http/migrator';
+import { neon } from '@neondatabase/serverless';
+const sql = neon(process.env.DATABASE_URL);
+const db = drizzle(sql);
+await migrate(db, { migrationsFolder: './migrations' });
+```
+
+**AFTER:**
+```typescript
+import { drizzle } from 'drizzle-orm/postgres-js';
+import { migrate } from 'drizzle-orm/postgres-js/migrator';
+import postgres from 'postgres';
+const client = postgres(process.env.DATABASE_URL);
+const db = drizzle(client);
+await migrate(db, { migrationsFolder: './migrations' });
+await client.end(); // Close connection after migrations
+```
+
+**Revert:**
+- Change imports back to `neon-http`
+- Change `const client = postgres(...)` to `const sql = neon(...)`
+- Change `drizzle(client)` to `drizzle(sql)`
+- Remove `await client.end();`
+
+---
+
+### 7. `scripts/cleanup-test-data.ts` - Test Data Cleanup Script
+
+**BEFORE:**
+```typescript
+import { drizzle } from 'drizzle-orm/neon-http';
+import { neon } from '@neondatabase/serverless';
+const connection = neon(process.env.DATABASE_URL);
+this.db = drizzle(connection);
+```
+
+**AFTER:**
+```typescript
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+this.client = postgres(process.env.DATABASE_URL);
+this.db = drizzle(this.client);
+```
+
+**Revert:** Apply reverse pattern (same as file #5)
+
+---
+
+### 8. `server/routes/auth.ts` - Syntax Error Fixes (Pre-existing bugs)
+
+**Note:** These fixes are unrelated to the database switch but were necessary for the app to run.
+
+**Changes:** Removed 5 orphaned code fragments at lines:
+- 1482-1483: `userId: req.user!.id });`
+- 1593-1594: `recoveryMode: isStuckInIncompleteState });`
+- 1689-1690: `setupStatus: updateData.setupStatus || user.setupStatus });`
+- 1806-1807: `setupStatus: updateData.setupStatus || user.setupStatus });` (duplicate)
+- 1993-1997: Orphaned object literal
+
+**Revert:** ❌ Do NOT revert - these were pre-existing bugs
+
+---
+
+### 9. `server/utils/schemaValidator.ts` - Error Handling Fix
+
+**BEFORE:**
+```typescript
+const tableExistsQuery = await db.execute(sql`...`);
+const tableExists = (tableExistsQuery.rows[0] as any)?.exists ?? false;
+```
+
+**AFTER:**
+```typescript
+let tableExistsQuery;
+try {
+  tableExistsQuery = await db.execute(sql`...`);
+} catch (queryError) {
+  const errorMsg = queryError instanceof Error ? queryError.message : String(queryError);
+  errors.push(`❌ Failed to check if table '${tableName}' exists: ${errorMsg}`);
+  continue;
+}
+
+let tableExists = false;
+if (tableExistsQuery && tableExistsQuery.rows && Array.isArray(tableExistsQuery.rows) && tableExistsQuery.rows.length > 0) {
+  tableExists = (tableExistsQuery.rows[0] as any)?.exists ?? false;
+} else if (Array.isArray(tableExistsQuery) && tableExistsQuery.length > 0) {
+  tableExists = (tableExistsQuery[0] as any)?.exists ?? false;
+} else {
+  warnings.push(`⚠️  Could not determine if table '${tableName}' exists - unexpected result structure`);
+  continue;
+}
+```
+
+**Also fixed columns query:**
+```typescript
+// BEFORE:
+const columnsQuery = await db.execute(sql`...`);
+const actualColumns = columnsQuery.rows as Array<{...}>;
+
+// AFTER:
+let columnsQuery;
+try {
+  columnsQuery = await db.execute(sql`...`);
+} catch (queryError) {
+  const errorMsg = queryError instanceof Error ? queryError.message : String(queryError);
+  errors.push(`❌ Failed to get columns for table '${tableName}': ${errorMsg}`);
+  continue;
+}
+
+let actualColumns: Array<{...}> = [];
+if (columnsQuery && columnsQuery.rows && Array.isArray(columnsQuery.rows)) {
+  actualColumns = columnsQuery.rows as Array<{...}>;
+} else if (Array.isArray(columnsQuery)) {
+  actualColumns = columnsQuery as Array<{...}>;
+} else {
+  warnings.push(`⚠️  Could not get columns for table '${tableName}' - unexpected result structure`);
+  continue;
+}
+```
+
+**Revert:** ⚠️ Optional - This is an improvement that works with both Neon and PostgreSQL, but may be needed for PostgreSQL compatibility
+
+---
+
+## Revert Instructions (Step-by-Step)
+
+### Step 1: Revert `server/db.ts`
+
+1. **KEEP** the dotenv configuration at the top (lines with `import { config } from 'dotenv'`)
+
+2. **Change imports:**
+   ```typescript
+   // FROM:
+   import postgres from 'postgres';
+   import { drizzle } from 'drizzle-orm/postgres-js';
+   
+   // TO:
+   import { neon, neonConfig } from '@neondatabase/serverless';
+   import { drizzle } from 'drizzle-orm/neon-http';
+   ```
+
+3. **Add Neon config after imports:**
+   ```typescript
+   neonConfig.pipelineConnect = 'password';
+   ```
+
+4. **Change connection setup:**
+   ```typescript
+   // FROM:
+   const client = postgres(dbUrl);
+   const sql = client;
+   export const db = drizzle(client, { schema });
+   
+   // TO:
+   const sql = neon(dbUrl);
+   export const db = drizzle(sql as any, { schema });
+   ```
+
+5. **Revert `executeQuery` function** to original Neon-specific parameter binding logic
+
+---
+
+### Step 2: Revert Script Files (Files #2-7)
+
+For each file (`wake-db.js`, `seed-test-users.ts`, `seed-demo-tenants.ts`, `purge-users.ts`, `migrate-database.ts`, `cleanup-test-data.ts`):
+
+1. **Change imports:**
+   ```typescript
+   // FROM:
+   import postgres from 'postgres';
+   import { drizzle } from 'drizzle-orm/postgres-js';
+   // (or migrate from 'drizzle-orm/postgres-js/migrator')
+   
+   // TO:
+   import { neon } from '@neondatabase/serverless';
+   import { drizzle } from 'drizzle-orm/neon-http';
+   // (or migrate from 'drizzle-orm/neon-http/migrator')
+   ```
+
+2. **Change connection:**
+   ```typescript
+   // FROM:
+   const client = postgres(process.env.DATABASE_URL);
+   const db = drizzle(client, { schema });
+   
+   // TO:
+   const sql = neon(process.env.DATABASE_URL);
+   const db = drizzle(sql, { schema });
+   ```
+
+3. **For `wake-db.js` and `migrate-database.ts`:** Remove `await client.end();` calls
+
+4. **For `wake-db.js`:** Change `client\`...\`` to `sql\`...\``
+
+---
+
+### Step 3: Revert CSV Import Integration (`server/tools/import-questions.ts`)
+
+**Note:** This step should be performed when reverting database configuration to ensure the project is in its original state.
+
+1. **Remove added imports:**
+   ```typescript
+   // FROM:
+   import { standardVersions, clauses, questions, recMapping, questionMapping, intakeQuestions } from "../../shared/schema";
+   import { eq, and } from "drizzle-orm";
+   
+   // TO:
+   import { standardVersions, clauses, questions } from "../../shared/schema";
+   import { eq } from "drizzle-orm";
+   ```
+
+2. **Remove helper functions:**
+   - Remove `extractRecCodes()` function (entire function block)
+   - Remove `getOrCreateSystemIntakeQuestion()` function (entire function block)
+   - Remove `ensureRecMapping()` function (entire function block)
+
+3. **Remove system intake question setup:**
+   ```typescript
+   // REMOVE this line:
+   const systemIntakeQuestionId = await getOrCreateSystemIntakeQuestion();
+   ```
+
+4. **Revert question upsert logic:**
+   ```typescript
+   // FROM:
+   let questionRecord;
+   if (question.length === 0) {
+     const inserted = await db.insert(questions).values({
+       // ... fields ...
+       order: total // Preserve CSV order
+     }).returning();
+     questionRecord = inserted[0];
+   } else {
+     const updated = await db.update(questions)
+       .set({
+         // ... fields ...
+         order: total // Preserve CSV order
+       })
+       .where(eq(questions.questionId, questionIdKey))
+       .returning();
+     questionRecord = updated[0];
+   }
+   
+   // TO:
+   if (question.length === 0) {
+     await db.insert(questions).values({
+       // ... fields (without order: total) ...
+     });
+   } else {
+     await db.update(questions)
+       .set({
+         // ... fields (without order: total) ...
+       })
+       .where(eq(questions.questionId, questionIdKey));
+   }
+   ```
+
+5. **Remove REC mapping creation block:**
+   ```typescript
+   // REMOVE this entire block:
+   // Extract and process REC codes from tags
+   const recCodes = extractRecCodes(tagsRaw);
+   
+   // Ensure all REC codes exist and create question-to-REC mappings
+   for (const recCode of recCodes) {
+     // ... entire loop ...
+   }
+   ```
+
+---
+
+### Step 4: Verify Changes
+
+1. Check that all imports use `@neondatabase/serverless` and `drizzle-orm/neon-http`
+2. Check that all connections use `neon()` instead of `postgres()`
+3. Verify `neonConfig.pipelineConnect = 'password';` is in `server/db.ts`
+4. Verify CSV import file (`server/tools/import-questions.ts`) has no REC mapping integration code
+5. Test database connection: `node server/wake-db.js`
+
+---
+
+## Environment Variables
+
+**Location:** `server/.env` (must be in server directory)
+
+**Format:**
+```
+DATABASE_URL=postgresql://username:password@localhost:5432/database_name
+```
+
+**Note:** The dotenv configuration in `server/db.ts` loads from `server/.env`. This works for both Neon and PostgreSQL.
+
+---
+
+## Dependencies
+
+- ✅ `postgres` package (^3.4.5) - already installed
+- ✅ `dotenv` package - already installed
+- ⚠️ `@neondatabase/serverless` - still in package.json (unused, can be removed)
+
+---
+
+## Testing Checklist
+
+After reverting:
+- [ ] All imports changed back to Neon
+- [ ] `neonConfig.pipelineConnect = 'password';` added to `server/db.ts`
+- [ ] All `postgres()` calls changed to `neon()`
+- [ ] All `drizzle-orm/postgres-js` changed to `drizzle-orm/neon-http`
+- [ ] `await client.end()` calls removed from scripts
+- [ ] Database connection test passes: `node server/wake-db.js`
+- [ ] Application starts without errors
+
+---
+
+## Notes
+
+- **Dotenv configuration:** Keep it - useful for both Neon and PostgreSQL
+- **Syntax fixes in auth.ts:** Do NOT revert - these were pre-existing bugs
+- **Schema validator fix:** Optional to revert - works with both drivers
+- **No schema changes:** Database schema remains the same
+- **No business logic changes:** Only database driver changed
+
+---
+
+---
+
+### 10. `server/services/dashboardAnalyticsService.ts` - Dashboard KPIs Fix (PostgreSQL Compatibility)
+
+**Issue:** 
+- Error: `TypeError: Cannot read properties of undefined (reading '0')` at line 123
+- Dashboard API `/api/dashboard/overview` returns 500
+- Breaks dashboard functionality (search, notifications, quick add, profile menu)
+
+**BEFORE:**
+```typescript
+const statsResult = await db.execute(sql`...`);
+const stats = statsResult.rows[0]; // ❌ Fails if rows is undefined or empty
+
+const [facilityCount] = await db.select(...); // ❌ Fails if result is empty
+```
+
+**AFTER:**
+```typescript
+const statsResult = await db.execute(sql`...`);
+
+// Safe access to stats result - handle both Neon and PostgreSQL result structures
+let stats: any = null;
+if (statsResult && statsResult.rows && Array.isArray(statsResult.rows) && statsResult.rows.length > 0) {
+  stats = statsResult.rows[0];
+} else if (Array.isArray(statsResult) && statsResult.length > 0) {
+  stats = statsResult[0];
+}
+
+// Safe facility count access
+const facilityCountResult = await db.select(...);
+const facilityCount = facilityCountResult.length > 0 ? facilityCountResult[0] : null;
+```
+
+**Revert:** ⚠️ Optional - This fix ensures compatibility with PostgreSQL result structures and prevents crashes when database returns empty results. Recommended to keep.
+
+---
+
+### 11. `server/tools/import-questions.ts` - CSV Question Import with REC Mapping Integration
+
+**Date:** Current Session  
+**Purpose:** Integrate assessment questions and REC mappings from CSV file (`Fixes/questions.csv`)
+
+**Changes Made:**
+
+#### A. Added Imports
+**Location:** Top of file (after existing imports)
+
+**Code Added:**
+```typescript
+import { recMapping, questionMapping, intakeQuestions } from "../../shared/schema";
+import { and } from "drizzle-orm";
+```
+
+**Revert:** Remove these imports
+
+---
+
+#### B. Added REC Code Extraction Function
+**Location:** After `classifyBucket` function (around line 80)
+
+**Code Added:**
+```typescript
+/**
+ * Extract and normalize REC codes from tags string
+ * Examples: "CR1;A" -> ["CR1", "APP-A"], "C;D" -> ["APP-C", "APP-D"]
+ */
+const extractRecCodes = (tags?: string|null): string[] => {
+  if (!tags) return [];
+  const tagParts = String(tags).split(/[|;,]/).map(t => t.trim()).filter(Boolean);
+  const recCodes: string[] = [];
+  
+  for (const tag of tagParts) {
+    const upper = tag.toUpperCase();
+    // Check for CR codes (CR1, CR2, etc.)
+    const crMatch = upper.match(/^CR([1-9]|10)$/);
+    if (crMatch) {
+      recCodes.push(upper);
+      continue;
+    }
+    // Check for APP codes (APP-A, APP-B, etc.)
+    const appMatch = upper.match(/^APP-([A-G])$/);
+    if (appMatch) {
+      recCodes.push(upper);
+      continue;
+    }
+    // Check for single letter appendices (A, B, C, etc.)
+    if (/^[A-G]$/.test(upper)) {
+      recCodes.push(`APP-${upper}`);
+      continue;
+    }
+    // Check for other REC code patterns
+    if (upper.length > 0 && !recCodes.includes(upper)) {
+      recCodes.push(upper);
+    }
+  }
+  
+  return recCodes;
+};
+```
+
+**Revert:** Remove this entire function
+
+---
+
+#### C. Added System Intake Question Helper
+**Location:** After `extractRecCodes` function
+
+**Code Added:**
+```typescript
+/**
+ * Get or create a system intake question for CSV-imported question mappings
+ */
+async function getOrCreateSystemIntakeQuestion(): Promise<string> {
+  // Try to find an existing system intake question
+  const existing = await db.select().from(intakeQuestions)
+    .where(eq(intakeQuestions.questionId, "system-csv-import"))
+    .limit(1);
+  
+  if (existing.length > 0) {
+    return existing[0].id;
+  }
+  
+  // If not found, use the first available intake question
+  const firstIntake = await db.select().from(intakeQuestions).limit(1);
+  if (firstIntake.length > 0) {
+    return firstIntake[0].id;
+  }
+  
+  // If no intake questions exist, create a system one
+  const [systemIntake] = await db.insert(intakeQuestions).values({
+    questionId: "system-csv-import",
+    phase: "system",
+    text: "System question for CSV-imported assessment questions",
+    questionType: "BOOLEAN",
+    required: false,
+    isActive: true
+  }).returning();
+  
+  return systemIntake.id;
+}
+```
+
+**Revert:** Remove this entire function
+
+---
+
+#### D. Added REC Mapping Helper
+**Location:** After `getOrCreateSystemIntakeQuestion` function
+
+**Code Added:**
+```typescript
+/**
+ * Ensure REC code exists in recMapping table
+ */
+async function ensureRecMapping(recCode: string): Promise<void> {
+  const existing = await db.select().from(recMapping)
+    .where(eq(recMapping.recCode, recCode))
+    .limit(1);
+  
+  if (existing.length === 0) {
+    // Create a basic REC mapping entry
+    await db.insert(recMapping).values({
+      recCode: recCode,
+      recName: recCode, // Default name, can be updated later
+      description: `REC code ${recCode} imported from CSV`,
+      isActive: true
+    });
+  }
+}
+```
+
+**Revert:** Remove this entire function
+
+---
+
+#### E. Modified Import Loop - Added System Intake Question Setup
+**Location:** Inside `importQuestions` function, before the main loop
+
+**Code Added:**
+```typescript
+// Get system intake question for REC mappings
+const systemIntakeQuestionId = await getOrCreateSystemIntakeQuestion();
+```
+
+**Revert:** Remove this line
+
+---
+
+#### F. Modified Question Upsert - Added Order Preservation
+**Location:** Inside question upsert logic (both insert and update paths)
+
+**BEFORE:**
+```typescript
+await db.insert(questions).values({
+  questionId: questionIdKey,
+  clauseId: clause[0].id,
+  text,
+  responseType,
+  required,
+  evidenceRequired,
+  appendix,
+  weight,
+  helpText,
+  category,
+  category_code: category_code,
+  categoryName: category_name,
+  tags
+});
+```
+
+**AFTER:**
+```typescript
+const inserted = await db.insert(questions).values({
+  questionId: questionIdKey,
+  clauseId: clause[0].id,
+  text,
+  responseType,
+  required,
+  evidenceRequired,
+  appendix,
+  weight,
+  helpText,
+  category,
+  category_code: category_code,
+  categoryName: category_name,
+  tags,
+  order: total // Preserve CSV order
+}).returning();
+questionRecord = inserted[0];
+```
+
+**Also changed update path:**
+```typescript
+const updated = await db.update(questions)
+  .set({
+    // ... same fields ...
+    order: total // Preserve CSV order
+  })
+  .where(eq(questions.questionId, questionIdKey))
+  .returning();
+questionRecord = updated[0];
+```
+
+**Revert:** 
+- Remove `.returning()` calls
+- Remove `questionRecord = inserted[0];` and `questionRecord = updated[0];` assignments
+- Remove `order: total` from both insert and update
+- Change back to `await db.insert(...)` and `await db.update(...)` without returning
+
+---
+
+#### G. Added REC Mapping Creation Logic
+**Location:** After question upsert, before bucket classification
+
+**Code Added:**
+```typescript
+// Extract and process REC codes from tags
+const recCodes = extractRecCodes(tagsRaw);
+
+// Ensure all REC codes exist and create question-to-REC mappings
+for (const recCode of recCodes) {
+  await ensureRecMapping(recCode);
+  
+  // Check if mapping already exists
+  const existingMapping = await db.select().from(questionMapping)
+    .where(
+      and(
+        eq(questionMapping.assessmentQuestionId, questionRecord.id),
+        eq(questionMapping.recCode, recCode)
+      )
+    )
+    .limit(1);
+  
+  if (existingMapping.length === 0) {
+    // Create question-to-REC mapping
+    try {
+      await db.insert(questionMapping).values({
+        intakeQuestionId: systemIntakeQuestionId,
+        assessmentQuestionId: questionRecord.id,
+        recCode: recCode,
+        priority: "MEDIUM",
+        isActive: true,
+        mappingLogic: {
+          source: "CSV import",
+          rationale: `Question mapped to ${recCode} based on CSV tags`
+        }
+      });
+    } catch (error) {
+      // Ignore unique constraint violations (mapping already exists)
+      if (error instanceof Error && !error.message.includes('unique')) {
+        console.warn(`Warning: Failed to create mapping for question ${questionIdKey} to ${recCode}: ${error.message}`);
+      }
+    }
+  }
+}
+```
+
+**Revert:** Remove this entire block (from `// Extract and process REC codes` to the end of the for loop)
+
+---
+
+## Revert Instructions for CSV Import Integration
+
+**IMPORTANT:** These revert instructions are now integrated into the main revert process (see Step 3 above). When reverting the database configuration, also revert the CSV import integration to restore the project to its original state.
+
+### Quick Reference:
+1. Remove `extractRecCodes`, `getOrCreateSystemIntakeQuestion`, and `ensureRecMapping` functions
+2. Remove `recMapping, questionMapping, intakeQuestions` from imports
+3. Remove `and` from drizzle-orm import
+4. Remove system intake question setup line
+5. Remove REC mapping creation block
+6. Revert question upsert to original (remove `.returning()`, `questionRecord`, and `order: total`)
+
+**Note:** Reverting these changes will remove the REC mapping integration but questions will still be imported from CSV. The questions just won't be linked to REC codes automatically.
+
+---
+
+**End of Documentation**
+

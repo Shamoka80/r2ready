@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { cacheService } from '../services/cachingService.js';
+import { getAllCacheStats, cacheInvalidation } from '../services/dataCache.js';
 const router = Router();
 /**
  * Prometheus metrics endpoint for cache monitoring
@@ -60,6 +61,89 @@ router.post('/cleanup', async (req, res) => {
         console.error('Failed to trigger cleanup:', error);
         res.status(500).json({
             error: 'Failed to trigger cleanup',
+            message: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+/**
+ * Get statistics for all data caches (LRU caches for static data)
+ * GET /api/cache/stats - Returns statistics for question, REC, must-pass, and config caches
+ */
+router.get('/stats', async (req, res) => {
+    try {
+        const stats = getAllCacheStats();
+        res.json({
+            success: true,
+            caches: stats,
+            timestamp: new Date().toISOString()
+        });
+    }
+    catch (error) {
+        console.error('Failed to get cache stats:', error);
+        res.status(500).json({
+            error: 'Failed to get cache stats',
+            message: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+/**
+ * Invalidate specific cache type
+ * POST /api/cache/invalidate/:type - Invalidates a specific cache (questions, recMappings, mustPassRules, scoringConfigs)
+ */
+router.post('/invalidate/:type', async (req, res) => {
+    try {
+        const { type } = req.params;
+        const { id } = req.body;
+        switch (type) {
+            case 'questions':
+                cacheInvalidation.invalidateQuestion(id);
+                break;
+            case 'recMappings':
+                cacheInvalidation.invalidateRecMapping(id);
+                break;
+            case 'mustPassRules':
+                cacheInvalidation.invalidateMustPassRules();
+                break;
+            case 'scoringConfigs':
+                cacheInvalidation.invalidateScoringConfig(id);
+                break;
+            default:
+                return res.status(400).json({
+                    error: 'Invalid cache type',
+                    validTypes: ['questions', 'recMappings', 'mustPassRules', 'scoringConfigs']
+                });
+        }
+        res.json({
+            success: true,
+            message: `Cache invalidated: ${type}${id ? ` (id: ${id})` : ''}`,
+            timestamp: new Date().toISOString()
+        });
+    }
+    catch (error) {
+        console.error('Failed to invalidate cache:', error);
+        res.status(500).json({
+            error: 'Failed to invalidate cache',
+            message: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+/**
+ * Invalidate all data caches
+ * POST /api/cache/invalidate/all - Clears all LRU caches
+ */
+router.post('/invalidate/all', async (req, res) => {
+    try {
+        cacheInvalidation.invalidateAll();
+        res.json({
+            success: true,
+            message: 'All caches invalidated',
+            timestamp: new Date().toISOString()
+        });
+    }
+    catch (error) {
+        console.error('Failed to invalidate all caches:', error);
+        res.status(500).json({
+            error: 'Failed to invalidate all caches',
             message: error instanceof Error ? error.message : 'Unknown error'
         });
     }

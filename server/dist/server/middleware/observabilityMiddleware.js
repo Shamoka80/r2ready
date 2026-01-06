@@ -1,5 +1,5 @@
-import { ConsistentLogService, generateCorrelationId } from '../services/consistentLogService.js';
-import { cacheService } from '../services/cachingService.js';
+import { ConsistentLogService, generateCorrelationId } from '../services/consistentLogService';
+import { cacheService } from '../services/cachingService';
 export function observabilityMiddleware(req, res, next) {
     const logger = ConsistentLogService.getInstance();
     // Set request start time and correlation ID

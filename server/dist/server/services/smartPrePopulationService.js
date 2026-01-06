@@ -1,5 +1,5 @@
-import { db } from '../db.js';
-import { intakeForms, organizationProfiles, facilityProfiles, tenants } from '../../shared/schema.js';
+import { db } from '../db';
+import { intakeForms, organizationProfiles, facilityProfiles, tenants } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
 /**
  * Smart Pre-Population Service for Phase 4

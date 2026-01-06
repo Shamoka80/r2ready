@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
-import { db } from '../db.js';
-import { answers, assessments, questions, assessmentSessions, clauses } from '../../shared/schema.js';
+import { db } from "../db";
+import { answers, assessments, questions, assessmentSessions, clauses } from "../../shared/schema";
 import { eq, and, sql, isNull, inArray } from "drizzle-orm";
-import { AuthService } from '../services/authService.js';
+import { AuthService } from "../services/authService";
 const router = Router();
 // All routes require authentication
 router.use(AuthService.authMiddleware);
@@ -106,6 +106,10 @@ router.post("/:assessmentId/answers/batch", async (req, res) => {
         }
         const savedAnswers = [];
         const questionIds = answerData.map(a => a.questionId);
+        console.log(`📝 [Batch Save] Processing ${answerData.length} answers for assessment ${assessmentId}:`, {
+            questionIds,
+            assessmentStdId: assessment.stdId
+        });
         // Get all questions for validation and scoring
         const assessmentQuestions = await db.query.questions.findMany({
             where: inArray(questions.id, questionIds),
@@ -113,11 +117,26 @@ router.post("/:assessmentId/answers/batch", async (req, res) => {
                 clause: true,
             }
         });
+        console.log(`📝 [Batch Save] Found ${assessmentQuestions.length} questions in database:`, assessmentQuestions.map(q => ({
+            id: q.id,
+            questionId: q.questionId,
+            hasClause: !!q.clause,
+            clauseStdId: q.clause?.stdId
+        })));
         // Process each answer
         for (const answerItem of answerData) {
             const question = assessmentQuestions.find(q => q.id === answerItem.questionId);
-            if (!question || !question.clause || question.clause.stdId !== assessment.stdId) {
-                continue; // Skip invalid questions
+            if (!question) {
+                console.warn(`⚠️ [Batch Save] Question not found: ${answerItem.questionId}`);
+                continue;
+            }
+            if (!question.clause) {
+                console.warn(`⚠️ [Batch Save] Question ${question.questionId} has no clause`);
+                continue;
+            }
+            if (question.clause.stdId !== assessment.stdId) {
+                console.warn(`⚠️ [Batch Save] Question ${question.questionId} stdId mismatch: ${question.clause.stdId} !== ${assessment.stdId}`);
+                continue;
             }
             const score = calculateQuestionScore(answerItem.value, question, answerItem.compliance);
             // Check for existing answer
@@ -289,13 +308,18 @@ router.delete("/:assessmentId/answers/:questionId", async (req, res) => {
 function calculateQuestionScore(value, question, compliance) {
     // Basic scoring algorithm - can be enhanced based on business rules
     let baseScore = 0;
+    // Normalize value: handle JSON-encoded strings and convert to lowercase for comparison
+    let normalizedValue = value;
+    if (typeof value === 'string') {
+        normalizedValue = value.toLowerCase().trim();
+    }
     if (compliance) {
         switch (compliance) {
             case "COMPLIANT":
                 baseScore = 100;
                 break;
             case "PARTIALLY_COMPLIANT":
-                baseScore = 60;
+                baseScore = 50;
                 break;
             case "NON_COMPLIANT":
                 baseScore = 0;
@@ -308,14 +332,17 @@ function calculateQuestionScore(value, question, compliance) {
         }
     }
     else if (question.responseType === "yes_no") {
-        if (value === "Yes" || value === true)
+        // Case-insensitive matching for answer values
+        if (normalizedValue === "yes" || value === true)
             baseScore = 100;
-        else if (value === "No" || value === false)
+        else if (normalizedValue === "no" || value === false)
             baseScore = 0;
-        else if (value === "Partial")
-            baseScore = 60;
-        else if (value === "N/A")
+        else if (normalizedValue === "partial")
+            baseScore = 50;
+        else if (normalizedValue === "n/a")
             baseScore = 100;
+        else if (normalizedValue === "in progress")
+            baseScore = 25;
     }
     else if (question.responseType === "scale") {
         // Assume scale of 1-5, normalize to 0-100

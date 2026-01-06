@@ -38,6 +38,10 @@ import calendarRoutes from './routes/calendar.js';
 import cacheMetricsRoutes from './routes/cache-metrics.js';
 // Import testing routes (development/test only)
 import testingRoutes from './routes/testing.js';
+// Import Phase 4: Configuration Layer routes
+import configurationRoutes from './routes/configuration.js';
+// Import Phase 3 Track 1: Performance Observability routes
+import adminPerformanceRoutes from './routes/admin-performance.js';
 export async function registerRoutes(app) {
     // Health check endpoint for e2e tests and monitoring
     app.get('/api/health', (req, res) => {
@@ -128,6 +132,10 @@ export async function registerRoutes(app) {
     app.use('/api/calendar', calendarRoutes);
     // Cache metrics and management
     app.use('/api/cache', cacheMetricsRoutes);
+    // Phase 4: Configuration Layer (R2v3 Algorithm Enhancement)
+    app.use('/api/configuration', configurationRoutes);
+    // Phase 3 Track 1: Performance Observability (Admin-only)
+    app.use('/api/admin/performance', adminPerformanceRoutes);
     // Testing helpers (development/test only)
     app.use('/api/testing', testingRoutes);
     // Error handling middleware

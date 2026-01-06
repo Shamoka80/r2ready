@@ -1,5 +1,5 @@
 
-import { neon } from '@neondatabase/serverless';
+import postgres from 'postgres';
 
 async function wakeDatabase() {
   const maxRetries = 5;
@@ -18,11 +18,12 @@ async function wakeDatabase() {
     try {
       console.log(`Attempt ${attempt}/${maxRetries}...`);
       
-      const sql = neon(process.env.DATABASE_URL);
-      const result = await sql`SELECT NOW() as current_time, 'Database is awake!' as message`;
+      const client = postgres(process.env.DATABASE_URL);
+      const result = await client`SELECT NOW() as current_time, 'Database is connected!' as message`;
       
       console.log('✅ Database is connected:', result);
       console.log('✅ Connection successful!');
+      await client.end(); // Close connection after use
       process.exit(0);
       
     } catch (error) {
@@ -34,7 +35,7 @@ async function wakeDatabase() {
       } else {
         console.error('❌ All retry attempts failed');
         console.error('Please check:');
-        console.error('1. Your Neon database is accessible');
+        console.error('1. Your PostgreSQL database is accessible');
         console.error('2. Your DATABASE_URL is correct');
         console.error('3. Your database credentials are valid');
         process.exit(1);

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { oauthService } from '../services/oauthService.js';
+import { oauthService } from '../services/oauthService';
 const router = Router();
 /**
  * Get OAuth authorization URL for a provider

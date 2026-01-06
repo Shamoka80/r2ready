@@ -8,8 +8,8 @@
  * This is safe to run even in environments with both test and real data.
  */
 
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 import { sql } from "drizzle-orm";
 import * as schema from "../shared/schema.js";
 import dotenv from "dotenv";
@@ -20,8 +20,8 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL environment variable is required");
 }
 
-const connection = neon(process.env.DATABASE_URL);
-const db = drizzle(connection, { schema });
+const client = postgres(process.env.DATABASE_URL);
+const db = drizzle(client, { schema });
 
 async function purgeTestUsers() {
   console.log("🗑️  Starting test user purge operation...");

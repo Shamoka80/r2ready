@@ -1,8 +1,8 @@
-import { db } from '../db.js';
+import { db } from '../db';
 import { eq, and, inArray, desc, count } from 'drizzle-orm';
-import { users, assessments, questions, answers, evidenceFiles, facilityProfiles } from '../../shared/schema.js';
-import { cacheService, CacheKeys, CacheTags } from './cachingService.js';
-import { ConsistentLogService } from './consistentLogService.js';
+import { users, assessments, questions, answers, evidenceFiles, facilityProfiles } from '../../shared/schema';
+import { cacheService, CacheKeys, CacheTags } from './cachingService';
+import { ConsistentLogService } from './consistentLogService';
 export class QueryOptimizationService {
     logger = ConsistentLogService.getInstance();
     queryMetrics = [];

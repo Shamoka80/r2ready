@@ -1,4 +1,4 @@
-import ObservabilityService from './observabilityService.js';
+import ObservabilityService from './observabilityService';
 export class ConsistentLogService {
     static instance;
     performanceTrackers = new Map();

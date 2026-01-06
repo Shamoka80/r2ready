@@ -1,10 +1,10 @@
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, Header } from 'docx';
-import { db } from '../db.js';
-import { assessments, answers, questions, clauses, facilityProfiles } from '../../shared/schema.js';
+import { db } from '../db';
+import { assessments, answers, questions, clauses, facilityProfiles } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
-import AdvancedScoringService from './advancedScoringService.js';
+import AdvancedScoringService from './advancedScoringService';
 // Placeholder for TemplateProcessor and DocumentGenerationOptions, assuming they exist elsewhere
 // In a real scenario, these would be imported from their respective files.
 class TemplateProcessor {

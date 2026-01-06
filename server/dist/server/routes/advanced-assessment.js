@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { AuthService } from '../services/authService.js';
-import { assessmentManagementService } from '../services/assessmentManagementService.js';
-import { advancedScoringService } from '../services/advancedScoringService.js';
+import { AuthService } from '../services/authService';
+import { assessmentManagementService } from '../services/assessmentManagementService';
+import { advancedScoringService } from '../services/advancedScoringService';
 const router = Router();
 // Advanced question filtering
 router.post('/questions/filter', AuthService.authMiddleware, async (req, res) => {
