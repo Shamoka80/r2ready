@@ -112,17 +112,16 @@ class ExportService {
   // Production-ready export endpoints with proper error handling
   static async generatePDF(assessmentId: string, tenantId: string, templateType: string = 'technical-report'): Promise<Buffer> {
     try {
-      const processor = new TemplateProcessor();
-
+      // Use the real templateProcessor instance, not the stub TemplateProcessor class
       switch (templateType) {
         case 'executive-summary':
-          return processor.generateExecutiveSummaryPDF(assessmentId, tenantId);
+          return templateProcessor.generateExecutiveSummaryPDF(assessmentId, tenantId);
         case 'gap-analysis':
-          return processor.generateGapAnalysisPDF(assessmentId, tenantId);
+          return templateProcessor.generateGapAnalysisPDF(assessmentId, tenantId);
         case 'compliance-report':
-          return processor.generateComplianceReportPDF(assessmentId, tenantId);
+          return templateProcessor.generateComplianceReportPDF(assessmentId, tenantId);
         default:
-          return processor.generatePDFTechnicalReport(assessmentId, tenantId);
+          return templateProcessor.generatePDFTechnicalReport(assessmentId, tenantId);
       }
     } catch (error) {
       console.error('PDF generation failed:', error);
@@ -132,15 +131,14 @@ class ExportService {
 
   static async generateExcel(assessmentId: string, tenantId: string, templateType: string = 'dashboard'): Promise<Buffer> {
     try {
-      const processor = new TemplateProcessor();
-
+      // Use the real templateProcessor instance, not the stub TemplateProcessor class
       switch (templateType) {
         case 'analytics':
-          return processor.generateAnalyticsDashboard(assessmentId, tenantId);
+          return templateProcessor.generateAnalyticsDashboard(assessmentId, tenantId);
         case 'gap-tracker':
-          return processor.generateGapTrackingSheet(assessmentId, tenantId);
+          return templateProcessor.generateGapTrackingSheet(assessmentId, tenantId);
         default:
-          return processor.generateExcelDashboard(assessmentId, tenantId);
+          return templateProcessor.generateExcelDashboard(assessmentId, tenantId);
       }
     } catch (error) {
       console.error('Excel generation failed:', error);
@@ -150,15 +148,14 @@ class ExportService {
 
   static async generateWord(assessmentId: string, tenantId: string, templateType: string = 'executive-summary'): Promise<Buffer> {
     try {
-      const processor = new TemplateProcessor();
-
+      // Use the real templateProcessor instance, not the stub TemplateProcessor class
       switch (templateType) {
         case 'action-plan':
-          return processor.generateActionPlanDocument(assessmentId, tenantId);
+          return templateProcessor.generateActionPlanDocument(assessmentId, tenantId);
         case 'compliance-manual':
-          return processor.generateComplianceManual(assessmentId, tenantId);
+          return templateProcessor.generateComplianceManual(assessmentId, tenantId);
         default:
-          return processor.generateWordReport(assessmentId, tenantId);
+          return templateProcessor.generateWordReport(assessmentId, tenantId);
       }
     } catch (error) {
       console.error('Word generation failed:', error);
@@ -168,15 +165,14 @@ class ExportService {
 
   static async generateEmail(assessmentId: string, tenantId: string, templateType: string = 'consultation'): Promise<string> {
     try {
-      const processor = new TemplateProcessor();
-
+      // Use the real templateProcessor instance, not the stub TemplateProcessor class
       switch (templateType) {
         case 'progress-update':
-          return processor.generateProgressUpdateEmail(assessmentId, tenantId);
+          return templateProcessor.generateProgressUpdateEmail(assessmentId, tenantId);
         case 'completion-notice':
-          return processor.generateCompletionNoticeEmail(assessmentId, tenantId);
+          return templateProcessor.generateCompletionNoticeEmail(assessmentId, tenantId);
         default:
-          return processor.generateEmailSummary(assessmentId, tenantId);
+          return templateProcessor.generateEmailSummary(assessmentId, tenantId);
       }
     } catch (error) {
       console.error('Email generation failed:', error);
