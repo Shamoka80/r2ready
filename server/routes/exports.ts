@@ -362,6 +362,55 @@ router.get('/jobs/:jobId/download', (async (req: AuthenticatedRequest, res: Resp
   }
 }) as any);
 
+// Word Executive Summary export - synchronous
+router.get("/:assessmentId/word",
+  rateLimitMiddleware.general,
+  (async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { assessmentId } = req.params;
+      const validationResult = exportRequestSchema.safeParse({ assessmentId, format: 'word' });
+      if (!validationResult.success) { return res.status(400).json({ success: false, error: 'Invalid request parameters', details: validationResult.error.errors }); }
+      const { assessmentId: validatedAssessmentId } = validationResult.data;
+      const assessment = await db.query.assessments.findFirst({ where: and(eq(assessments.id, validatedAssessmentId), eq(assessments.tenantId, req.user.tenantId)) });
+      if (!assessment) { return res.status(404).json({ success: false, error: 'Assessment not found' }); }
+      console.log(`[Exports] Generating Word document synchronously for assessment ${validatedAssessmentId}`);
+      const buffer = await ExportService.generateWord(validatedAssessmentId, req.user.tenantId, 'executive-summary');
+      if (!buffer || buffer.length === 0) { console.error('[Exports] Generated Word buffer is empty!'); return res.status(500).json({ success: false, error: 'Word generation produced empty buffer' }); }
+      console.log(`[Exports] Word document generated successfully, buffer size: ${buffer.length} bytes`);
+      const safeFilename = assessment.title.replace(/[^a-z0-9]/gi, '_').substring(0, 100);
+      const filename = `${safeFilename}_R2v3_Executive_Summary.docx`;
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', buffer.length.toString());
+      res.send(buffer);
+    } catch (error) { console.error('Word export generation error:', error); res.status(500).json({ success: false, error: 'Failed to generate Word export', details: error instanceof Error ? error.message : 'Unknown error' }); }
+  }) as any);
+
+// Email Consultation export - synchronous
+router.get("/:assessmentId/email",
+  rateLimitMiddleware.general,
+  (async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { assessmentId } = req.params;
+      const { templateType } = req.query;
+      const validationResult = exportRequestSchema.safeParse({ assessmentId, templateType: templateType as string || 'consultation', format: 'email' });
+      if (!validationResult.success) { return res.status(400).json({ success: false, error: 'Invalid request parameters', details: validationResult.error.errors }); }
+      const { assessmentId: validatedAssessmentId } = validationResult.data;
+      const assessment = await db.query.assessments.findFirst({ where: and(eq(assessments.id, validatedAssessmentId), eq(assessments.tenantId, req.user.tenantId)) });
+      if (!assessment) { return res.status(404).json({ success: false, error: 'Assessment not found' }); }
+      console.log(`[Exports] Generating Email template synchronously for assessment ${validatedAssessmentId}`);
+      const emailContent = await ExportService.generateEmail(validatedAssessmentId, req.user.tenantId, templateType as string || 'consultation');
+      if (!emailContent || emailContent.length === 0) { console.error('[Exports] Generated Email content is empty!'); return res.status(500).json({ success: false, error: 'Email generation produced empty content' }); }
+      console.log(`[Exports] Email template generated successfully, content length: ${emailContent.length} characters`);
+      const safeFilename = assessment.title.replace(/[^a-z0-9]/gi, '_').substring(0, 100);
+      const filename = `${safeFilename}_Email_Consultation.html`;
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(emailContent);
+    } catch (error) { console.error('Email export generation error:', error); res.status(500).json({ success: false, error: 'Failed to generate Email export', details: error instanceof Error ? error.message : 'Unknown error' }); }
+  }) as any);
+
+
 // Enhanced PDF export - synchronous (most common use case)
 router.get("/:assessmentId/pdf/:templateType?", 
   rateLimitMiddleware.pdfExport,
