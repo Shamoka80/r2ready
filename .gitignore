@@ -61,3 +61,4 @@ Thumbs.db
 yarn-debug.log*
 yarn-error.log*
 .yarn-integrity
+config.bat
