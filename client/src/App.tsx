@@ -290,6 +290,17 @@ function App() {
               </ProtectedRoute>
             )} />
 
+            <Route path="/help" component={() => (
+              <ProtectedRoute>
+                <SetupGate>
+                  <AppLayout>
+                    <Help />
+                    <Toaster />
+                  </AppLayout>
+                </SetupGate>
+              </ProtectedRoute>
+            )} />
+
             <Route path="/clients" component={() => (
               <ProtectedRoute>
                 <SetupGate>
