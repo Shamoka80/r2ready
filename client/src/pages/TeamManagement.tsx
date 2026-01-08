@@ -76,6 +76,9 @@ export default function TeamManagement() {
     email: '',
     role: 'user',
   });
+  const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+  const [selectedRole, setSelectedRole] = useState<string>('user');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -122,6 +125,8 @@ export default function TeamManagement() {
       apiPut(`/api/team/members/${userId}/role`, { role }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/team/members'] });
+      setIsRoleDialogOpen(false);
+      setSelectedMember(null);
       toast({
         title: 'Role Updated',
         description: 'User role has been updated successfully',
@@ -135,6 +140,21 @@ export default function TeamManagement() {
       });
     },
   });
+
+  const handleChangeRoleClick = (member: TeamMember) => {
+    setSelectedMember(member);
+    setSelectedRole(member.role);
+    setIsRoleDialogOpen(true);
+  };
+
+  const handleConfirmRoleChange = () => {
+    if (selectedMember && selectedRole) {
+      updateUserRole.mutate({
+        userId: selectedMember.id,
+        role: selectedRole,
+      });
+    }
+  };
 
   // Deactivate user mutation
   const deactivateUser = useMutation({
@@ -390,10 +410,7 @@ export default function TeamManagement() {
                             Edit Details
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => updateUserRole.mutate({ 
-                              userId: member.id, 
-                              role: member.role === 'admin' ? 'user' : 'admin' 
-                            })}
+                            onClick={() => handleChangeRoleClick(member)}
                           >
                             <Shield className="h-4 w-4 mr-2" />
                             Change Role
@@ -423,6 +440,48 @@ export default function TeamManagement() {
           )}
         </CardContent>
       </Card>
+
+      {/* Role Change Dialog */}
+      <Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Role</DialogTitle>
+            <DialogDescription>
+              Select a new role for {selectedMember ? `${selectedMember.firstName} ${selectedMember.lastName}` : 'this user'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="role-select">Role</Label>
+              <Select
+                value={selectedRole}
+                onValueChange={setSelectedRole}
+              >
+                <SelectTrigger id="role-select">
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin - Full access</SelectItem>
+                  <SelectItem value="manager">Manager - Create/edit assessments</SelectItem>
+                  <SelectItem value="user">User - Complete assessments</SelectItem>
+                  <SelectItem value="viewer">Viewer - Read-only access</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRoleDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleConfirmRoleChange}
+              disabled={updateUserRole.isPending || !selectedRole || (selectedMember && selectedRole === selectedMember.role)}
+            >
+              Update Role
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Role Descriptions */}
       <Card>

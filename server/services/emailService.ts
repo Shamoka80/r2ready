@@ -49,6 +49,7 @@ class EmailService {
     
     if (isConfigured) {
       try {
+        console.log('🔧 Initializing Microsoft 365 SMTP...');
         this.ms365Transporter = await microsoft365SmtpService.initialize();
         if (this.ms365Transporter) {
           this.providers.push({
@@ -56,14 +57,18 @@ class EmailService {
             transporter: this.ms365Transporter,
             isConfigured: true
           });
+          console.log('✅ Email service initialized with Microsoft 365 SMTP provider');
           this.logger.info('Email service initialized with Microsoft 365 SMTP provider');
         } else {
+          console.warn('⚠️ Microsoft 365 SMTP configuration failed - connection could not be established');
           this.logger.warn('Microsoft 365 SMTP configuration failed - connection could not be established');
         }
       } catch (error: any) {
+        console.error('❌ Failed to initialize Microsoft 365 SMTP provider:', error);
         this.logger.error('Failed to initialize Microsoft 365 SMTP provider', error as any);
       }
     } else {
+      console.warn('⚠️ Microsoft 365 SMTP not configured - emails will be logged to console only');
       this.logger.warn('Microsoft 365 SMTP not configured - check environment variables');
     }
 
@@ -136,6 +141,14 @@ class EmailService {
         };
 
         if (provider.name === 'Console') {
+          // Console provider - log email details for development
+          console.log('\n========== EMAIL (Console Provider - Not Sent) ==========');
+          console.log('To:', emailData.to);
+          console.log('From:', emailData.from);
+          console.log('Subject:', emailData.subject);
+          console.log('HTML Preview (first 200 chars):', emailData.html.substring(0, 200) + '...');
+          console.log('Text Preview:', emailData.text?.substring(0, 200));
+          console.log('===========================================================\n');
           // Reset index if successful
           this.currentProviderIndex = 0;
           return true;
@@ -143,7 +156,19 @@ class EmailService {
 
         // Microsoft 365 SMTP sending
         if (provider.name === 'Microsoft365' && provider.transporter) {
+          console.log('📤 Sending email via Microsoft 365 SMTP...', {
+            to: options.to,
+            from: emailData.from,
+            subject: options.subject,
+          });
+          
           const result = await provider.transporter.sendMail(emailData);
+          
+          console.log('✅ Email sent successfully via Microsoft 365 SMTP', {
+            messageId: result.messageId,
+            to: options.to,
+            from: emailData.from,
+          });
           
           this.logger.info('Email sent successfully via Microsoft 365 SMTP', {
             metadata: {
@@ -329,6 +354,107 @@ If you didn't request this password reset, please ignore this email.
           </body>
         </html>
       `
+    });
+  }
+
+  /**
+   * Send team invitation email with invitation link
+   */
+  async sendTeamInviteEmail(
+    to: string,
+    firstName: string,
+    role: string,
+    invitationLink: string,
+    tenantId?: string
+  ): Promise<boolean> {
+    const roleDisplayNames: Record<string, string> = {
+      'business_owner': 'Admin',
+      'facility_manager': 'Manager',
+      'team_member': 'User',
+      'viewer': 'Viewer',
+      'compliance_officer': 'Manager',
+      'consultant_owner': 'Admin',
+      'lead_consultant': 'Manager',
+      'associate_consultant': 'User',
+      'client_collaborator': 'Viewer',
+    };
+
+    const roleName = roleDisplayNames[role] || role;
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Team Invitation - RuR2</title>
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700;">RuR2</h1>
+            <p style="color: rgba(255, 255, 255, 0.9); margin: 5px 0 0 0; font-size: 14px;">R2 Compliance Platform</p>
+          </div>
+          <div style="background: #ffffff; padding: 40px 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h2 style="color: #333; margin-top: 0; font-size: 24px;">You're Invited to Join the Team! 🎉</h2>
+            <p style="font-size: 16px; color: #555;">Hi ${firstName},</p>
+            <p style="font-size: 16px; color: #555;">You've been invited to join a team on RuR2. You've been assigned the role of <strong>${roleName}</strong>.</p>
+            
+            <div style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); padding: 20px; border-radius: 8px; margin: 25px 0;">
+              <h3 style="color: #333; margin-top: 0; font-size: 18px;">Your Role: ${roleName}</h3>
+              <p style="color: #555; margin: 0; font-size: 14px;">
+                ${roleName === 'Admin' ? 'Full organization management, billing, users, all facilities' : ''}
+                ${roleName === 'Manager' ? 'Create/edit assessments, manage assigned facilities' : ''}
+                ${roleName === 'User' ? 'Complete assigned assessments, upload evidence' : ''}
+                ${roleName === 'Viewer' ? 'Read-only report access' : ''}
+              </p>
+            </div>
+
+            <p style="font-size: 16px; color: #555;">Click the button below to accept the invitation and set up your account:</p>
+
+            <div style="text-align: center; margin: 35px 0;">
+              <a href="${invitationLink}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);">Accept Invitation</a>
+            </div>
+
+            <p style="color: #666; font-size: 14px; margin-top: 20px; text-align: center;">Or copy and paste this link into your browser:</p>
+            <p style="color: #667eea; font-size: 13px; word-break: break-all; background-color: #f8f9fa; padding: 12px; border-radius: 4px; border-left: 3px solid #667eea;">${invitationLink}</p>
+
+            <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 25px 0; border-radius: 4px;">
+              <p style="color: #856404; font-size: 14px; margin: 0;">⏱️ This invitation link will expire in 7 days. Please accept it soon!</p>
+            </div>
+
+            <p style="color: #666; font-size: 14px;">If you didn't expect this invitation, you can safely ignore this email.</p>
+            <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 35px 0;">
+            <p style="color: #999; font-size: 12px; text-align: center; margin: 0;">© ${new Date().getFullYear()} RuR2. All rights reserved.</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const textContent = `
+You're Invited to Join the Team!
+
+Hi ${firstName},
+
+You've been invited to join a team on RuR2. You've been assigned the role of ${roleName}.
+
+Your Role: ${roleName}
+
+To accept the invitation and set up your account, click this link:
+${invitationLink}
+
+This invitation link will expire in 7 days.
+
+If you didn't expect this invitation, you can safely ignore this email.
+
+© ${new Date().getFullYear()} RuR2. All rights reserved.
+    `;
+
+    return this.sendEmail({
+      to,
+      subject: `You're Invited to Join the Team - RuR2`,
+      html: htmlContent,
+      text: textContent,
+      from: microsoft365SmtpService.getFromEmail() || 'noreply@example.com'
     });
   }
 
