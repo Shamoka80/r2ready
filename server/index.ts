@@ -1,8 +1,130 @@
+// ============================================================================
+// ES MODULES COMPATIBILITY: Define __dirname and __filename
+// ============================================================================
+// WHY: ES Modules don't provide __dirname/__filename like CommonJS does.
+// We must compute them from import.meta.url using the official Node.js pattern.
+// This must be at the top so these globals are available throughout the file.
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// ============================================================================
+// LOAD ENVIRONMENT VARIABLES FIRST (CRITICAL - before any other imports)
+// ============================================================================
+// WHY: VS Code/Cursor may show "terminal environment injection is disabled"
+// This warning is editor-specific and does NOT affect runtime. We load .env
+// explicitly here to ensure environment variables are ALWAYS available at
+// runtime, regardless of editor settings. This makes the app production-safe
+// and editor-agnostic.
+import { config } from 'dotenv';
+import fs from 'fs';
+
+// First, try default dotenv behavior (loads from process.cwd()/.env)
+// This covers the most common case and ensures .env is loaded if it exists
+const defaultResult = config({ override: false });
+let envLoaded = !!defaultResult.parsed;
+let envVarCount = defaultResult.parsed ? Object.keys(defaultResult.parsed).length : 0;
+let envPath = path.join(process.cwd(), '.env');
+
+// If default didn't load anything, try additional common locations
+// This handles cases where the script runs from different directories
+if (!envLoaded) {
+  const alternatePaths = [
+    path.join(__dirname, '.env'),           // server/.env (when compiled)
+    path.join(__dirname, '..', '.env'),     // root/.env (when in server/)
+  ];
+  
+  for (const envPathCandidate of alternatePaths) {
+    if (fs.existsSync(envPathCandidate)) {
+      const result = config({ path: envPathCandidate, override: false });
+      if (result.parsed && Object.keys(result.parsed).length > 0) {
+        envVarCount = Object.keys(result.parsed).length;
+        envLoaded = true;
+        envPath = envPathCandidate;
+        break;
+      }
+    }
+  }
+}
+
+// Log status (only in development to avoid noise in production)
+if (process.env.NODE_ENV !== 'production') {
+  if (envLoaded && envVarCount > 0) {
+    console.log(`✅ Loaded ${envVarCount} environment variable(s) from: ${envPath}`);
+  } else {
+    console.log('ℹ️  No .env file found - using system environment variables');
+  }
+}
+
+// ============================================================================
+// SENTRY INITIALIZATION
+// ============================================================================
+// Sentry is initialized here (before other imports) to capture all errors.
+// Configuration: Read SENTRY_DSN from environment variables loaded by dotenv.
+// If initialization fails, the app continues without error monitoring.
+// Docs: https://docs.sentry.io/platforms/javascript/guides/node/
+import * as Sentry from "@sentry/node";
+
+const SENTRY_DSN = process.env.SENTRY_DSN;
+const ENVIRONMENT = process.env.ENVIRONMENT || process.env.NODE_ENV || 'development';
+const IS_PRODUCTION = ENVIRONMENT === 'production';
+
+// Track whether Sentry was successfully initialized
+let SENTRY_INITIALIZED = false;
+
+// Initialize Sentry if DSN is provided - SDK handles validation
+if (SENTRY_DSN) {
+  try {
+    Sentry.init({
+      dsn: SENTRY_DSN,
+      environment: ENVIRONMENT,
+      
+      // Performance monitoring - traces sampling (adjust in production)
+      // Lower sample rate in production to reduce overhead
+      tracesSampleRate: IS_PRODUCTION ? 0.1 : 1.0,
+      
+      // Capture unhandled exceptions automatically
+      captureUnhandledRejections: true,
+      
+      // Capture console errors
+      attachStacktrace: true,
+      
+      // Send release information (helpful for debugging)
+      release: process.env.npm_package_version || undefined,
+      
+      // Filter out health check noise
+      ignoreErrors: [
+        'Request timeout',
+        'ECONNRESET',
+        'ECONNREFUSED',
+      ],
+      
+      // Error filtering before sending to Sentry
+      beforeSend(event, hint) {
+        return event;
+      },
+    });
+    
+    // Mark Sentry as initialized - Express middleware setup happens in createApp()
+    // Express-specific handlers (requestHandler, errorHandler) are only available
+    // when Express is imported, so middleware integration is handled separately
+    SENTRY_INITIALIZED = true;
+    if (!IS_PRODUCTION) {
+      console.log('✅ Sentry initialized for error monitoring');
+    }
+  } catch (error) {
+    // Sentry initialization failed - log error but continue server startup
+    // Sentry SDK handles DSN validation and will throw if invalid
+    console.error('❌ Sentry initialization failed:', error instanceof Error ? error.message : String(error));
+    console.warn('⚠️  Continuing server startup without Sentry error monitoring');
+    SENTRY_INITIALIZED = false;
+  }
+}
+
 import express, { type Request, Response, NextFunction } from "express";
 import cors from 'cors';
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from 'url';
 import { Socket } from 'net';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { registerRoutes } from "./routes.js";
@@ -25,12 +147,27 @@ import { jobQueueService } from './services/jobQueue.js';
 import { QueryMonitoringService } from './services/queryMonitoring.js';
 import { emailService } from './services/emailService.js';
 
-// Define __dirname for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 export async function createApp() {
   const app = express();
+
+  // Initialize Sentry Express middleware (must be before all other middleware)
+  // This captures request context for error tracking
+  // Note: Handlers are Express-specific, so they're only set up here where Express is available
+  if (SENTRY_INITIALIZED && Sentry.Handlers) {
+    try {
+      if (typeof Sentry.Handlers.requestHandler === 'function') {
+        app.use(Sentry.Handlers.requestHandler());
+      }
+      if (typeof Sentry.Handlers.tracingHandler === 'function') {
+        app.use(Sentry.Handlers.tracingHandler());
+      }
+    } catch (error) {
+      // If handler setup fails, log but continue - app should still work
+      // Error monitoring for unhandled exceptions still works without Express middleware
+      console.warn('⚠️  Failed to set up Sentry Express middleware:', error instanceof Error ? error.message : String(error));
+      console.warn('   Error monitoring will still work for unhandled exceptions');
+    }
+  }
 
   const isDevelopment = process.env.NODE_ENV === 'development';
   const isTest = process.env.NODE_ENV === 'test';
@@ -127,16 +264,60 @@ export async function createApp() {
 
   await registerRoutes(app);
 
+  // Sentry error handler (must be before final error handler, but after all routes)
+  // This captures Express route exceptions and sends them to Sentry with full context
+  // Email alerts are triggered by Sentry based on alert rules configured in dashboard
+  // Note: This is Express-specific middleware - unhandled exceptions are captured globally
+  if (SENTRY_INITIALIZED && Sentry.Handlers && typeof Sentry.Handlers.errorHandler === 'function') {
+    try {
+      app.use(Sentry.Handlers.errorHandler());
+    } catch (error) {
+      // If error handler setup fails, log but continue - app should still work
+      // Error monitoring for unhandled exceptions still works without Express middleware
+      console.warn('⚠️  Failed to set up Sentry Express error handler:', error instanceof Error ? error.message : String(error));
+      console.warn('   Error monitoring will still work for unhandled exceptions');
+    }
+  }
+
   app.use((err: Error & { status?: number; statusCode?: number }, req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const isProduction = process.env.NODE_ENV === 'production';
     
-    // Log error details server-side (never send stack traces to client)
-    if (!isTest) {
-      console.error(`[ERROR] ${req.method} ${req.path} - ${status}`);
-      if (!isProduction) {
-        console.error('Error details:', err.message);
-        console.error('Error stack:', err.stack);
+    // Capture error in Sentry (when successfully initialized)
+    // Sentry will automatically send email notifications based on alert rules
+    // Configure alerts at: https://sentry.io/settings/[org]/[project]/alerts/
+    // SAFETY: Only capture if Sentry was successfully initialized
+    if (SENTRY_INITIALIZED && status >= 500) {
+      try {
+        Sentry.captureException(err, {
+          tags: {
+            route: req.path,
+            method: req.method,
+            statusCode: status.toString(),
+          },
+          extra: {
+            url: req.url,
+            headers: req.headers,
+            // Note: Don't include sensitive user data here
+          },
+          level: 'error',
+        });
+        console.error(`[ERROR] ${req.method} ${req.path} - ${status} (reported to Sentry)`);
+      } catch (sentryError) {
+        // If Sentry capture fails, log the original error normally
+        console.error(`[ERROR] ${req.method} ${req.path} - ${status} (Sentry capture failed)`);
+        if (!isTest) {
+          console.error('Error details:', err.message);
+        }
+      }
+    } else {
+      // Log error details server-side (never send stack traces to client)
+      if (!isTest) {
+        console.error(`[ERROR] ${req.method} ${req.path} - ${status}`);
+        if (!isProduction) {
+          console.error('Error details:', err.message);
+          console.error('Error stack:', err.stack);
+        }
       }
     }
 
@@ -552,8 +733,38 @@ async function startServer() {
   });
 }
 
+// ============================================================================
+// UNHANDLED ERROR CAPTURE
+// ============================================================================
+// Sentry automatically captures unhandled exceptions and unhandled promise rejections
+// These errors will trigger email alerts based on Sentry alert rules configured in dashboard
+
 // Start the server
-startServer().catch(error => {
+startServer().catch(async (error) => {
+  // Capture fatal startup errors in Sentry (if successfully initialized)
+  // SAFETY: Only use Sentry APIs if initialization succeeded
+  if (SENTRY_INITIALIZED) {
+    try {
+      Sentry.captureException(error, {
+        level: 'fatal',
+        tags: {
+          errorType: 'server_startup_failure',
+        },
+      });
+      
+      // Flush Sentry events before exiting (with timeout)
+      try {
+        await Sentry.flush(2000);
+      } catch (flushError) {
+        // Ignore flush errors - we're exiting anyway
+        console.warn('⚠️  Sentry flush failed (non-critical):', flushError instanceof Error ? flushError.message : String(flushError));
+      }
+    } catch (sentryError) {
+      // If Sentry capture fails, log warning but continue with normal error handling
+      console.warn('⚠️  Failed to capture startup error in Sentry:', sentryError instanceof Error ? sentryError.message : String(sentryError));
+    }
+  }
+  
   console.error('FATAL ERROR: Failed to start server:', error);
   process.exit(1);
 });
