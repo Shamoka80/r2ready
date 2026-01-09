@@ -1,13 +1,11 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useLocation } from "wouter";
-import MobileNavigation from "@/components/layout/MobileNavigation";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
-  ArrowLeft, 
-  Award,
   HelpCircle,
   BookOpen,
   MessageCircle,
@@ -18,25 +16,79 @@ import {
   Clock,
   CheckCircle,
   Search,
-  Download,
   Play,
-  Menu
+  Loader2,
+  AlertCircle
 } from "lucide-react";
-import rurLogo from "@assets/RuR2 Logo 1_1758184184704.png";
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { apiPost } from "@/api";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 
 
 export default function Help() {
-  const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [formData, setFormData] = useState({
+    name: user ? `${user.firstName} ${user.lastName}` : '',
+    email: user?.email || '',
+    subject: '',
+    message: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate form
+    if (!formData.name || !formData.email || !formData.subject || !formData.message) {
+      setSubmitError('Please fill in all fields');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setSubmitError('Please enter a valid email address');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+    setSubmitSuccess(false);
+
+    try {
+      const response = await apiPost<{ success: boolean; message: string }>('/api/contact', formData);
+      
+      if (response.success) {
+        setSubmitSuccess(true);
+        setFormData({
+          name: user ? `${user.firstName} ${user.lastName}` : '',
+          email: user?.email || '',
+          subject: '',
+          message: ''
+        });
+        toast({
+          title: "Message sent successfully",
+          description: "You will receive a confirmation email shortly.",
+        });
+      } else {
+        throw new Error(response.message || 'Failed to send message');
+      }
+    } catch (error) {
+      console.error('Contact form submission error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send message. Please try again later.';
+      setSubmitError(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const faqItems = [
     {
@@ -126,89 +178,6 @@ export default function Help() {
 
   return (
     <div className="min-h-screen relative">
-      {/* Header */}
-      <header className="nav-glass border-b border-glass-border sticky top-0 z-50 shadow-glass">
-        <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4">
-          <div className="flex items-center justify-between">
-            {/* Back Button */}
-            <Button variant="ghost" size="sm" onClick={() => setLocation("/")} className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
-              <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-              <span className="hidden xs:inline">Back</span>
-              <span className="xs:hidden">←</span>
-            </Button>
-
-            {/* Logo - Centered on Mobile, Left on Desktop */}
-            <div className="absolute left-1/2 transform -translate-x-1/2 md:static md:transform-none md:translate-x-0 md:ml-6 flex items-center space-x-2 sm:space-x-3">
-              <img 
-                src={rurLogo} 
-                alt="RuR2 Logo" 
-                className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-glass logo-glow object-contain"
-              />
-              <span className="text-sm sm:text-lg md:text-xl lg:text-2xl font-display font-bold text-glow-blue whitespace-nowrap">RuR2</span>
-            </div>
-
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-4">
-              <Button variant="ghost" onClick={() => setLocation("/about")}>About</Button>
-              <Button variant="ghost" onClick={() => setLocation("/pricing")}>Pricing</Button>
-              <Button className="btn-primary-glass" onClick={() => setLocation("/register")}>Get Started</Button>
-            </div>
-
-            {/* Mobile Hamburger Menu */}
-            <div className="md:hidden">
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="sm" className="p-2">
-                    <Menu className="h-6 w-6 text-foreground" />
-                    <span className="sr-only">Open menu</span>
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-72 glass-morphism border-glass-border">
-                  <div className="flex flex-col space-y-4 mt-8">
-                    <Button 
-                      variant="ghost" 
-                      className="justify-start text-foreground hover:text-primary" 
-                      onClick={() => setLocation("/")}
-                    >
-                      Home
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      className="justify-start text-foreground hover:text-primary" 
-                      onClick={() => setLocation("/about")}
-                    >
-                      About
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      className="justify-start text-foreground hover:text-primary" 
-                      onClick={() => setLocation("/pricing")}
-                    >
-                      Pricing
-                    </Button>
-                    <div className="border-t border-glass-border pt-4 space-y-4">
-                      <Button 
-                        variant="outline" 
-                        className="w-full justify-start" 
-                        onClick={() => setLocation("/login")}
-                      >
-                        Login
-                      </Button>
-                      <Button 
-                        className="w-full btn-primary-glass" 
-                        onClick={() => setLocation("/register")}
-                      >
-                        Get Started
-                      </Button>
-                    </div>
-                  </div>
-                </SheetContent>
-              </Sheet>
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* Hero Section */}
       <section className="py-16">
         <div className="container mx-auto px-4 text-center">
@@ -321,47 +290,85 @@ export default function Help() {
               <CardTitle className="text-center">Send Us a Message</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {submitSuccess && (
+                <Alert className="bg-green-500/10 border-green-500">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <AlertDescription className="text-green-700 dark:text-green-400">
+                    Your message has been sent successfully! You will receive a confirmation email shortly.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {submitError && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{submitError}</AlertDescription>
+                </Alert>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground mb-2 block">Name</label>
-                  <Input placeholder="Your full name" />
+                  <Input 
+                    placeholder="Your full name" 
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    disabled={isSubmitting}
+                    required
+                  />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground mb-2 block">Email</label>
-                  <Input type="email" placeholder="your@email.com" />
+                  <Input 
+                    type="email" 
+                    placeholder="your@email.com" 
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    disabled={isSubmitting || !!user}
+                    required
+                  />
                 </div>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-2 block">Subject</label>
-                <Input placeholder="What can we help you with?" />
+                <Input 
+                  placeholder="What can we help you with?" 
+                  value={formData.subject}
+                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                  disabled={isSubmitting}
+                  required
+                />
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-2 block">Message</label>
                 <Textarea 
                   placeholder="Please describe your question or issue in detail..." 
                   rows={5}
+                  value={formData.message}
+                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                  disabled={isSubmitting}
+                  required
                 />
               </div>
-              <Button className="w-full btn-primary-glass">
-                Send Message
+              <Button 
+                className="w-full btn-primary-glass"
+                onClick={handleSubmit}
+                disabled={isSubmitting || !formData.name || !formData.email || !formData.subject || !formData.message}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  'Send Message'
+                )}
               </Button>
             </CardContent>
           </Card>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="text-muted-foreground py-8">
-        <div className="container mx-auto px-4 text-center">
-          <div className="flex items-center justify-center space-x-3 mb-4">
-            <img src={rurLogo} alt="RuR2 Logo" className="h-8 w-8 rounded-glass logo-glow" />
-            <span className="text-base sm:text-lg md:text-xl font-bold text-white">RuR2</span>
-          </div>
-          <p className="text-muted-foreground/70">
-            Professional R2v3 certification support • Available when you need us
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }

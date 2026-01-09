@@ -144,11 +144,19 @@ class Microsoft365SmtpService {
 
       // Verify connection
       try {
+        console.log(`🔍 Verifying Microsoft 365 SMTP connection to ${host}:${port}...`);
         await this.transporter.verify();
+        console.log(`✅ Microsoft 365 SMTP connection verified successfully (${host}:${port})`);
         this.logger.info(`Microsoft 365 SMTP connection verified successfully (${host}:${port})`);
         this.config = config;
         return this.transporter;
       } catch (verifyError: any) {
+        console.error('❌ Microsoft 365 SMTP connection verification failed:', {
+          error: verifyError.message,
+          code: verifyError.code,
+          command: verifyError.command,
+          response: verifyError.response,
+        });
         this.logger.error('Microsoft 365 SMTP connection verification failed', verifyError as any);
         this.transporter = null;
         return null;
@@ -199,7 +207,21 @@ class Microsoft365SmtpService {
       (process.env.MICROSOFT_365_TENANT_ID || process.env.MS365_OAUTH_TENANT_ID)
     );
     
-    return hasUser && (hasBasicAuth || hasOAuth2);
+    const isConfigured = hasUser && (hasBasicAuth || hasOAuth2);
+    
+    if (!isConfigured) {
+      console.log('⚠️ Microsoft 365 SMTP not configured:', {
+        hasUser,
+        hasBasicAuth,
+        hasOAuth2,
+        SMTP_USER: process.env.SMTP_USER || 'NOT SET',
+        SMTP_PASSWORD: process.env.SMTP_PASSWORD ? 'SET' : 'NOT SET',
+      });
+    } else {
+      console.log('✅ Microsoft 365 SMTP is configured');
+    }
+    
+    return isConfigured;
   }
 
   /**
