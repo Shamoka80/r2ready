@@ -467,4 +467,138 @@ router.get("/:assessmentId/pdf/:templateType?",
     }
 }) as any);
 
+/**
+ * GET /api/exports/:assessmentId/:format
+ * Direct download endpoint for exports (excel, word, pdf, email)
+ * This is the endpoint called by the frontend download buttons
+ * 
+ * IMPORTANT: This route must come AFTER more specific routes like /:assessmentId/pdf/:templateType?
+ */
+router.get("/:assessmentId/:format", 
+  rateLimitMiddleware.pdfExport, // Reuse rate limiting middleware
+  (async (req: AuthenticatedRequest, res: Response) => {
+    console.log(`[Exports] GET /api/exports/:assessmentId/:format hit - assessmentId: ${req.params.assessmentId}, format: ${req.params.format}`);
+    try {
+      const { assessmentId, format: rawFormat } = req.params;
+
+      if (!assessmentId || !rawFormat) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required parameters: assessmentId, format'
+        });
+      }
+
+      // Normalize format (excel -> xlsx, word -> docx)
+      const format = normalizeFormat(rawFormat);
+
+      // Get assessment data with tenant isolation
+      const assessment = await db.query.assessments.findFirst({
+        where: and(
+          eq(assessments.id, assessmentId),
+          eq(assessments.tenantId, req.user.tenantId)
+        )
+      });
+
+      if (!assessment) {
+        return res.status(404).json({
+          success: false,
+          error: 'Assessment not found'
+        });
+      }
+
+      // Determine template type based on format
+      const templateType = format === 'pdf' ? 'technical-report' : 
+                          format === 'xlsx' ? 'dashboard' : 
+                          format === 'docx' ? 'executive-summary' : 
+                          'consultation';
+
+      console.log(`[Exports] Generating ${format} synchronously for assessment ${assessmentId} (template: ${templateType})`);
+
+      // Handle email format separately (returns string, not buffer)
+      if (rawFormat.toLowerCase() === 'email') {
+        const emailContent = await ExportService.generateEmail(assessmentId, req.user.tenantId, templateType);
+        res.setHeader('Content-Type', 'text/plain');
+        res.setHeader('Content-Disposition', `attachment; filename="${assessment.title}_email_template.txt"`);
+        return res.send(emailContent);
+      }
+
+      // Generate the export file for binary formats
+      let buffer: Buffer;
+      try {
+        console.log(`[Exports] Generating ${format} for assessment ${assessmentId}, template: ${templateType}`);
+        
+        if (format === 'pdf') {
+          buffer = await ExportService.generatePDF(assessmentId, req.user.tenantId, templateType);
+        } else if (format === 'xlsx') {
+          buffer = await ExportService.generateExcel(assessmentId, req.user.tenantId, templateType);
+        } else if (format === 'docx') {
+          buffer = await ExportService.generateWord(assessmentId, req.user.tenantId, templateType);
+        } else {
+          return res.status(400).json({
+            success: false,
+            error: `Unsupported format: ${rawFormat}. Supported formats: pdf, excel, word, email`
+          });
+        }
+        
+        console.log(`[Exports] Generated ${format} buffer: ${buffer ? buffer.length : 0} bytes`);
+      } catch (genError) {
+        console.error(`[Exports] Error generating ${format}:`, genError);
+        return res.status(500).json({
+          success: false,
+          error: `Failed to generate ${format} export`,
+          details: genError instanceof Error ? genError.message : 'Unknown error'
+        });
+      }
+
+      // Validate buffer before sending
+      if (!buffer || buffer.length === 0) {
+        console.error(`[Exports] Generated ${format} buffer is empty!`);
+        return res.status(500).json({
+          success: false,
+          error: 'Generated export file is empty',
+          details: 'The export generation completed but returned an empty buffer. Check server logs for details.'
+        });
+      }
+
+      // Set appropriate headers and send file
+      const mimeTypes: Record<string, string> = {
+        pdf: 'application/pdf',
+        xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      };
+
+      const extensions: Record<string, string> = {
+        pdf: 'pdf',
+        xlsx: 'xlsx',
+        docx: 'docx'
+      };
+
+      const filename = `${assessment.title}_${format === 'xlsx' ? 'dashboard' : format === 'docx' ? 'summary' : 'report'}.${extensions[format]}`;
+
+      // Validate buffer before sending
+      if (!buffer || buffer.length === 0) {
+        return res.status(500).json({
+          success: false,
+          error: 'Generated export file is empty'
+        });
+      }
+
+      // Set headers for file download
+      res.setHeader('Content-Type', mimeTypes[format]);
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', buffer.length);
+      
+      // Send buffer directly (Express handles Buffer correctly)
+      res.send(buffer);
+
+    } catch (error) {
+      console.error('Export generation error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to generate export',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+}) as any);
+
 export default router;
