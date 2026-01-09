@@ -880,21 +880,17 @@ export class TemplateProcessor {
 
   // New template-based PDF generation using actual template files
   async generatePDFTechnicalReport(assessmentId: string, tenantId: string): Promise<Buffer> {
-    if (!this.validateTemplateExists('pdf_temp_export.pdf')) {
-      throw new Error('PDF template not found: pdf_temp_export.pdf');
-    }
-
     // Fetch comprehensive data for template population
     const templateData = await this.fetchTemplateData(assessmentId, tenantId);
 
-    // Load the PDF template file
-    const templatePath = path.join(this.templatesPath, 'pdf_temp_export.pdf');
-
-    // For now, generate a structured PDF based on template layout
-    // In production, you would use a PDF library that can load and modify existing PDFs
+    // Generate PDF programmatically using PDFKit (no template file required)
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
     const buffers: Buffer[] = [];
-    doc.on('data', buffers.push.bind(buffers));
+    
+    // Set up event handlers BEFORE adding content
+    doc.on('data', (chunk: Buffer) => {
+      buffers.push(chunk);
+    });
 
     // HEADER - Following pdf_temp_export.pdf template structure
     doc.fontSize(18).text('R2v3 Pre-Certification Technical Assessment Report', { align: 'center' });
@@ -1002,12 +998,25 @@ export class TemplateProcessor {
       });
     }
 
-    doc.end();
-
-    return new Promise((resolve) => {
+    // Set up end handler BEFORE calling doc.end() to avoid race condition
+    return new Promise((resolve, reject) => {
       doc.on('end', () => {
-        resolve(Buffer.concat(buffers));
+        const finalBuffer = Buffer.concat(buffers);
+        console.log(`[TemplateProcessor] PDF generation completed, buffer size: ${finalBuffer.length} bytes`);
+        if (finalBuffer.length === 0) {
+          reject(new Error('PDF generation produced empty buffer'));
+        } else {
+          resolve(finalBuffer);
+        }
       });
+      
+      doc.on('error', (error: Error) => {
+        console.error('[TemplateProcessor] PDF generation error:', error);
+        reject(error);
+      });
+      
+      // Now safely end the document
+      doc.end();
     });
   }
 
