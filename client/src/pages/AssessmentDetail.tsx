@@ -26,6 +26,7 @@ import {
 import QuestionsTab from "./AssessmentDetail/QuestionsTab";
 import EvidenceTab from "./AssessmentDetail/EvidenceTab";
 import AnalyticsTab from "./AssessmentDetail/AnalyticsTab";
+import FindingsTab from "./AssessmentDetail/FindingsTab";
 import { apiGet } from "@/api";
 import { useAuth } from "@/hooks/use-auth";
 import ClientContextBanner from "@/components/ClientContextBanner";
@@ -501,13 +502,8 @@ export default function AssessmentDetail() {
               <AnalyticsTab assessmentId={assessment.id} intakeFormId={assessment.intakeFormId} />
             </TabsContent>
 
-            <TabsContent value="findings">
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold text-foreground mb-4">Assessment Findings</h3>
-                  <p className="text-muted-foreground">Findings and recommendations will be displayed here.</p>
-                </CardContent>
-              </Card>
+            <TabsContent value="findings" className="mt-6">
+              <FindingsTab assessmentId={assessment.id} intakeFormId={assessment.intakeFormId} />
             </TabsContent>
 
             <TabsContent value="exports">
