@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
-import { Document as DocxDocument, Packer as DocxPacker, HeadingLevel } from 'docx';
+import { Document as DocxDocument, Packer as DocxPacker, HeadingLevel, Paragraph, TextRun } from 'docx';
 import { db } from '../db.js';
 import { assessments, intakeForms, organizationProfiles, facilityProfiles, standardVersions, users, tenants, clauses, questions, answers } from '../../shared/schema.js';
 import { eq, and, sql } from 'drizzle-orm';
@@ -1299,10 +1299,28 @@ export class TemplateProcessor {
 
   // New template-based Excel generation following excel_temp_export.pdf structure
   async generateExcelDashboard(assessmentId: string, tenantId: string): Promise<Buffer> {
-    // Fetch comprehensive data for template population
-    const templateData = await this.fetchTemplateData(assessmentId, tenantId);
+    try {
+      console.log(`[Excel] Starting Excel generation for assessment ${assessmentId}, tenant ${tenantId}`);
+      
+      // Fetch comprehensive data for template population
+      let templateData;
+      try {
+        templateData = await this.fetchTemplateData(assessmentId, tenantId);
+        console.log(`[Excel] Template data fetched successfully`);
+      } catch (fetchError) {
+        console.error('[Excel] Error fetching template data:', fetchError);
+        throw new Error(`Failed to fetch template data: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`);
+      }
 
-    const workbook = new ExcelJS.Workbook();
+      // Validate template data exists
+      if (!templateData) {
+        throw new Error('Failed to fetch template data for Excel generation - data is null');
+      }
+
+      const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'R2Ready Assessment Platform';
+    workbook.created = new Date();
+    workbook.modified = new Date();
 
     // EXECUTIVE DASHBOARD - Following excel_temp_export.pdf template
     const dashboardSheet = workbook.addWorksheet('Executive Dashboard');
@@ -1313,10 +1331,10 @@ export class TemplateProcessor {
     dashboardSheet.getRow(1).alignment = { horizontal: 'center' };
 
     dashboardSheet.addRow([]);
-    dashboardSheet.addRow(['Company:', templateData.companyName]);
-    dashboardSheet.addRow(['Contact:', templateData.contactName]);
-    dashboardSheet.addRow(['Assessment ID:', templateData.assessmentId]);
-    dashboardSheet.addRow(['Report Date:', templateData.reportDate]);
+    dashboardSheet.addRow(['Company:', templateData.companyName || 'N/A']);
+    dashboardSheet.addRow(['Contact:', templateData.contactName || 'N/A']);
+    dashboardSheet.addRow(['Assessment ID:', templateData.assessmentId || assessmentId]);
+    dashboardSheet.addRow(['Report Date:', templateData.reportDate || new Date().toISOString().split('T')[0]]);
     dashboardSheet.addRow([]);
 
     // KEY METRICS SECTION
@@ -1326,11 +1344,20 @@ export class TemplateProcessor {
     dashboardSheet.addRow(['Metric', 'Value', 'Target', 'Status']);
     dashboardSheet.getRow(9).font = { bold: true };
 
-    dashboardSheet.addRow(['Overall Score', `${templateData.overallScore}%`, '90%+', templateData.readinessLevel]);
-    dashboardSheet.addRow(['Completion Rate', `${templateData.completionPercentage}%`, '100%', templateData.completionPercentage >= 100 ? 'Complete' : 'In Progress']);
-    dashboardSheet.addRow(['Critical Issues', templateData.criticalCount, '0', templateData.criticalCount === 0 ? 'Good' : 'Attention Required']);
-    dashboardSheet.addRow(['Questions Answered', templateData.answeredQuestions, templateData.totalQuestions, `${templateData.answeredQuestions}/${templateData.totalQuestions}`]);
-    dashboardSheet.addRow(['Evidence Required', templateData.evidenceRequiredCount, '-', 'N/A']);
+    // Ensure numeric values with defaults
+    const overallScore = templateData.overallScore ?? 0;
+    const completionPercentage = templateData.completionPercentage ?? 0;
+    const criticalCount = templateData.criticalCount ?? 0;
+    const answeredQuestions = templateData.answeredQuestions ?? 0;
+    const totalQuestions = templateData.totalQuestions ?? 0;
+    const evidenceRequiredCount = templateData.evidenceRequiredCount ?? 0;
+    const readinessLevel = templateData.readinessLevel || 'Not Assessed';
+
+    dashboardSheet.addRow(['Overall Score', `${overallScore}%`, '90%+', readinessLevel]);
+    dashboardSheet.addRow(['Completion Rate', `${completionPercentage}%`, '100%', completionPercentage >= 100 ? 'Complete' : 'In Progress']);
+    dashboardSheet.addRow(['Critical Issues', criticalCount, '0', criticalCount === 0 ? 'Good' : 'Attention Required']);
+    dashboardSheet.addRow(['Questions Answered', answeredQuestions, totalQuestions, `${answeredQuestions}/${totalQuestions}`]);
+    dashboardSheet.addRow(['Evidence Required', evidenceRequiredCount, '-', 'N/A']);
     dashboardSheet.addRow([]);
 
     // CORE REQUIREMENTS PERFORMANCE
@@ -1390,10 +1417,13 @@ export class TemplateProcessor {
     metricsSheet.addRow(['Category', 'Count', 'Percentage']);
     metricsSheet.getRow(3).font = { bold: true };
 
-    metricsSheet.addRow(['Total Questions', templateData.totalQuestions, '100%']);
-    metricsSheet.addRow(['Questions Answered', templateData.answeredQuestions, `${Math.round((templateData.answeredQuestions / templateData.totalQuestions) * 100)}%`]);
-    metricsSheet.addRow(['Required Questions', templateData.requiredQuestions, `${Math.round((templateData.requiredQuestions / templateData.totalQuestions) * 100)}%`]);
-    metricsSheet.addRow(['Evidence Required', templateData.evidenceRequiredCount, `${Math.round((templateData.evidenceRequiredCount / templateData.totalQuestions) * 100)}%`]);
+    const requiredQuestions = templateData.requiredQuestions ?? 0;
+    const totalQuestionsForMetrics = totalQuestions || 1; // Avoid division by zero
+    
+    metricsSheet.addRow(['Total Questions', totalQuestions, '100%']);
+    metricsSheet.addRow(['Questions Answered', answeredQuestions, `${Math.round((answeredQuestions / totalQuestionsForMetrics) * 100)}%`]);
+    metricsSheet.addRow(['Required Questions', requiredQuestions, `${Math.round((requiredQuestions / totalQuestionsForMetrics) * 100)}%`]);
+    metricsSheet.addRow(['Evidence Required', evidenceRequiredCount, `${Math.round((evidenceRequiredCount / totalQuestionsForMetrics) * 100)}%`]);
     metricsSheet.addRow([]);
     metricsSheet.addRow(['Issue Severity', 'Count', 'Impact']);
     metricsSheet.getRow(9).font = { bold: true };
@@ -1414,8 +1444,79 @@ export class TemplateProcessor {
     metricsSheet.getColumn('B').width = 15;
     metricsSheet.getColumn('C').width = 15;
 
-    const buffer = await workbook.xlsx.writeBuffer();
-    return Buffer.from(buffer);
+    // Ensure all sheets have at least one row of data
+    if (dashboardSheet.rowCount === 0) {
+      dashboardSheet.addRow(['No data available']);
+    }
+    if (facilitySheet.rowCount === 0) {
+      facilitySheet.addRow(['No facility data available']);
+    }
+    if (metricsSheet.rowCount === 0) {
+      metricsSheet.addRow(['No metrics data available']);
+    }
+
+    // Validate workbook has worksheets before writing
+    if (workbook.worksheets.length === 0) {
+      throw new Error('Workbook has no worksheets - cannot generate Excel file');
+    }
+    
+    // Validate worksheets have data
+    for (const sheet of workbook.worksheets) {
+      if (sheet.rowCount === 0) {
+        console.warn(`[Excel] Worksheet "${sheet.name}" has no rows - adding placeholder`);
+        sheet.addRow(['No data available for this section']);
+      }
+    }
+    
+    // Generate Excel buffer - writeBuffer() returns Buffer in Node.js
+    console.log(`[Excel] Starting buffer generation for assessment ${assessmentId}`);
+    console.log(`[Excel] Workbook has ${workbook.worksheets.length} worksheets`);
+    
+    let buffer: Buffer | ArrayBuffer;
+    try {
+      buffer = await workbook.xlsx.writeBuffer();
+      const bufferSize = buffer.byteLength || (buffer as any).length || 0;
+      console.log(`[Excel] Buffer generated, type: ${buffer.constructor.name}, size: ${bufferSize} bytes`);
+      
+      if (bufferSize === 0) {
+        throw new Error('writeBuffer() returned empty buffer - workbook may be corrupted');
+      }
+    } catch (writeError) {
+      console.error('[Excel] Error writing buffer:', writeError);
+      throw new Error(`Failed to write Excel buffer: ${writeError instanceof Error ? writeError.message : 'Unknown error'}`);
+    }
+    
+    // Convert to Buffer if needed (ExcelJS may return ArrayBuffer in some environments)
+    let finalBuffer: Buffer;
+    if (Buffer.isBuffer(buffer)) {
+      finalBuffer = buffer;
+    } else if (buffer instanceof ArrayBuffer) {
+      finalBuffer = Buffer.from(buffer);
+    } else {
+      // Handle Uint8Array or other typed arrays
+      finalBuffer = Buffer.from(buffer as any);
+    }
+    
+    console.log(`[Excel] Final buffer size: ${finalBuffer.length} bytes`);
+    
+    // Validate buffer is not empty
+    if (!finalBuffer || finalBuffer.length === 0) {
+      throw new Error('Generated Excel buffer is empty - workbook may be corrupted or writeBuffer failed');
+    }
+    
+    // Validate minimum file size (empty Excel file is typically > 5KB)
+    if (finalBuffer.length < 5000) {
+      console.warn(`[Excel] Buffer size is suspiciously small: ${finalBuffer.length} bytes (expected > 5KB)`);
+    } else {
+      console.log(`[Excel] Buffer validation passed: ${finalBuffer.length} bytes`);
+    }
+    
+      return finalBuffer;
+    } catch (error) {
+      console.error('[Excel] Error in generateExcelDashboard:', error);
+      console.error('[Excel] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      throw error instanceof Error ? error : new Error(`Excel generation failed: ${String(error)}`);
+    }
   }
 
   // New template-based Word generation following word_temp_export.pdf business-focused template
@@ -1522,10 +1623,6 @@ export class TemplateProcessor {
 
   // New template-based email generation following email_temp_export.pdf professional consultation templates
   async generateEmailConsultation(assessmentId: string, tenantId: string): Promise<string> {
-    if (!this.validateTemplateExists('email_temp_export.pdf')) {
-      throw new Error('Email template not found: email_temp_export.pdf');
-    }
-
     // Fetch comprehensive data for template population
     const templateData = await this.fetchTemplateData(assessmentId, tenantId);
 
@@ -1995,108 +2092,215 @@ Assessment Platform: R2v3 Certification Management System`;
     return this.generateEmailSummary(assessmentId, tenantId);
   }
 
-  // Template-based Word report generation
+  // Template-based Word report generation using real docx library
   async generateWordReport(assessmentId: string, tenantId: string): Promise<Buffer> {
     // Fetch comprehensive data for template population with PROPER TENANT ISOLATION
     const templateData = await this.fetchTemplateData(assessmentId, tenantId);
 
-    const doc = new MockDocument({
+    // Use real docx library instead of MockDocument
+    const doc = new DocxDocument({
       sections: [{
         properties: {},
         children: [
-          new MockParagraph({
+          new Paragraph({
             children: [
-              new MockTextRun({
+              new TextRun({
                 text: "R2v3 Pre-Certification Assessment Report",
                 bold: true,
                 size: 32
               })
             ],
-            alignment: AlignmentType.CENTER
+            heading: HeadingLevel.TITLE,
+            spacing: { after: 200 }
           }),
-          new MockParagraph({
+          new Paragraph({
             children: [
-              new MockTextRun({
-                text: "Professional Compliance & Readiness Analysis",
+              new TextRun({
+                text: "Executive Summary",
+                bold: true,
                 size: 24
               })
             ],
-            alignment: AlignmentType.CENTER
+            heading: HeadingLevel.HEADING_1,
+            spacing: { before: 400, after: 200 }
           }),
-          new MockParagraph({
+          new Paragraph({
             children: [
-              new MockTextRun({ text: "" })
-            ]
-          }),
-          new MockParagraph({
-            children: [
-              new MockTextRun({
+              new TextRun({
                 text: `Company: ${templateData.companyName}`,
                 bold: true
               })
-            ]
+            ],
+            spacing: { after: 100 }
           }),
-          new MockParagraph({
+          new Paragraph({
             children: [
-              new MockTextRun({
+              new TextRun({
                 text: `Assessment ID: ${templateData.assessmentId}`
               })
-            ]
+            ],
+            spacing: { after: 100 }
           }),
-          new MockParagraph({
+          new Paragraph({
             children: [
-              new MockTextRun({
+              new TextRun({
                 text: `Report Date: ${templateData.reportDate}`
               })
-            ]
+            ],
+            spacing: { after: 300 }
           }),
-          new MockParagraph({
+          new Paragraph({
             children: [
-              new MockTextRun({ text: "" })
-            ]
-          }),
-          new MockParagraph({
-            children: [
-              new MockTextRun({
-                text: "EXECUTIVE SUMMARY",
+              new TextRun({
+                text: "Assessment Overview",
                 bold: true,
-                size: 28
+                size: 22
               })
-            ]
+            ],
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 200, after: 200 }
           }),
-          new MockParagraph({
+          new Paragraph({
             children: [
-              new MockTextRun({
-                text: `Overall Score: ${templateData.overallScore}%`
+              new TextRun({
+                text: `Overall Score: `,
+                bold: true
+              }),
+              new TextRun({
+                text: `${templateData.overallScore}%`
               })
-            ]
+            ],
+            spacing: { after: 100 }
           }),
-          new MockParagraph({
+          new Paragraph({
             children: [
-              new MockTextRun({
-                text: `Readiness Level: ${templateData.readinessLevel}`
+              new TextRun({
+                text: `Readiness Level: `,
+                bold: true
+              }),
+              new TextRun({
+                text: templateData.readinessLevel
               })
-            ]
+            ],
+            spacing: { after: 100 }
           }),
-          new MockParagraph({
+          new Paragraph({
             children: [
-              new MockTextRun({
-                text: `Critical Issues: ${templateData.criticalCount}`
+              new TextRun({
+                text: `Critical Issues: `,
+                bold: true
+              }),
+              new TextRun({
+                text: templateData.criticalCount.toString()
               })
-            ]
+            ],
+            spacing: { after: 100 }
           }),
-          new MockParagraph({
+          new Paragraph({
             children: [
-              new MockTextRun({
-                text: `Completion Rate: ${templateData.completionPercentage}%`
+              new TextRun({
+                text: `Major Issues: `,
+                bold: true
+              }),
+              new TextRun({
+                text: templateData.majorCount.toString()
               })
-            ]
+            ],
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: `Completion Rate: `,
+                bold: true
+              }),
+              new TextRun({
+                text: `${templateData.completionPercentage}%`
+              })
+            ],
+            spacing: { after: 300 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: "Key Findings",
+                bold: true,
+                size: 22
+              })
+            ],
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 200, after: 200 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: templateData.overallScore >= 90 
+                  ? "The assessment indicates strong compliance with R2v3 requirements. The organization demonstrates readiness for certification."
+                  : templateData.overallScore >= 70
+                  ? "The assessment shows good progress toward R2v3 compliance. Some areas require attention before certification readiness."
+                  : "The assessment identifies significant gaps that must be addressed before pursuing R2v3 certification."
+              })
+            ],
+            spacing: { after: 200 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: "Recommendations",
+                bold: true,
+                size: 22
+              })
+            ],
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 200, after: 200 }
+          }),
+          ...(templateData.criticalCount > 0 ? [
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `• Address ${templateData.criticalCount} critical compliance issue${templateData.criticalCount > 1 ? 's' : ''} identified in the assessment`,
+                  bold: true
+                })
+              ],
+              spacing: { after: 100 }
+            })
+          ] : []),
+          ...(templateData.majorCount > 0 ? [
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `• Resolve ${templateData.majorCount} major gap${templateData.majorCount > 1 ? 's' : ''} to improve overall compliance`
+                })
+              ],
+              spacing: { after: 100 }
+            })
+          ] : []),
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: templateData.completionPercentage < 100 
+                  ? "• Complete remaining assessment questions to finalize the evaluation"
+                  : "• Review detailed compliance report for comprehensive analysis"
+              })
+            ],
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: templateData.readinessLevel === "Certification Ready"
+                  ? "• Schedule formal R2v3 audit with certified body"
+                  : "• Develop gap remediation plan and timeline"
+              })
+            ],
+            spacing: { after: 300 }
           })
         ]
       }]
     });
 
-    return Buffer.from(await MockPacker.toBuffer(doc));
+    const buffer = await DocxPacker.toBuffer(doc);
+    return Buffer.from(buffer);
   }
 
   // Template-based Email report generation
