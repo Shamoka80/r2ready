@@ -144,7 +144,7 @@ router.post('/generate', (async (req: AuthenticatedRequest, res: Response) => {
       });
     }
 
-    // SYNC MODE (DEFAULT): Generate and return file immediately
+    // SYNC MODE (DEFAULT): Generate and return file immediately, but also track it
     console.log(`[Exports] Generating ${format} synchronously for assessment ${assessmentId}`);
     
     let buffer: Buffer;
@@ -159,6 +159,38 @@ router.post('/generate', (async (req: AuthenticatedRequest, res: Response) => {
         success: false,
         error: 'Invalid format'
       });
+    }
+
+    // Track this report generation in the job queue for Reports page visibility
+    try {
+      const jobId = await jobQueueService.enqueue({
+        tenantId: req.user.tenantId,
+        type: 'report_generation',
+        priority: 'medium',
+        payload: {
+          assessmentId,
+          tenantId: req.user.tenantId,
+          format,
+          templateType
+        }
+      });
+
+      // Immediately mark as completed and store the result
+      await jobQueueService.updateStatus(
+        jobId,
+        'COMPLETED',
+        {
+          filename: `${assessment.title}_report.${format}`,
+          buffer: buffer.toString('base64'),
+          mimeType: format === 'pdf' ? 'application/pdf' : 
+                   format === 'xlsx' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' :
+                   'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        }
+      );
+      console.log(`[Exports] Tracked sync export as job ${jobId} for Reports page`);
+    } catch (trackError) {
+      console.warn(`[Exports] Failed to track report generation: ${trackError}`);
+      // Continue anyway - don't fail the export if tracking fails
     }
 
     // Return file directly
@@ -402,6 +434,36 @@ router.get("/:assessmentId/email",
       const emailContent = await ExportService.generateEmail(validatedAssessmentId, req.user.tenantId, templateType as string || 'consultation');
       if (!emailContent || emailContent.length === 0) { console.error('[Exports] Generated Email content is empty!'); return res.status(500).json({ success: false, error: 'Email generation produced empty content' }); }
       console.log(`[Exports] Email template generated successfully, content length: ${emailContent.length} characters`);
+      
+      // Track this email report generation
+      try {
+        const jobId = await jobQueueService.enqueue({
+          tenantId: req.user.tenantId,
+          type: 'report_generation',
+          priority: 'medium',
+          payload: {
+            assessmentId: validatedAssessmentId,
+            tenantId: req.user.tenantId,
+            format: 'email',
+            templateType: templateType as string || 'consultation'
+          }
+        });
+
+        const safeFilename = assessment.title.replace(/[^a-z0-9]/gi, '_').substring(0, 100);
+        await jobQueueService.updateStatus(
+          jobId,
+          'COMPLETED',
+          {
+            filename: `${safeFilename}_Email_Consultation.html`,
+            buffer: Buffer.from(emailContent).toString('base64'),
+            mimeType: 'text/html'
+          }
+        );
+        console.log(`[Exports] Tracked Email export as job ${jobId} for Reports page`);
+      } catch (trackError) {
+        console.warn(`[Exports] Failed to track Email export: ${trackError}`);
+      }
+
       const safeFilename = assessment.title.replace(/[^a-z0-9]/gi, '_').substring(0, 100);
       const filename = `${safeFilename}_Email_Consultation.html`;
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -452,6 +514,34 @@ router.get("/:assessmentId/pdf/:templateType?",
         req.user.tenantId,
         validatedTemplateType || 'technical-report'
       );
+
+      // Track this report generation
+      try {
+        const jobId = await jobQueueService.enqueue({
+          tenantId: req.user.tenantId,
+          type: 'report_generation',
+          priority: 'medium',
+          payload: {
+            assessmentId: validatedAssessmentId,
+            tenantId: req.user.tenantId,
+            format: 'pdf',
+            templateType: validatedTemplateType || 'technical-report'
+          }
+        });
+
+        await jobQueueService.updateStatus(
+          jobId,
+          'COMPLETED',
+          {
+            filename: `${assessment.title}_report.pdf`,
+            buffer: buffer.toString('base64'),
+            mimeType: 'application/pdf'
+          }
+        );
+        console.log(`[Exports] Tracked PDF export as job ${jobId} for Reports page`);
+      } catch (trackError) {
+        console.warn(`[Exports] Failed to track PDF export: ${trackError}`);
+      }
 
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${assessment.title}_report.pdf"`);
@@ -517,8 +607,37 @@ router.get("/:assessmentId/:format",
       // Handle email format separately (returns string, not buffer)
       if (rawFormat.toLowerCase() === 'email') {
         const emailContent = await ExportService.generateEmail(assessmentId, req.user.tenantId, templateType);
-        res.setHeader('Content-Type', 'text/plain');
-        res.setHeader('Content-Disposition', `attachment; filename="${assessment.title}_email_template.txt"`);
+        
+        // Track this email report generation
+        try {
+          const jobId = await jobQueueService.enqueue({
+            tenantId: req.user.tenantId,
+            type: 'report_generation',
+            priority: 'medium',
+            payload: {
+              assessmentId,
+              tenantId: req.user.tenantId,
+              format: 'email',
+              templateType
+            }
+          });
+
+          await jobQueueService.updateStatus(
+            jobId,
+            'COMPLETED',
+            {
+              filename: `${assessment.title}_email_template.txt`,
+              buffer: Buffer.from(emailContent).toString('base64'),
+              mimeType: 'text/plain'
+            }
+          );
+          console.log(`[Exports] Tracked Email export as job ${jobId} for Reports page`);
+        } catch (trackError) {
+          console.warn(`[Exports] Failed to track Email export: ${trackError}`);
+        }
+
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${assessment.title}_email_template.html"`);
         return res.send(emailContent);
       }
 
@@ -541,6 +660,48 @@ router.get("/:assessmentId/:format",
         }
         
         console.log(`[Exports] Generated ${format} buffer: ${buffer ? buffer.length : 0} bytes`);
+
+        // Track this report generation in the job queue for Reports page visibility
+        try {
+          const mimeTypes: Record<string, string> = {
+            pdf: 'application/pdf',
+            xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+          };
+
+          const extensions: Record<string, string> = {
+            pdf: 'pdf',
+            xlsx: 'xlsx',
+            docx: 'docx'
+          };
+
+          const jobId = await jobQueueService.enqueue({
+            tenantId: req.user.tenantId,
+            type: 'report_generation',
+            priority: 'medium',
+            payload: {
+              assessmentId,
+              tenantId: req.user.tenantId,
+              format,
+              templateType
+            }
+          });
+
+          await jobQueueService.updateStatus(
+            jobId,
+            'COMPLETED',
+            {
+              filename: `${assessment.title}_${format === 'xlsx' ? 'dashboard' : format === 'docx' ? 'summary' : 'report'}.${extensions[format]}`,
+              buffer: buffer.toString('base64'),
+              mimeType: mimeTypes[format]
+            }
+          );
+          console.log(`[Exports] Tracked ${format} export as job ${jobId} for Reports page`);
+        } catch (trackError) {
+          console.warn(`[Exports] Failed to track ${format} export: ${trackError}`);
+          // Continue anyway - don't fail the export if tracking fails
+        }
+
       } catch (genError) {
         console.error(`[Exports] Error generating ${format}:`, genError);
         return res.status(500).json({

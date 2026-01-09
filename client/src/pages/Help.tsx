@@ -130,25 +130,29 @@ export default function Help() {
       icon: <BookOpen className="h-6 w-6" />,
       title: "Knowledge Base",
       description: "Comprehensive guides and tutorials for R2v3 certification",
-      action: "Browse Articles"
+      action: "Browse Articles",
+      url: "https://sustainableelectronics.org/welcome-to-r2v3/document-library/"
     },
     {
       icon: <Play className="h-6 w-6" />,
       title: "Video Tutorials",
       description: "Step-by-step walkthroughs of assessment and evidence management",
-      action: "Watch Videos"
+      action: "Watch Videos",
+      url: "https://youtu.be/8FneD-GrQ5g?si=1tdjPR2rULFNZALN"
     },
     {
       icon: <FileText className="h-6 w-6" />,
       title: "R2v3 Standard Guide",
       description: "Download the official R2v3 standard documentation",
-      action: "Download PDF"
+      action: "Download PDF",
+      url: "https://sustainableelectronics.org/welcome-to-r2v3/r2v3-standard-download-2/"
     },
     {
       icon: <Users className="h-6 w-6" />,
       title: "Community Forum",
       description: "Connect with other recyclers and share best practices",
-      action: "Join Discussion"
+      action: "Join Discussion",
+      url: "https://wrekdtech.com/community-r2v3app"
     }
   ];
 
@@ -219,9 +223,16 @@ export default function Help() {
                   </div>
                   <h3 className="font-semibold text-foreground mb-2">{resource.title}</h3>
                   <p className="text-sm text-muted-foreground mb-4">{resource.description}</p>
-                  <Button variant="outline" size="sm" className="w-full">
-                    {resource.action}
-                  </Button>
+                  <a 
+                    href={resource.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="block w-full"
+                  >
+                    <Button variant="outline" size="sm" className="w-full">
+                      {resource.action}
+                    </Button>
+                  </a>
                 </CardContent>
               </Card>
             ))}

@@ -41,6 +41,147 @@ import {
 import { apiGet } from '@/api';
 import { format } from 'date-fns';
 
+// Helper function to download a file
+const downloadFile = async (url: string, filename: string) => {
+  try {
+    // Get token from localStorage (same as apiGet)
+    const token = localStorage.getItem('auth_token');
+    
+    if (!token) {
+      console.error('❌ No auth token found in localStorage. Keys:', Object.keys(localStorage));
+      throw new Error('No authentication token found. Please log in again.');
+    }
+    
+    console.log('✅ Auth token found, length:', token.length);
+
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${token}`,
+    };
+
+    // Build full URL
+    const apiBase = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+      ? 'http://localhost:5000'
+      : '';
+    const fullUrl = `${apiBase}${url}`;
+
+    console.log('Downloading report from:', fullUrl);
+
+    const response = await fetch(fullUrl, {
+      method: 'GET',
+      headers,
+      credentials: 'include', // Include cookies if any
+    });
+
+    if (!response.ok) {
+      let errorMessage = `Download failed: ${response.status} ${response.statusText}`;
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } else {
+          const errorText = await response.text();
+          if (errorText) {
+            try {
+              const errorJson = JSON.parse(errorText);
+              errorMessage = errorJson.message || errorJson.error || errorMessage;
+            } catch {
+              // Not JSON, use the text as is
+              if (errorText.length < 200) errorMessage = errorText;
+            }
+          }
+        }
+      } catch (parseError) {
+        console.error('Error parsing error response:', parseError);
+      }
+      console.error('Download failed:', response.status, errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(downloadUrl);
+  } catch (error) {
+    console.error('Download error:', error);
+    alert(`Failed to download report: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};
+
+// Helper function to view a file in a new tab
+const viewFile = async (url: string) => {
+  try {
+    const token = localStorage.getItem('auth_token');
+    
+    if (!token) {
+      console.error('❌ No auth token found in localStorage. Keys:', Object.keys(localStorage));
+      throw new Error('No authentication token found. Please log in again.');
+    }
+    
+    console.log('✅ Auth token found for viewing, length:', token.length);
+
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${token}`,
+    };
+
+    const apiBase = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+      ? 'http://localhost:5000'
+      : '';
+    const fullUrl = `${apiBase}${url}`;
+
+    const response = await fetch(fullUrl, {
+      method: 'GET',
+      headers,
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      let errorMessage = `Failed to open report: ${response.status} ${response.statusText}`;
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } else {
+          const errorText = await response.text();
+          if (errorText) {
+            try {
+              const errorJson = JSON.parse(errorText);
+              errorMessage = errorJson.message || errorJson.error || errorMessage;
+            } catch {
+              // Not JSON, use the text as is
+              if (errorText.length < 200) errorMessage = errorText;
+            }
+          }
+        }
+      } catch (parseError) {
+        console.error('Error parsing error response:', parseError);
+      }
+      console.error('View failed:', response.status, errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const newWindow = window.open(blobUrl, '_blank');
+    
+    if (!newWindow) {
+      throw new Error('Pop-up blocked. Please allow pop-ups and try again.');
+    }
+
+    // Clean up blob URL after a delay (file should be loaded by then)
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
+  } catch (error) {
+    console.error('View error:', error);
+    alert(`Failed to open report: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};
+
 interface Report {
   id: string;
   name: string;
@@ -61,7 +202,10 @@ export default function Reports() {
 
   // Fetch reports
   const { data: reports = [], isLoading } = useQuery<Report[]>({
-    queryKey: ['/api/reports'],
+    queryKey: ['reports'],
+    queryFn: async () => {
+      return await apiGet<Report[]>('/api/reports');
+    },
     retry: 2,
   });
 
@@ -288,21 +432,33 @@ export default function Reports() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Eye className="h-4 w-4 mr-2" />
-                            Preview
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={async () => {
+                              if (report.downloadUrl) {
+                                await downloadFile(report.downloadUrl, report.name);
+                              }
+                            }}
+                          >
                             <Download className="h-4 w-4 mr-2" />
                             Download
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Share2 className="h-4 w-4 mr-2" />
-                            Share
+                          <DropdownMenuItem
+                            onClick={async () => {
+                              if (report.downloadUrl) {
+                                await viewFile(report.downloadUrl);
+                              }
+                            }}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem disabled>
+                            <Share2 className="h-4 w-4 mr-2" />
+                            Share (Coming Soon)
+                          </DropdownMenuItem>
+                          <DropdownMenuItem disabled>
                             <Mail className="h-4 w-4 mr-2" />
-                            Email
+                            Email (Coming Soon)
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

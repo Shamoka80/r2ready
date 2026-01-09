@@ -159,7 +159,7 @@ export default function AssessmentDetail() {
     setDownloadingExport(format);
     
     try {
-      const filename = `${assessment.title}_${formatName}.${format === 'excel' ? 'xlsx' : format === 'word' ? 'docx' : format === 'email' ? 'txt' : 'pdf'}`;
+      const filename = `${assessment.title}_${formatName}.${format === 'excel' ? 'xlsx' : format === 'word' ? 'docx' : format === 'email' ? 'html' : 'pdf'}`;
       await downloadFile(`/api/exports/${assessmentId}/${format}`, filename);
       
       toast({
@@ -373,26 +373,32 @@ export default function AssessmentDetail() {
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-muted-foreground">Questions Answered</span>
                           <span className="text-sm font-medium text-foreground" data-testid="text-progress-answered">
-                            {assessment.progress.answered} / {assessment.progress.total}
+                            {(assessment.progress as any)?.answeredQuestions || assessment.progress?.answered || 0} / {(assessment.progress as any)?.totalQuestions || assessment.progress?.total || 0}
                           </span>
                         </div>
                         <div className="w-full bg-muted rounded-full h-2">
                           <div
                             className="bg-jade h-2 rounded-full"
-                            style={{ width: `${(assessment.progress.answered / assessment.progress.total) * 100}%` }}
+                            style={{ 
+                              width: (() => {
+                                const total = (assessment.progress as any)?.totalQuestions || assessment.progress?.total || 0;
+                                const answered = (assessment.progress as any)?.answeredQuestions || assessment.progress?.answered || 0;
+                                return total > 0 ? `${(answered / total) * 100}%` : '0%';
+                              })()
+                            }}
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div>
                             <span className="text-muted-foreground">Evidence Uploaded:</span>
                             <span className="font-medium text-foreground ml-2" data-testid="text-evidence-count">
-                              {assessment.progress.evidence} files
+                              {(assessment.progress as any)?.evidenceFiles || assessment.progress?.evidence || 0} files
                             </span>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Last Modified:</span>
                             <span className="font-medium text-foreground ml-2">
-                              {displayAssessment.lastModified}
+                              {assessment.updatedAt ? new Date(assessment.updatedAt).toLocaleDateString() : displayAssessment.lastModified || 'N/A'}
                             </span>
                           </div>
                         </div>
@@ -404,7 +410,7 @@ export default function AssessmentDetail() {
                     <CardContent className="p-6">
                       <h3 className="text-lg font-semibold text-foreground mb-4">Assessment Description</h3>
                       <div className="prose prose-sm max-w-none text-muted-foreground">
-                        <p>{assessment.longDescription}</p>
+                        <p>{assessment.longDescription || assessment.description || 'No description provided for this assessment.'}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -418,6 +424,7 @@ export default function AssessmentDetail() {
                         <Button
                           className="w-full bg-jade text-white hover:bg-jade/90"
                           data-testid="button-continue-assessment"
+                          onClick={() => setActiveTab("questions")}
                         >
                           Continue Assessment
                         </Button>
@@ -425,6 +432,7 @@ export default function AssessmentDetail() {
                           variant="outline"
                           className="w-full"
                           data-testid="button-upload-evidence"
+                          onClick={() => setActiveTab("evidence")}
                         >
                           <Upload className="w-4 h-4 mr-2" />
                           Upload Evidence
@@ -433,6 +441,7 @@ export default function AssessmentDetail() {
                           variant="outline"
                           className="w-full"
                           data-testid="button-view-report"
+                          onClick={() => setActiveTab("exports")}
                         >
                           <FileText className="w-4 h-4 mr-2" />
                           View Report
