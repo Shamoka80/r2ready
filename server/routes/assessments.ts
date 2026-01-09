@@ -11,7 +11,8 @@ import {
   users,
   facilityProfiles,
   clientOrganizations,
-  clientFacilities
+  clientFacilities,
+  evidenceFiles
 } from "../../shared/schema";
 import { eq, and, desc, sql, count, SQL, inArray, or, isNotNull, lt, gt } from "drizzle-orm";
 import { PaginationUtils, paginationParamsSchema } from "../utils/pagination.js";
@@ -795,11 +796,20 @@ router.get("/:id",
         eq(questions.required, true)
       ));
 
+    // Get evidence file count
+    const evidenceFilesResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(evidenceFiles)
+      .where(eq(evidenceFiles.assessmentId, assessment.id));
+    
+    const evidenceFilesCount = evidenceFilesResult[0]?.count || 0;
+
     const progressStats = {
       totalQuestions: totalQuestions[0]?.count || 0,
       answeredQuestions: answeredQuestions[0]?.count || 0,
       requiredQuestions: requiredQuestions[0]?.count || 0,
       answeredRequiredQuestions: answeredRequiredQuestions[0]?.count || 0,
+      evidenceFiles: evidenceFilesCount,
       completionPercentage: totalQuestions[0]?.count ? 
         Math.round(((answeredQuestions[0]?.count || 0) / totalQuestions[0].count) * 100) : 0,
       requiredCompletionPercentage: requiredQuestions[0]?.count ?

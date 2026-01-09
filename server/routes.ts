@@ -37,6 +37,7 @@ import dashboardRoutes from './routes/dashboard.js';
 import tenantsRoutes from './routes/tenants.js';
 import calendarRoutes from './routes/calendar.js';
 import contactRoutes from './routes/contact.js';
+import reportsRoutes from './routes/reports.js';
 
 // Import cache metrics routes
 import cacheMetricsRoutes from './routes/cache-metrics.js';
@@ -142,6 +143,7 @@ export async function registerRoutes(app: Express) {
   app.use('/api/tenants', tenantsRoutes);
   app.use('/api/calendar', calendarRoutes);
   app.use('/api/contact', contactRoutes);
+  app.use('/api/reports', reportsRoutes);
 
   // Cache metrics and management
   app.use('/api/cache', cacheMetricsRoutes);
