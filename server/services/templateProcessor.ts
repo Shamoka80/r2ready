@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
-import { Document as DocxDocument, Packer as DocxPacker, HeadingLevel } from 'docx';
+import { Document as DocxDocument, Packer as DocxPacker, HeadingLevel, Paragraph, TextRun } from 'docx';
 import { db } from '../db.js';
 import { assessments, intakeForms, organizationProfiles, facilityProfiles, standardVersions, users, tenants, clauses, questions, answers } from '../../shared/schema.js';
 import { eq, and, sql } from 'drizzle-orm';
@@ -1522,10 +1522,6 @@ export class TemplateProcessor {
 
   // New template-based email generation following email_temp_export.pdf professional consultation templates
   async generateEmailConsultation(assessmentId: string, tenantId: string): Promise<string> {
-    if (!this.validateTemplateExists('email_temp_export.pdf')) {
-      throw new Error('Email template not found: email_temp_export.pdf');
-    }
-
     // Fetch comprehensive data for template population
     const templateData = await this.fetchTemplateData(assessmentId, tenantId);
 
@@ -1995,108 +1991,215 @@ Assessment Platform: R2v3 Certification Management System`;
     return this.generateEmailSummary(assessmentId, tenantId);
   }
 
-  // Template-based Word report generation
+  // Template-based Word report generation using real docx library
   async generateWordReport(assessmentId: string, tenantId: string): Promise<Buffer> {
     // Fetch comprehensive data for template population with PROPER TENANT ISOLATION
     const templateData = await this.fetchTemplateData(assessmentId, tenantId);
 
-    const doc = new MockDocument({
+    // Use real docx library instead of MockDocument
+    const doc = new DocxDocument({
       sections: [{
         properties: {},
         children: [
-          new MockParagraph({
+          new Paragraph({
             children: [
-              new MockTextRun({
+              new TextRun({
                 text: "R2v3 Pre-Certification Assessment Report",
                 bold: true,
                 size: 32
               })
             ],
-            alignment: AlignmentType.CENTER
+            heading: HeadingLevel.TITLE,
+            spacing: { after: 200 }
           }),
-          new MockParagraph({
+          new Paragraph({
             children: [
-              new MockTextRun({
-                text: "Professional Compliance & Readiness Analysis",
+              new TextRun({
+                text: "Executive Summary",
+                bold: true,
                 size: 24
               })
             ],
-            alignment: AlignmentType.CENTER
+            heading: HeadingLevel.HEADING_1,
+            spacing: { before: 400, after: 200 }
           }),
-          new MockParagraph({
+          new Paragraph({
             children: [
-              new MockTextRun({ text: "" })
-            ]
-          }),
-          new MockParagraph({
-            children: [
-              new MockTextRun({
+              new TextRun({
                 text: `Company: ${templateData.companyName}`,
                 bold: true
               })
-            ]
+            ],
+            spacing: { after: 100 }
           }),
-          new MockParagraph({
+          new Paragraph({
             children: [
-              new MockTextRun({
+              new TextRun({
                 text: `Assessment ID: ${templateData.assessmentId}`
               })
-            ]
+            ],
+            spacing: { after: 100 }
           }),
-          new MockParagraph({
+          new Paragraph({
             children: [
-              new MockTextRun({
+              new TextRun({
                 text: `Report Date: ${templateData.reportDate}`
               })
-            ]
+            ],
+            spacing: { after: 300 }
           }),
-          new MockParagraph({
+          new Paragraph({
             children: [
-              new MockTextRun({ text: "" })
-            ]
-          }),
-          new MockParagraph({
-            children: [
-              new MockTextRun({
-                text: "EXECUTIVE SUMMARY",
+              new TextRun({
+                text: "Assessment Overview",
                 bold: true,
-                size: 28
+                size: 22
               })
-            ]
+            ],
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 200, after: 200 }
           }),
-          new MockParagraph({
+          new Paragraph({
             children: [
-              new MockTextRun({
-                text: `Overall Score: ${templateData.overallScore}%`
+              new TextRun({
+                text: `Overall Score: `,
+                bold: true
+              }),
+              new TextRun({
+                text: `${templateData.overallScore}%`
               })
-            ]
+            ],
+            spacing: { after: 100 }
           }),
-          new MockParagraph({
+          new Paragraph({
             children: [
-              new MockTextRun({
-                text: `Readiness Level: ${templateData.readinessLevel}`
+              new TextRun({
+                text: `Readiness Level: `,
+                bold: true
+              }),
+              new TextRun({
+                text: templateData.readinessLevel
               })
-            ]
+            ],
+            spacing: { after: 100 }
           }),
-          new MockParagraph({
+          new Paragraph({
             children: [
-              new MockTextRun({
-                text: `Critical Issues: ${templateData.criticalCount}`
+              new TextRun({
+                text: `Critical Issues: `,
+                bold: true
+              }),
+              new TextRun({
+                text: templateData.criticalCount.toString()
               })
-            ]
+            ],
+            spacing: { after: 100 }
           }),
-          new MockParagraph({
+          new Paragraph({
             children: [
-              new MockTextRun({
-                text: `Completion Rate: ${templateData.completionPercentage}%`
+              new TextRun({
+                text: `Major Issues: `,
+                bold: true
+              }),
+              new TextRun({
+                text: templateData.majorCount.toString()
               })
-            ]
+            ],
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: `Completion Rate: `,
+                bold: true
+              }),
+              new TextRun({
+                text: `${templateData.completionPercentage}%`
+              })
+            ],
+            spacing: { after: 300 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: "Key Findings",
+                bold: true,
+                size: 22
+              })
+            ],
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 200, after: 200 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: templateData.overallScore >= 90 
+                  ? "The assessment indicates strong compliance with R2v3 requirements. The organization demonstrates readiness for certification."
+                  : templateData.overallScore >= 70
+                  ? "The assessment shows good progress toward R2v3 compliance. Some areas require attention before certification readiness."
+                  : "The assessment identifies significant gaps that must be addressed before pursuing R2v3 certification."
+              })
+            ],
+            spacing: { after: 200 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: "Recommendations",
+                bold: true,
+                size: 22
+              })
+            ],
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 200, after: 200 }
+          }),
+          ...(templateData.criticalCount > 0 ? [
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `• Address ${templateData.criticalCount} critical compliance issue${templateData.criticalCount > 1 ? 's' : ''} identified in the assessment`,
+                  bold: true
+                })
+              ],
+              spacing: { after: 100 }
+            })
+          ] : []),
+          ...(templateData.majorCount > 0 ? [
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `• Resolve ${templateData.majorCount} major gap${templateData.majorCount > 1 ? 's' : ''} to improve overall compliance`
+                })
+              ],
+              spacing: { after: 100 }
+            })
+          ] : []),
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: templateData.completionPercentage < 100 
+                  ? "• Complete remaining assessment questions to finalize the evaluation"
+                  : "• Review detailed compliance report for comprehensive analysis"
+              })
+            ],
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: templateData.readinessLevel === "Certification Ready"
+                  ? "• Schedule formal R2v3 audit with certified body"
+                  : "• Develop gap remediation plan and timeline"
+              })
+            ],
+            spacing: { after: 300 }
           })
         ]
       }]
     });
 
-    return Buffer.from(await MockPacker.toBuffer(doc));
+    const buffer = await DocxPacker.toBuffer(doc);
+    return Buffer.from(buffer);
   }
 
   // Template-based Email report generation
