@@ -132,12 +132,53 @@ class EmailService {
         const fromName = microsoft365SmtpService.getFromName();
         const fromAddress = fromName ? `${fromName} <${fromEmail}>` : fromEmail;
 
+        // Set Reply-To header (use from email if no reply-to specified)
+        const replyTo = fromEmail;
+
+        // Generate unique Message-ID
+        const messageId = `<${Date.now()}-${Math.random().toString(36).substring(2, 9)}@${fromEmail.split('@')[1] || 'r2ready.com'}>`;
+
+        // Build email with proper headers to avoid spam
+        const domain = fromEmail.split('@')[1] || 'r2ready.com';
+        const supportEmail = fromEmail.replace('no-reply@', 'support@').replace('noreply@', 'support@').replace(/@.*/, `@${domain}`);
+        
         const emailData = {
           from: fromAddress,
           to: options.to,
           subject: options.subject,
           html: options.html,
-          text: options.text || this.stripHtml(options.html)
+          text: options.text || this.stripHtml(options.html),
+          replyTo: replyTo,
+          headers: {
+            // Message-ID: Unique identifier for each email (required for proper email threading)
+            'Message-ID': messageId,
+            // Reply-To: Where replies should go (helps with deliverability)
+            'Reply-To': replyTo,
+            // X-Mailer: Identifies the sending application (but keep it minimal to avoid spam filters)
+            'X-Mailer': 'RuR2',
+            // List-Unsubscribe: Required for transactional emails to improve deliverability
+            // Gmail and other providers use this to determine if email is legitimate
+            // Only include if you have an actual unsubscribe page
+            'List-Unsubscribe': `<mailto:${supportEmail}?subject=unsubscribe>`,
+            // X-Priority: Normal priority (3 = normal, 1 = highest)
+            // Removed to avoid triggering spam filters
+            // X-Auto-Response-Suppress: Prevents auto-replies
+            'X-Auto-Response-Suppress': 'All',
+            // Return-Path: Should match from address for better deliverability
+            'Return-Path': fromEmail,
+            // MIME-Version: Required for HTML emails
+            'MIME-Version': '1.0',
+            // Organization: Identifies the organization
+            'Organization': 'RuR2 Compliance Platform',
+            // X-Entity-Ref-ID: Helps with email tracking and deliverability
+            'X-Entity-Ref-ID': messageId,
+            // Authentication-Results: Helps with deliverability (will be added by receiving server)
+            // Date header will be automatically added by nodemailer
+          },
+          // Set priority to normal (not bulk)
+          priority: 'normal',
+          // Enable read receipts if needed (optional)
+          // readReceipt: supportEmail,
         };
 
         if (provider.name === 'Console') {
@@ -227,20 +268,20 @@ class EmailService {
     resetLink: string,
     firstName?: string
   ): Promise<boolean> {
-    const subject = 'Reset Your RuR2 Password';
+    const subject = 'RuR2 Password Reset Request';
     const displayName = firstName ? firstName : 'User';
 
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">RuR2 Password Reset</h1>
+          <h1 style="color: white; margin: 0; font-size: 24px;">Account Security</h1>
         </div>
 
         <div style="padding: 30px; background-color: #f8f9fa;">
           <h2 style="color: #333; margin-bottom: 20px;">Hello ${displayName},</h2>
 
           <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">
-            We received a request to reset your password for your RuR2 account. Click the button below to reset your password:
+            We received a request to reset your password for your RuR2 account. Use the button below to securely reset your password:
           </p>
 
           <div style="text-align: center; margin: 30px 0;">
@@ -252,7 +293,7 @@ class EmailService {
                       border-radius: 5px; 
                       font-weight: bold; 
                       display: inline-block;">
-              Reset Password
+              Secure Password Reset
             </a>
           </div>
 
@@ -316,8 +357,8 @@ If you didn't request this password reset, please ignore this email.
 
     return this.sendEmail({
       to,
-      subject: 'Verify your RuR2 account',
-      from: 'no-reply@wrekdtech.com', // Use verified wrekdtech.com domain
+      subject: 'Complete your RuR2 account setup',
+      from: microsoft365SmtpService.getFromEmail() || 'noreply@example.com', // Use configured SMTP email
       html: `
         <!DOCTYPE html>
         <html>
@@ -332,12 +373,12 @@ If you didn't request this password reset, please ignore this email.
               <p style="color: rgba(255, 255, 255, 0.9); margin: 5px 0 0 0; font-size: 14px;">R2 Compliance Platform</p>
             </div>
             <div style="background: #ffffff; padding: 40px 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-              <h2 style="color: #333; margin-top: 0; font-size: 24px;">Verify Your Email Address</h2>
+              <h2 style="color: #333; margin-top: 0; font-size: 24px;">Complete Your Registration</h2>
               <p style="font-size: 16px; color: #555;">Hi ${firstName},</p>
-              <p style="font-size: 16px; color: #555;">Welcome to RuR2! To complete your registration, please click the button below to verify your email address:</p>
+              <p style="font-size: 16px; color: #555;">Welcome to RuR2! To complete your account setup, please verify your email address using the button below:</p>
 
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${verificationUrl}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);">Verify Email Address</a>
+                <a href="${verificationUrl}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);">Confirm Email Address</a>
               </div>
 
               <p style="color: #666; font-size: 14px; margin-top: 20px; text-align: center;">Or copy and paste this link into your browser:</p>
@@ -395,9 +436,9 @@ If you didn't request this password reset, please ignore this email.
             <p style="color: rgba(255, 255, 255, 0.9); margin: 5px 0 0 0; font-size: 14px;">R2 Compliance Platform</p>
           </div>
           <div style="background: #ffffff; padding: 40px 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <h2 style="color: #333; margin-top: 0; font-size: 24px;">You're Invited to Join the Team! 🎉</h2>
+            <h2 style="color: #333; margin-top: 0; font-size: 24px;">Team Invitation</h2>
             <p style="font-size: 16px; color: #555;">Hi ${firstName},</p>
-            <p style="font-size: 16px; color: #555;">You've been invited to join a team on RuR2. You've been assigned the role of <strong>${roleName}</strong>.</p>
+            <p style="font-size: 16px; color: #555;">You've been invited to join a team on RuR2 with the role of <strong>${roleName}</strong>.</p>
             
             <div style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); padding: 20px; border-radius: 8px; margin: 25px 0;">
               <h3 style="color: #333; margin-top: 0; font-size: 18px;">Your Role: ${roleName}</h3>
@@ -409,7 +450,7 @@ If you didn't request this password reset, please ignore this email.
               </p>
             </div>
 
-            <p style="font-size: 16px; color: #555;">Click the button below to accept the invitation and set up your account:</p>
+            <p style="font-size: 16px; color: #555;">Use the button below to accept the invitation and set up your account:</p>
 
             <div style="text-align: center; margin: 35px 0;">
               <a href="${invitationLink}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);">Accept Invitation</a>
@@ -451,7 +492,7 @@ If you didn't expect this invitation, you can safely ignore this email.
 
     return this.sendEmail({
       to,
-      subject: `You're Invited to Join the Team - RuR2`,
+      subject: `RuR2 Team Invitation`,
       html: htmlContent,
       text: textContent,
       from: microsoft365SmtpService.getFromEmail() || 'noreply@example.com'
@@ -463,8 +504,8 @@ If you didn't expect this invitation, you can safely ignore this email.
 
     return this.sendEmail({
       to,
-      subject: 'Welcome to RuR2! 🎉',
-      from: 'no-reply@wrekdtech.com', // Use verified wrekdtech.com domain
+      subject: 'Welcome to RuR2',
+      from: microsoft365SmtpService.getFromEmail() || 'noreply@example.com', // Use configured SMTP email
       html: `
         <!DOCTYPE html>
         <html>

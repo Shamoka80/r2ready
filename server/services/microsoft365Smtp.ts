@@ -135,6 +135,10 @@ class Microsoft365SmtpService {
             ciphers: 'SSLv3',
             rejectUnauthorized: tlsRejectUnauthorized,
           },
+          // Add default headers for better deliverability
+          defaultHeaders: {
+            'X-Mailer': 'RuR2 Compliance Platform',
+          },
         };
         this.logger.info('Microsoft 365 SMTP configured with basic authentication');
       }

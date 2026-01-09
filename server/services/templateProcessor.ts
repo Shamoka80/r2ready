@@ -1636,107 +1636,161 @@ export class TemplateProcessor {
     const templateData = await this.fetchTemplateData(assessmentId, tenantId);
 
     // Generate professional consultation email template following email_temp_export.pdf
-    const emailTemplate = `Subject: ${templateData.companyName} - R2v3 Certification Assessment Results & Consultation Recommendation
+    // Wrap in complete HTML document structure for proper rendering
+    const emailTemplate = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${templateData.companyName} - R2v3 Certification Assessment Results</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+      line-height: 1.6;
+      color: #333;
+    }
+    .email-container {
+      max-width: 700px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      padding: 30px;
+      border: 1px solid #ddd;
+    }
+    h1 {
+      color: #37A874;
+      border-bottom: 3px solid #37A874;
+      padding-bottom: 10px;
+    }
+    h2 {
+      color: #374874;
+      margin-top: 30px;
+      border-bottom: 2px solid #374874;
+      padding-bottom: 5px;
+    }
+    .section {
+      margin: 20px 0;
+    }
+    .score {
+      font-size: 24px;
+      font-weight: bold;
+      color: #37A874;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+    }
+    table td {
+      padding: 8px;
+      border-bottom: 1px solid #eee;
+    }
+    table td:first-child {
+      font-weight: bold;
+      width: 200px;
+    }
+    .footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #ddd;
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <h1>${templateData.companyName} - R2v3 Certification Assessment Results & Consultation Recommendation</h1>
+    
+    <p>Dear ${templateData.contactName},</p>
+    
+    <p>Thank you for completing the R2v3 pre-certification assessment. I'm pleased to share your organization's assessment results and provide recommendations for your certification journey.</p>
+    
+    <h2>Assessment Results Summary</h2>
 
-Dear ${templateData.contactName},
+    <h2>Consultation Recommendation</h2>
 
-Thank you for completing the R2v3 pre-certification assessment. I'm pleased to share your organization's assessment results and provide recommendations for your certification journey.
+    <p>Based on your assessment results, I recommend scheduling a <strong>${
+      templateData.readinessLevel === "Certification Ready" ? "final preparation consultation" :
+      templateData.readinessLevel === "Minor Gaps" ? "gap remediation consultation" :
+      "comprehensive planning consultation"
+    }</strong> to discuss:</p>
 
-═══════════════════════════════════════════════════════════════
-ASSESSMENT RESULTS SUMMARY
-═══════════════════════════════════════════════════════════════
+    <ul>
+      ${templateData.readinessLevel === "Certification Ready" ? `
+      <li>Final audit preparation strategies</li>
+      <li>Documentation review and optimization</li>
+      <li>Certification timeline and logistics</li>
+      <li>Post-certification maintenance planning</li>
+      ` : templateData.readinessLevel === "Minor Gaps" ? `
+      <li>Targeted gap remediation strategies</li>
+      <li>Priority action plan development</li>
+      <li>Internal audit preparation</li>
+      <li>Certification scheduling recommendations</li>
+      ` : `
+      <li>Comprehensive gap analysis and prioritization</li>
+      <li>Resource allocation and timeline planning</li>
+      <li>Implementation roadmap development</li>
+      <li>Training and capability building requirements</li>
+      <li>Cost estimation and budgeting guidance</li>
+      `}
+    </ul>
 
-Organization: ${templateData.companyName}
-Assessment ID: ${templateData.assessmentId}
-Assessment Period: ${templateData.assessmentPeriod}
-Standard Version: ${templateData.standardVersion}
+    <h3>Estimated Consultation Scope</h3>
+    <table>
+      <tr>
+        <td>Duration:</td>
+        <td>${
+          templateData.readinessLevel === "Certification Ready" ? "2-3 hours" :
+          templateData.readinessLevel === "Minor Gaps" ? "4-6 hours" :
+          "1-2 days (comprehensive planning session)"
+        }</td>
+      </tr>
+      <tr>
+        <td>Format:</td>
+        <td>${templateData.facilityName ? "On-site and virtual sessions" : "Virtual consultation"}</td>
+      </tr>
+      <tr>
+        <td>Deliverables:</td>
+        <td>Detailed action plan, timeline, and implementation guidance</td>
+      </tr>
+    </table>
 
-READINESS OVERVIEW:
-✓ Overall Score: ${templateData.overallScore}%
-✓ Readiness Level: ${templateData.readinessLevel}
-✓ Completion Rate: ${templateData.completionPercentage}%
-✓ Questions Answered: ${templateData.answeredQuestions} of ${templateData.totalQuestions}
+    <h2>Next Steps</h2>
 
-COMPLIANCE STATUS:
-${templateData.criticalCount === 0 ? '✓ No critical issues identified' : '⚠ ' + templateData.criticalCount + ' critical issues requiring immediate attention'}
-${templateData.majorCount === 0 ? '✓ No major gaps identified' : '• ' + templateData.majorCount + ' major compliance gaps identified'}
-${templateData.minorCount === 0 ? '✓ No minor issues identified' : '• ' + templateData.minorCount + ' minor improvement opportunities identified'}
+    <p>To schedule your consultation and discuss your certification pathway:</p>
+    <ol>
+      <li>Reply to this email with your preferred dates and times</li>
+      <li>Call me directly at [Your Phone Number]</li>
+      <li>Schedule online at [Your Scheduling Link]</li>
+    </ol>
 
-${templateData.facilityName ? `
-FACILITY ASSESSED:
-${templateData.facilityName}
-${templateData.facilityAddress}
-Headcount: ${templateData.headcount || 'Not specified'}
-Processing Activities: ${templateData.processingActivities?.join(', ') || 'Not specified'}
-` : ''}
+    <p>I'm committed to supporting <strong>${templateData.companyName}</strong> achieve R2v3 certification success and look forward to our continued partnership.</p>
 
-═══════════════════════════════════════════════════════════════
-CONSULTATION RECOMMENDATION
-═══════════════════════════════════════════════════════════════
+    <p>
+      Best regards,<br>
+      <strong>${templateData.createdByName}</strong><br>
+      R2v3 Certification Consultant<br>
+      ${templateData.tenantName}<br><br>
+      Email: ${templateData.contactEmail}<br>
+      Phone: [Your Phone Number]<br>
+      Website: [Your Website]
+    </p>
 
-Based on your assessment results, I recommend scheduling a ${
-  templateData.readinessLevel === "Certification Ready" ? "final preparation consultation" :
-  templateData.readinessLevel === "Minor Gaps" ? "gap remediation consultation" :
-  "comprehensive planning consultation"
-} to discuss:
-
-${templateData.readinessLevel === "Certification Ready" ? `
-✓ Final audit preparation strategies
-✓ Documentation review and optimization
-✓ Certification timeline and logistics
-✓ Post-certification maintenance planning
-` : templateData.readinessLevel === "Minor Gaps" ? `
-• Targeted gap remediation strategies
-• Priority action plan development
-• Internal audit preparation
-• Certification scheduling recommendations
-` : `
-• Comprehensive gap analysis and prioritization
-• Resource allocation and timeline planning
-• Implementation roadmap development
-• Training and capability building requirements
-• Cost estimation and budgeting guidance
-`}
-
-ESTIMATED CONSULTATION SCOPE:
-Duration: ${
-  templateData.readinessLevel === "Certification Ready" ? "2-3 hours" :
-  templateData.readinessLevel === "Minor Gaps" ? "4-6 hours" :
-  "1-2 days (comprehensive planning session)"
-}
-Format: ${templateData.facilityName ? "On-site and virtual sessions" : "Virtual consultation"}
-Deliverables: Detailed action plan, timeline, and implementation guidance
-
-═══════════════════════════════════════════════════════════════
-NEXT STEPS
-═══════════════════════════════════════════════════════════════
-
-To schedule your consultation and discuss your certification pathway:
-
-1. Reply to this email with your preferred dates and times
-2. Call me directly at [Your Phone Number]
-3. Schedule online at [Your Scheduling Link]
-
-I'm committed to supporting ${templateData.companyName} achieve R2v3 certification success and look forward to our continued partnership.
-
-Best regards,
-${templateData.createdByName}
-R2v3 Certification Consultant
-${templateData.tenantName}
-
-Email: ${templateData.contactEmail}
-Phone: [Your Phone Number]
-Website: [Your Website]
-
-═══════════════════════════════════════════════════════════════
-CONFIDENTIALITY NOTICE
-═══════════════════════════════════════════════════════════════
-This assessment report contains confidential and proprietary information.
-Distribution should be limited to authorized personnel only.
-
-Report Generated: ${templateData.reportGenerationDate}
-Next Assessment Due: ${templateData.nextAssessmentDate}
-Assessment Platform: R2v3 Certification Management System`;
+    <div class="footer">
+      <h3>Confidentiality Notice</h3>
+      <p>This assessment report contains confidential and proprietary information. Distribution should be limited to authorized personnel only.</p>
+      <p>
+        <strong>Report Generated:</strong> ${templateData.reportGenerationDate}<br>
+        <strong>Next Assessment Due:</strong> ${templateData.nextAssessmentDate}<br>
+        <strong>Assessment Platform:</strong> R2v3 Certification Management System
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
 
     return emailTemplate;
   }
@@ -2318,11 +2372,32 @@ Assessment Platform: R2v3 Certification Management System`;
     const templateData = await this.fetchTemplateData(assessmentId, tenantId);
 
     // Generate HTML email following email_temp_export.pdf template structure
-    const emailHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="text-align: center; background-color: #37A874; color: white; padding: 20px;">
-          <h1>R2v3 Assessment Summary</h1>
-          <p>Professional Compliance Analysis</p>
+    // Wrap in complete HTML document structure for proper rendering
+    const emailHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>R2v3 Assessment Summary - ${templateData.companyName}</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+    }
+    .email-container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="text-align: center; background-color: #374874; color: white; padding: 20px;">
+          <h1 style="color: white; margin: 0 0 10px 0;">R2v3 Assessment Summary</h1>
+          <p style="color: white; margin: 0;">Professional Compliance Analysis</p>
         </div>
 
         <div style="padding: 20px;">
@@ -2386,7 +2461,9 @@ Assessment Platform: R2v3 Certification Management System`;
           For questions, contact: ${templateData.contactEmail}
         </div>
       </div>
-    `;
+  </div>
+</body>
+</html>`;
 
     return emailHtml;
   }

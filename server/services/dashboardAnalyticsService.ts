@@ -242,10 +242,11 @@ export class DashboardAnalyticsService {
     try {
       let targetAssessmentId = assessmentId;
 
-      // If no assessment specified, get the most recent completed one
+      // If no assessment specified, get the most recent one (IN_PROGRESS or COMPLETED)
       if (!targetAssessmentId) {
         try {
-          const latestAssessmentResult = await db
+          // First try to get a completed assessment
+          let latestAssessmentResult = await db
             .select({ id: assessments.id })
             .from(assessments)
             .where(
@@ -257,16 +258,51 @@ export class DashboardAnalyticsService {
             .orderBy(desc(assessments.completedAt))
             .limit(1);
 
-          const latestAssessment = (latestAssessmentResult && Array.isArray(latestAssessmentResult) && latestAssessmentResult.length > 0)
+          let latestAssessment = (latestAssessmentResult && Array.isArray(latestAssessmentResult) && latestAssessmentResult.length > 0)
             ? latestAssessmentResult[0]
             : null;
 
+          // If no completed assessment, get the most recent in-progress one
           if (!latestAssessment) {
-            // Return default empty snapshot if no assessments
+            latestAssessmentResult = await db
+              .select({ id: assessments.id })
+              .from(assessments)
+              .where(
+                and(
+                  eq(assessments.tenantId, tenantId),
+                  eq(assessments.status, 'IN_PROGRESS')
+                )
+              )
+              .orderBy(desc(assessments.updatedAt))
+              .limit(1);
+
+            latestAssessment = (latestAssessmentResult && Array.isArray(latestAssessmentResult) && latestAssessmentResult.length > 0)
+              ? latestAssessmentResult[0]
+              : null;
+          }
+
+          // If still no assessment, get the most recent one regardless of status
+          if (!latestAssessment) {
+            latestAssessmentResult = await db
+              .select({ id: assessments.id })
+              .from(assessments)
+              .where(eq(assessments.tenantId, tenantId))
+              .orderBy(desc(assessments.updatedAt))
+              .limit(1);
+
+            latestAssessment = (latestAssessmentResult && Array.isArray(latestAssessmentResult) && latestAssessmentResult.length > 0)
+              ? latestAssessmentResult[0]
+              : null;
+          }
+
+          if (!latestAssessment) {
+            // Return default empty snapshot if no assessments exist at all
+            console.log('⚠️  No assessments found for tenant, returning default snapshot');
             return this.getDefaultReadinessSnapshot();
           }
 
           targetAssessmentId = latestAssessment.id;
+          console.log(`✅ Using assessment ${targetAssessmentId} for readiness snapshot`);
         } catch (error) {
           console.warn('⚠️  Error getting latest assessment, using default snapshot:', error);
           return this.getDefaultReadinessSnapshot();
@@ -303,7 +339,23 @@ export class DashboardAnalyticsService {
       const appendixScores = await this.calculateAppendixScores(targetAssessmentId);
       const gapBreakdown = await this.calculateGapBreakdown(targetAssessmentId);
 
-      const overallScore = assessment.overallScore || 0;
+      // Always calculate overall score from current core requirement scores for accuracy
+      // This ensures the score reflects actual progress, not a potentially outdated database value
+      let overallScore = 0;
+      const crValues = Object.values(coreScores) as number[];
+      if (crValues.length > 0) {
+        const sum = crValues.reduce((acc, score) => acc + Number(score || 0), 0);
+        overallScore = Math.round(sum / crValues.length);
+        console.log(`📊 Calculated overall score from core requirements: ${overallScore}% (average of ${crValues.length} CRs)`);
+      } else {
+        // Fallback to database value if no core requirements calculated
+        overallScore = Math.max(0, Math.min(Math.round(Number(assessment.overallScore) || 0), 100));
+        console.log(`⚠️  No core requirements found, using database overallScore: ${overallScore}%`);
+      }
+      
+      // Ensure score is always between 0 and 100
+      overallScore = Math.max(0, Math.min(overallScore, 100));
+      
       const readinessLevel = this.determineReadinessLevel(overallScore);
 
       return {
@@ -329,7 +381,7 @@ export class DashboardAnalyticsService {
         .select({
           questionId: questions.id,
           questionText: questions.text,
-          clauseRef: clauses.clauseRef,
+          clauseRef: clauses.ref,
           answerValue: answers.value,
           notes: answers.notes,
         })
@@ -532,7 +584,7 @@ export class DashboardAnalyticsService {
       // Get all answers with clause references
       const answersWithClauses = await db
         .select({
-          clauseRef: clauses.clauseRef,
+          clauseRef: clauses.ref,
           answerValue: answers.value,
           questionId: questions.id,
         })
@@ -540,6 +592,8 @@ export class DashboardAnalyticsService {
         .innerJoin(questions, eq(answers.questionId, questions.id))
         .innerJoin(clauses, eq(questions.clauseId, clauses.id))
         .where(eq(answers.assessmentId, assessmentId));
+
+      console.log(`📊 Found ${answersWithClauses.length} answers with clauses for assessment ${assessmentId}`);
 
       // Count answers per core requirement
       const crCounts = new Map<string, { total: number; score: number }>();
@@ -562,6 +616,8 @@ export class DashboardAnalyticsService {
         }
       });
 
+      console.log(`📊 Core requirement counts:`, Object.fromEntries(crCounts));
+
       // Calculate averages for each core requirement
       crCounts.forEach((data, crKey) => {
         if (crKey in scores) {
@@ -570,7 +626,7 @@ export class DashboardAnalyticsService {
         }
       });
 
-      console.log(`✅ Core requirement scores calculated for assessment ${assessmentId}`);
+      console.log(`✅ Core requirement scores calculated for assessment ${assessmentId}:`, scores);
       return scores;
     } catch (error) {
       console.error(`❌ Error calculating core requirement scores: ${error}`);
@@ -579,41 +635,100 @@ export class DashboardAnalyticsService {
   }
 
   private static async calculateAppendixScores(assessmentId: string) {
-    // Similar to CR scoring but for appendices
-    return {
+    const scores = {
       appA: 0, appB: 0, appC: 0, appD: 0,
       appE: 0, appF: 0, appG: 0,
     };
+
+    try {
+      // Get all answers with clause references
+      const answersWithClauses = await db
+        .select({
+          clauseRef: clauses.ref,
+          answerValue: answers.value,
+          questionId: questions.id,
+        })
+        .from(answers)
+        .innerJoin(questions, eq(answers.questionId, questions.id))
+        .innerJoin(clauses, eq(questions.clauseId, clauses.id))
+        .where(eq(answers.assessmentId, assessmentId));
+
+      // Count answers per appendix
+      const appCounts = new Map<string, { total: number; score: number }>();
+
+      answersWithClauses.forEach(({ clauseRef, answerValue }) => {
+        // Match patterns like "APP A", "App A", "APP-A", "AppA", etc.
+        const appMatch = clauseRef?.match(/(?:APP|App)[\s-]?([A-G])/i);
+        if (appMatch) {
+          const appLetter = appMatch[1].toUpperCase();
+          const appKey = `app${appLetter}`;
+          
+          if (!appCounts.has(appKey)) {
+            appCounts.set(appKey, { total: 0, score: 0 });
+          }
+
+          const appData = appCounts.get(appKey)!;
+          appData.total++;
+
+          // Scoring: Yes=100, Partial=50, No=0, N/A=0
+          const answerScore = answerValue === 'Yes' ? 100 :
+                            answerValue === 'Partial' ? 50 : 0;
+          appData.score += answerScore;
+        }
+      });
+
+      // Calculate averages for each appendix
+      appCounts.forEach((data, appKey) => {
+        if (appKey in scores) {
+          scores[appKey as keyof typeof scores] = data.total > 0 ?
+            Math.round(data.score / data.total) : 0;
+        }
+      });
+
+      console.log(`✅ Appendix scores calculated for assessment ${assessmentId}`);
+      return scores;
+    } catch (error) {
+      console.error(`❌ Error calculating appendix scores: ${error}`);
+      return scores; // Return zeros on error
+    }
   }
 
   private static async calculateGapBreakdown(assessmentId: string) {
-    const gaps = await db
-      .select({
-        answerValue: answers.value,
-        clauseRef: clauses.clauseRef,
-      })
-      .from(answers)
-      .innerJoin(questions, eq(answers.questionId, questions.id))
-      .innerJoin(clauses, eq(questions.clauseId, clauses.id))
-      .where(
-        and(
-          eq(answers.assessmentId, assessmentId),
-          sql`${answers.value}::text IN ('No', 'Partial')`
-        )
-      );
+    try {
+      const gaps = await db
+        .select({
+          answerValue: answers.value,
+          clauseRef: clauses.ref,
+        })
+        .from(answers)
+        .innerJoin(questions, eq(answers.questionId, questions.id))
+        .innerJoin(clauses, eq(questions.clauseId, clauses.id))
+        .where(
+          and(
+            eq(answers.assessmentId, assessmentId),
+            sql`${answers.value}::text IN ('No', 'Partial')`
+          )
+        );
 
-    let critical = 0;
-    let important = 0;
-    let minor = 0;
+      console.log(`🔍 Found ${gaps.length} gaps (No/Partial answers) for assessment ${assessmentId}`);
 
-    gaps.forEach(gap => {
-      const severity = this.determineSeverity(gap.clauseRef || '');
-      if (severity === 'critical') critical++;
-      else if (severity === 'important') important++;
-      else minor++;
-    });
+      let critical = 0;
+      let important = 0;
+      let minor = 0;
 
-    return { critical, important, minor };
+      gaps.forEach(gap => {
+        const severity = this.determineSeverity(gap.clauseRef || '');
+        if (severity === 'critical') critical++;
+        else if (severity === 'important') important++;
+        else minor++;
+      });
+
+      console.log(`🔍 Gap breakdown: Critical=${critical}, Important=${important}, Minor=${minor}`);
+      return { critical, important, minor };
+    } catch (error) {
+      console.error(`❌ Error calculating gap breakdown for assessment ${assessmentId}:`, error);
+      return { critical: 0, important: 0, minor: 0 };
+    }
   }
 
   private static determineSeverity(clauseRef: string): 'critical' | 'important' | 'minor' {
@@ -807,7 +922,7 @@ export class DashboardAnalyticsService {
         questionId: questions.id,
         questionText: questions.text,
         answerValue: answers.value,
-        clauseRef: clauses.clauseRef,
+        clauseRef: clauses.ref,
       })
       .from(answers)
       .innerJoin(questions, eq(answers.questionId, questions.id))

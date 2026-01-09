@@ -89,6 +89,9 @@ interface ReadinessGaugeProps {
 }
 
 export function ReadinessGauge({ score, level, isLoading }: ReadinessGaugeProps) {
+  // Ensure score is always between 0 and 100
+  const normalizedScore = Math.max(0, Math.min(100, Number(score) || 0));
+  
   if (isLoading) {
     return (
       <Card>
@@ -113,9 +116,10 @@ export function ReadinessGauge({ score, level, isLoading }: ReadinessGaugeProps)
   };
 
   const getProgressColor = (score: number) => {
-    if (score >= 90) return 'bg-green-600';
-    if (score >= 75) return 'bg-blue-600';
-    if (score >= 50) return 'bg-yellow-600';
+    const normalized = Math.max(0, Math.min(100, score));
+    if (normalized >= 90) return 'bg-green-600';
+    if (normalized >= 75) return 'bg-blue-600';
+    if (normalized >= 50) return 'bg-yellow-600';
     return 'bg-red-600';
   };
 
@@ -146,15 +150,15 @@ export function ReadinessGauge({ score, level, isLoading }: ReadinessGaugeProps)
                 strokeWidth="8"
                 fill="none"
                 strokeDasharray={`${2 * Math.PI * 56}`}
-                strokeDashoffset={`${2 * Math.PI * 56 * (1 - score / 100)}`}
-                className={getProgressColor(score)}
+                strokeDashoffset={`${2 * Math.PI * 56 * (1 - normalizedScore / 100)}`}
+                className={getProgressColor(normalizedScore)}
                 strokeLinecap="round"
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
                 <div className="text-3xl font-bold" data-testid="readiness-score">
-                  {score}%
+                  {normalizedScore}%
                 </div>
               </div>
             </div>
