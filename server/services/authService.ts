@@ -5,6 +5,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { db } from '../db';
 import { users, tenants, userSessions, permissions, rolePermissions, auditLog, facilityProfiles, assessments } from '../../shared/schema';
 import { eq, and, desc, sql, or } from 'drizzle-orm';
+import { emailService } from './emailService.js';
 
 // JWT Configuration with environment variables
 interface JWTConfig {
@@ -553,6 +554,19 @@ export class AuthService {
     role: string,
     sendEmail: boolean = false
   ): Promise<any> {
+    // Validate required parameters
+    if (!tenantId || !email || !role) {
+      throw new Error('Missing required parameters: tenantId, email, and role are required');
+    }
+
+    // Ensure firstName and lastName are non-empty strings
+    const safeFirstName = (firstName && typeof firstName === 'string' && firstName.trim().length > 0) 
+      ? firstName.trim() 
+      : 'User';
+    const safeLastName = (lastName && typeof lastName === 'string' && lastName.trim().length > 0) 
+      ? lastName.trim() 
+      : 'User';
+
     // Check if user already exists in tenant
     const existingUser = await db.query.users.findFirst({
       where: and(
@@ -568,32 +582,117 @@ export class AuthService {
     const userId = crypto.randomUUID();
     const isBusinessRole = ['business_owner', 'facility_manager', 'compliance_officer', 'team_member', 'viewer'].includes(role);
 
-    const userResult = await db.insert(users).values({
+    // Generate invitation token for team invites
+    const invitationToken = crypto.randomBytes(32).toString('hex');
+    const invitationTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days expiry
+
+    // Log the values being inserted for debugging
+    console.log('Creating invited user with values:', {
       id: userId,
       tenantId,
       email,
-      firstName,
-      lastName,
+      firstName: safeFirstName,
+      lastName: safeLastName,
       businessRole: isBusinessRole ? role : null,
       consultantRole: !isBusinessRole ? role : null,
-      isActive: true,
+      isActive: false, // User is inactive until they accept invitation
       invitedBy,
-      invitedAt: new Date(),
-    }).returning();
-    const user = Array.isArray(userResult) ? userResult[0] : (userResult as any).rows[0];
+    });
 
-    // Log audit event
-    await this.logAuditEvent(
-      tenantId,
-      invitedBy,
-      'USER_INVITED',
-      'user',
-      userId,
-      undefined,
-      { email, role }
-    );
+    try {
+      const userResult = await db.insert(users).values({
+        id: userId,
+        tenantId,
+        email,
+        firstName: safeFirstName,
+        lastName: safeLastName,
+        businessRole: isBusinessRole ? role : null,
+        consultantRole: !isBusinessRole ? role : null,
+        isActive: false, // Inactive until invitation is accepted
+        emailVerified: false,
+        emailVerificationToken: invitationToken, // Reuse emailVerificationToken for invitation
+        emailVerificationTokenExpiry: invitationTokenExpiry,
+        invitedBy,
+        invitedAt: new Date(),
+        setupStatus: 'email_pending', // User needs to accept invitation
+      }).returning();
+      const user = Array.isArray(userResult) ? userResult[0] : (userResult as any).rows[0];
+      
+      if (!user) {
+        throw new Error('Failed to create user - no user returned from insert');
+      }
 
-    return user;
+      // Log audit event
+      await this.logAuditEvent(
+        tenantId,
+        invitedBy,
+        'USER_INVITED',
+        'user',
+        userId,
+        undefined,
+        { email, role }
+      );
+
+      // Send invitation email if requested
+      if (sendEmail) {
+        try {
+          // Ensure email service is initialized
+          await emailService.ensureInitialized();
+          
+          const frontendUrl = process.env.FRONTEND_URL || process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5173';
+          const invitationLink = `${frontendUrl}/accept-invitation?token=${invitationToken}`;
+          
+          console.log('📧 Attempting to send team invitation email...', {
+            to: email,
+            frontendUrl,
+            invitationLink: invitationLink.substring(0, 50) + '...',
+          });
+          
+          const emailSent = await emailService.sendTeamInviteEmail(
+            email,
+            safeFirstName,
+            role,
+            invitationLink,
+            tenantId
+          );
+          
+          if (emailSent) {
+            console.log('✅ Team invitation email sent successfully to:', email);
+          } else {
+            console.warn('⚠️ Email service returned false - email may not have been sent. Check email provider configuration.');
+          }
+        } catch (emailError) {
+          console.error('❌ Failed to send invitation email:', emailError);
+          if (emailError instanceof Error) {
+            console.error('Error details:', {
+              message: emailError.message,
+              stack: emailError.stack,
+            });
+          }
+          // Don't fail the entire invitation if email fails
+          // User can still be invited and link can be shared manually
+        }
+      } else {
+        console.log('ℹ️ Email sending disabled for this invitation (sendEmail=false)');
+      }
+
+      return user;
+    } catch (error) {
+      // Enhanced error logging for database errors
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Error in inviteUser:', {
+        error: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined,
+        values: {
+          tenantId,
+          email,
+          firstName: safeFirstName,
+          lastName: safeLastName,
+          role,
+        }
+      });
+      throw error;
+    }
   }
 
   /**

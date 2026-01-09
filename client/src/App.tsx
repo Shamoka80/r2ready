@@ -20,6 +20,7 @@ import Register from "@/pages/Register";
 import RegisterComplete from "@/pages/RegisterComplete";
 import RegisterEmailSent from "@/pages/RegisterEmailSent";
 import VerifyEmail from '@/pages/VerifyEmail';
+import AcceptInvitation from '@/pages/AcceptInvitation';
 import AccountTypeSelection from '@/pages/AccountTypeSelection';
 import Pricing from '@/pages/Pricing';
 import Dashboard from "@/pages/Dashboard";
@@ -80,6 +81,7 @@ function App() {
             <Route path="/register/complete" component={RegisterComplete} />
             <Route path="/register/email-sent" component={RegisterEmailSent} />
             <Route path="/verify-email" component={VerifyEmail} />
+            <Route path="/accept-invitation" component={AcceptInvitation} />
             <Route path="/forgot-password" component={lazy(() => import("@/pages/ForgotPassword"))} />
             <Route path="/reset-password" component={lazy(() => import("@/pages/ResetPassword"))} />
 
