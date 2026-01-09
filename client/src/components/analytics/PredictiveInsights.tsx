@@ -50,127 +50,280 @@ interface ComplianceForecast {
   riskFactors: string[];
 }
 
-export default function PredictiveInsights() {
+interface PredictiveInsightsProps {
+  assessmentId?: string;
+  insights?: {
+    anomalies: Array<{
+      type: 'document' | 'activity' | 'compliance' | 'training';
+      severity: 'low' | 'medium' | 'high' | 'critical';
+      description: string;
+      recommendation: string;
+      confidence: number;
+    }>;
+    riskAssessment: {
+      overallRisk: number;
+      complianceGaps: Array<{
+        area: string;
+        risk: number;
+        impact: string;
+        mitigation: string;
+      }>;
+      predictions: Array<{
+        metric: string;
+        currentValue: number;
+        predictedValue: number;
+        timeframe: string;
+        confidence: number;
+      }>;
+    };
+    resourceForecasting: {
+      staffingNeeds: {
+        current: number;
+        predicted: number;
+        roles: Array<{ role: string; count: number; priority: string }>;
+      };
+      trainingRequirements: Array<{
+        module: string;
+        urgency: string;
+        estimatedHours: number;
+        completion: number;
+      }>;
+    };
+    trendAnalysis: {
+      documentTrends: Array<{
+        category: string;
+        trend: 'increasing' | 'decreasing' | 'stable';
+        changePercentage: number;
+        significance: string;
+      }>;
+      complianceTrends: Array<{
+        area: string;
+        direction: 'improving' | 'declining' | 'stable';
+        velocity: number;
+        forecast: string;
+      }>;
+    };
+  };
+  trends?: Array<{
+    date: string;
+    score: number;
+    assessments: number;
+    documents: number;
+    risk: number;
+    compliance: number;
+  }>;
+}
+
+export default function PredictiveInsights({ insights: apiInsights, trends: historicalTrends }: PredictiveInsightsProps = {}) {
   const [selectedTimeframe, setSelectedTimeframe] = useState<'30d' | '90d' | '1y'>('90d');
   const [selectedInsightType, setSelectedInsightType] = useState<'all' | 'trends' | 'risks' | 'opportunities'>('all');
 
-  // Mock data - in production, this would come from your analytics service
-  const insights: PredictiveInsight[] = [
-    {
-      id: '1',
-      type: 'prediction',
-      severity: 'high',
-      title: 'Compliance Score Improvement Opportunity',
-      description: 'Based on current assessment patterns, you could achieve 15% higher compliance scores by focusing on data handling procedures.',
-      impact: 'Could improve overall compliance rating from B+ to A-',
-      confidence: 87,
-      timeframe: '3-6 months',
-      actionItems: [
-        'Review and update data classification procedures',
-        'Implement additional staff training on data handling',
-        'Establish regular compliance audits for data processes'
-      ],
+  // Convert API insights to component format
+  const insights: PredictiveInsight[] = apiInsights ? [
+    // Convert anomalies to insights
+    ...(apiInsights.anomalies || []).map((anomaly, index) => ({
+      id: `anomaly-${index}`,
+      type: 'anomaly' as const,
+      severity: anomaly.severity,
+      title: `${anomaly.type.charAt(0).toUpperCase() + anomaly.type.slice(1)} Anomaly Detected`,
+      description: anomaly.description,
+      impact: anomaly.recommendation,
+      confidence: anomaly.confidence,
+      timeframe: 'Recent activity',
+      actionItems: [anomaly.recommendation],
       metadata: {
-        dataPoints: 156,
+        dataPoints: 0,
         lastUpdated: new Date(),
-        source: ['assessments', 'user_behavior', 'compliance_trends']
+        source: ['system_analytics']
       }
-    },
-    {
-      id: '2',
-      type: 'trend',
-      severity: 'medium',
-      title: 'Assessment Completion Rate Declining',
-      description: 'Assessment completion rates have dropped 12% over the last 60 days, primarily in the environmental management section.',
-      impact: 'May affect overall compliance visibility and reporting accuracy',
-      confidence: 92,
+    })),
+    // Convert predictions to insights
+    ...(apiInsights.riskAssessment?.predictions || []).map((pred, index) => ({
+      id: `prediction-${index}`,
+      type: 'prediction' as const,
+      severity: pred.confidence > 80 ? 'high' as const : pred.confidence > 60 ? 'medium' as const : 'low' as const,
+      title: `${pred.metric} Forecast`,
+      description: `${pred.metric} is predicted to ${pred.predictedValue > pred.currentValue ? 'improve' : 'decline'} from ${pred.currentValue} to ${pred.predictedValue} in ${pred.timeframe}`,
+      impact: `Expected change of ${Math.abs(pred.predictedValue - pred.currentValue)}`,
+      confidence: pred.confidence,
+      timeframe: pred.timeframe,
+      actionItems: ['Monitor trend closely', 'Take proactive measures if needed'],
+      metadata: {
+        dataPoints: 0,
+        lastUpdated: new Date(),
+        source: ['predictive_analytics']
+      }
+    })),
+    // Convert compliance trends to insights
+    ...(apiInsights.trendAnalysis?.complianceTrends || []).map((trend, index) => ({
+      id: `trend-${index}`,
+      type: 'trend' as const,
+      severity: trend.direction === 'declining' ? 'medium' as const : 'low' as const,
+      title: `${trend.area} Compliance Trend`,
+      description: `${trend.area} compliance is ${trend.direction} with a velocity of ${trend.velocity}`,
+      impact: trend.forecast,
+      confidence: Math.abs(trend.velocity) > 10 ? 85 : 70,
       timeframe: 'Current trend',
-      actionItems: [
-        'Simplify environmental management questions',
-        'Provide additional guidance for complex sections',
-        'Implement progress saving and reminders'
-      ],
+      actionItems: ['Continue monitoring', 'Implement improvements if declining'],
       metadata: {
-        dataPoints: 89,
+        dataPoints: 0,
         lastUpdated: new Date(),
-        source: ['user_analytics', 'assessment_data']
+        source: ['trend_analysis']
       }
-    },
-    {
-      id: '3',
-      type: 'anomaly',
-      severity: 'low',
-      title: 'Unusual Peak in Security Assessment Activity',
-      description: 'Security-related assessments have increased 45% this month, possibly indicating industry-wide security focus.',
-      impact: 'Positive indicator of proactive security management',
-      confidence: 78,
-      timeframe: 'Last 30 days',
-      actionItems: [
-        'Leverage this momentum for comprehensive security reviews',
-        'Consider offering advanced security assessment templates',
-        'Monitor for emerging security compliance requirements'
-      ],
+    })),
+    // Convert compliance gaps to insights
+    ...(apiInsights.riskAssessment?.complianceGaps || []).map((gap, index) => ({
+      id: `gap-${index}`,
+      type: 'recommendation' as const,
+      severity: gap.risk > 70 ? 'high' as const : gap.risk > 40 ? 'medium' as const : 'low' as const,
+      title: `Compliance Gap: ${gap.area}`,
+      description: `${gap.area} has a risk level of ${gap.risk}% with ${gap.impact} impact`,
+      impact: gap.impact,
+      confidence: 80,
+      timeframe: 'Address within 30 days',
+      actionItems: [gap.mitigation],
       metadata: {
-        dataPoints: 67,
+        dataPoints: 0,
         lastUpdated: new Date(),
-        source: ['assessment_trends', 'industry_data']
+        source: ['risk_assessment']
       }
-    },
-    {
-      id: '4',
-      type: 'recommendation',
-      severity: 'medium',
-      title: 'Optimal Assessment Scheduling Identified',
-      description: 'Data shows 23% higher completion rates when assessments are started on Tuesdays or Wednesdays between 9-11 AM.',
-      impact: 'Could improve overall assessment completion by 20-25%',
-      confidence: 84,
-      timeframe: 'Immediate implementation',
-      actionItems: [
-        'Schedule assessment reminders for optimal time windows',
-        'Adjust notification timing for better engagement',
-        'Consider assessment difficulty based on optimal completion times'
-      ],
-      metadata: {
-        dataPoints: 234,
-        lastUpdated: new Date(),
-        source: ['user_behavior', 'completion_analytics']
-      }
+    }))
+  ] : [];
+
+  // Generate additional insights from historical trends if no other insights exist
+  const baseInsightsCount = insights.length;
+  const additionalInsights: PredictiveInsight[] = (baseInsightsCount === 0 && historicalTrends && historicalTrends.length > 0) ? (() => {
+    const validTrends = historicalTrends.filter(t => typeof t.score === 'number' && t.score > 0);
+    if (validTrends.length > 0) {
+      return [{
+        id: 'trend-based-insight-1',
+        type: 'recommendation' as const,
+        severity: 'low' as const,
+        title: 'Start Tracking Compliance Metrics',
+        description: `You have ${validTrends.length} month${validTrends.length > 1 ? 's' : ''} of compliance data. Continue completing assessments to generate more detailed insights.`,
+        impact: 'Better visibility into compliance trends and risk areas',
+        confidence: 75,
+        timeframe: 'Ongoing',
+        actionItems: [
+          'Complete regular compliance assessments',
+          'Upload evidence documents for completed assessments',
+          'Review and address any identified compliance gaps'
+        ],
+        metadata: {
+          dataPoints: validTrends.length,
+          lastUpdated: new Date(),
+          source: ['historical_data']
+        }
+      }];
     }
-  ];
+    return [];
+  })() : [];
+  
+  // Combine base insights with additional insights
+  let allInsights = [...insights, ...additionalInsights];
+  
+  // If still no insights, provide a default onboarding insight
+  if (allInsights.length === 0) {
+    allInsights = [{
+      id: 'default-onboarding-insight',
+      type: 'recommendation' as const,
+      severity: 'low' as const,
+      title: 'Get Started with Compliance Analytics',
+      description: 'Begin tracking your compliance metrics by completing assessments. As you collect data, predictive insights will automatically appear here.',
+      impact: 'Enable data-driven compliance decision making',
+      confidence: 90,
+      timeframe: 'Get started today',
+      actionItems: [
+        'Create and complete your first compliance assessment',
+        'Upload supporting evidence documents',
+        'Review assessment results and identify areas for improvement',
+        'Set up regular assessment schedules'
+      ],
+      metadata: {
+        dataPoints: 0,
+        lastUpdated: new Date(),
+        source: ['onboarding']
+      }
+    }];
+  }
 
-  const complianceForecasts: ComplianceForecast[] = [
-    {
-      currentScore: 78,
-      predictedScore: 85,
-      trend: 'improving',
-      timeToTarget: 4,
-      riskFactors: ['Staff turnover in compliance team', 'New regulation implementation']
-    },
-    {
-      currentScore: 65,
-      predictedScore: 62,
-      trend: 'declining',
-      timeToTarget: 8,
-      riskFactors: ['Outdated procedures', 'Limited training budget', 'Technology gaps']
-    }
-  ];
+  // Convert historical trends to chart data
+  const trendData: TrendData[] = historicalTrends && Array.isArray(historicalTrends) && historicalTrends.length > 0
+    ? historicalTrends.map((trend, index) => {
+        try {
+          const date = new Date(trend.date);
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          // Ensure we have valid numbers
+          const score = typeof trend.score === 'number' ? trend.score : 0;
+          const compliance = typeof trend.compliance === 'number' ? trend.compliance : (score > 0 ? score + 5 : 0);
+          
+          return {
+            period: monthNames[date.getMonth()] || `Month ${index + 1}`,
+            value: Math.max(0, Math.min(100, score)), // Clamp between 0-100
+            predicted: Math.max(0, Math.min(100, compliance)), // Clamp between 0-100
+            confidence: score > 0 ? 85 : 50 // Calculate confidence based on data availability
+          };
+        } catch (error) {
+          console.error('Error processing trend data:', error, trend);
+          return {
+            period: `Month ${index + 1}`,
+            value: 0,
+            predicted: 0,
+            confidence: 0
+          };
+        }
+      })
+    : [];
 
-  const trendData: TrendData[] = [
-    { period: 'Jan', value: 72, predicted: 74, confidence: 89 },
-    { period: 'Feb', value: 75, predicted: 76, confidence: 87 },
-    { period: 'Mar', value: 78, predicted: 79, confidence: 85 },
-    { period: 'Apr', value: 76, predicted: 78, confidence: 82 },
-    { period: 'May', value: 79, predicted: 81, confidence: 88 },
-    { period: 'Jun', value: 82, predicted: 84, confidence: 90 }
-  ];
+  // Generate forecasts from real data
+  const complianceForecasts: ComplianceForecast[] = historicalTrends && Array.isArray(historicalTrends) && historicalTrends.length >= 2
+    ? (() => {
+        const recentTrends = historicalTrends.slice(-2);
+        const current = recentTrends[recentTrends.length - 1];
+        const previous = recentTrends[recentTrends.length - 2];
+        
+        if (!current || !previous) return [];
+        
+        const currentScore = typeof current.score === 'number' ? current.score : 0;
+        const previousScore = typeof previous.score === 'number' ? previous.score : 0;
+        const trend = currentScore > previousScore ? 'improving' : currentScore < previousScore ? 'declining' : 'stable';
+        const predictedScore = trend === 'improving' 
+          ? Math.min(100, currentScore + (currentScore - previousScore))
+          : trend === 'declining'
+          ? Math.max(0, currentScore + (currentScore - previousScore))
+          : currentScore;
+        
+        const riskFactors: string[] = [];
+        if (apiInsights?.riskAssessment && apiInsights.riskAssessment.overallRisk > 70) {
+          riskFactors.push('High overall risk level');
+        }
+        if (apiInsights?.riskAssessment?.complianceGaps && apiInsights.riskAssessment.complianceGaps.length > 0) {
+          riskFactors.push(...apiInsights.riskAssessment.complianceGaps.slice(0, 2).map(g => g.area));
+        }
+        if (riskFactors.length === 0) riskFactors.push('No significant risk factors identified');
 
-  const filteredInsights = insights.filter(insight => {
+        return [{
+          currentScore: currentScore,
+          predictedScore: Math.round(predictedScore),
+          trend: trend,
+          timeToTarget: trend === 'improving' ? 6 : trend === 'declining' ? 3 : 12,
+          riskFactors: riskFactors
+        }];
+      })()
+    : [];
+
+  const filteredInsights = allInsights.filter(insight => {
     if (selectedInsightType === 'all') return true;
     if (selectedInsightType === 'trends') return insight.type === 'trend';
     if (selectedInsightType === 'risks') return insight.severity === 'high' || insight.severity === 'critical';
     if (selectedInsightType === 'opportunities') return insight.type === 'prediction' || insight.type === 'recommendation';
     return true;
   });
+
+  // Show message if no data available
+  // Always consider having data if we have insights (which now always includes at least the default)
+  const hasData = allInsights.length > 0 || trendData.length > 0 || complianceForecasts.length > 0 || 
+    (historicalTrends && Array.isArray(historicalTrends) && historicalTrends.length > 0);
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -238,68 +391,82 @@ export default function PredictiveInsights() {
         </TabsList>
 
         <TabsContent value="insights" className="space-y-6">
-          {/* Insights Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {!hasData ? (
             <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Critical Issues</p>
-                    <p className="text-2xl font-bold text-red-600">
-                      {insights.filter(i => i.severity === 'critical').length}
-                    </p>
-                  </div>
-                  <AlertTriangle className="h-8 w-8 text-red-600" />
-                </div>
+              <CardContent className="text-center py-8">
+                <Target className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-foreground">No predictive insights available yet.</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Insights will appear as more assessment and compliance data is collected.
+                </p>
               </CardContent>
             </Card>
+          ) : (
+            <>
+              {/* Insights Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Critical Issues</p>
+                        <p className="text-2xl font-bold text-red-600">
+                          {allInsights.filter(i => i.severity === 'critical').length}
+                        </p>
+                      </div>
+                      <AlertTriangle className="h-8 w-8 text-red-600" />
+                    </div>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Opportunities</p>
-                    <p className="text-2xl font-bold text-green-600">
-                      {insights.filter(i => i.type === 'recommendation').length}
-                    </p>
-                  </div>
-                  <Target className="h-8 w-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Opportunities</p>
+                        <p className="text-2xl font-bold text-green-600">
+                          {allInsights.filter(i => i.type === 'recommendation').length}
+                        </p>
+                      </div>
+                      <Target className="h-8 w-8 text-green-600" />
+                    </div>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Active Trends</p>
-                    <p className="text-2xl font-bold text-blue-600">
-                      {insights.filter(i => i.type === 'trend').length}
-                    </p>
-                  </div>
-                  <TrendingUp className="h-8 w-8 text-blue-600" />
-                </div>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Active Trends</p>
+                        <p className="text-2xl font-bold text-blue-600">
+                          {allInsights.filter(i => i.type === 'trend').length}
+                        </p>
+                      </div>
+                      <TrendingUp className="h-8 w-8 text-blue-600" />
+                    </div>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Avg Confidence</p>
-                    <p className="text-2xl font-bold text-purple-600">
-                      {Math.round(insights.reduce((sum, i) => sum + i.confidence, 0) / insights.length)}%
-                    </p>
-                  </div>
-                  <Award className="h-8 w-8 text-purple-600" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Avg Confidence</p>
+                        <p className="text-2xl font-bold text-purple-600">
+                          {allInsights.length > 0 
+                            ? Math.round(allInsights.reduce((sum, i) => sum + i.confidence, 0) / allInsights.length)
+                            : 0}%
+                        </p>
+                      </div>
+                      <Award className="h-8 w-8 text-purple-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-          {/* Insights List */}
-          <div className="space-y-4">
-            {filteredInsights.map((insight) => (
+              {/* Insights List */}
+              <div className="space-y-4">
+                {filteredInsights.length > 0 ? filteredInsights.map((insight) => (
               <Card key={insight.id} className={`border-l-4 ${getSeverityColor(insight.severity)}`}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
@@ -350,64 +517,84 @@ export default function PredictiveInsights() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            )) : (
+              <Card>
+                <CardContent className="text-center py-8">
+                  <p className="text-foreground">No insights match the selected filter.</p>
+                </CardContent>
+              </Card>
+            )}
           </div>
+            </>
+          )}
         </TabsContent>
 
         <TabsContent value="forecasts" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {complianceForecasts.map((forecast, index) => (
-              <Card key={index}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5" />
-                    Compliance Score Forecast
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Current Score</p>
-                      <p className="text-3xl font-bold">{forecast.currentScore}%</p>
+          {complianceForecasts.length > 0 ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {complianceForecasts.map((forecast, index) => (
+                <Card key={index}>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5" />
+                      Compliance Score Forecast
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Current Score</p>
+                        <p className="text-3xl font-bold">{forecast.currentScore}%</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Predicted Score</p>
+                        <p className={`text-3xl font-bold flex items-center gap-2 ${
+                          forecast.trend === 'improving' ? 'text-green-600' : 
+                          forecast.trend === 'declining' ? 'text-red-600' : 'text-gray-600'
+                        }`}>
+                          {forecast.predictedScore}%
+                          {forecast.trend === 'improving' ? <TrendingUp className="h-6 w-6" /> :
+                           forecast.trend === 'declining' ? <TrendingDown className="h-6 w-6" /> : null}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">Predicted Score</p>
-                      <p className={`text-3xl font-bold flex items-center gap-2 ${
-                        forecast.trend === 'improving' ? 'text-green-600' : 
-                        forecast.trend === 'declining' ? 'text-red-600' : 'text-gray-600'
-                      }`}>
-                        {forecast.predictedScore}%
-                        {forecast.trend === 'improving' ? <TrendingUp className="h-6 w-6" /> :
-                         forecast.trend === 'declining' ? <TrendingDown className="h-6 w-6" /> : null}
-                      </p>
-                    </div>
-                  </div>
 
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm text-muted-foreground">Progress to Target</span>
-                      <span className="text-sm font-medium">{forecast.timeToTarget} months</span>
-                    </div>
-                    <Progress value={(forecast.predictedScore / 100) * 100} className="h-2" />
-                  </div>
-
-                  {forecast.riskFactors.length > 0 && (
                     <div>
-                      <h4 className="font-medium text-sm text-muted-foreground mb-2">Risk Factors</h4>
-                      <ul className="space-y-1">
-                        {forecast.riskFactors.map((risk, riskIndex) => (
-                          <li key={riskIndex} className="text-sm flex items-start gap-2">
-                            <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
-                            {risk}
-                          </li>
-                        ))}
-                      </ul>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm text-muted-foreground">Progress to Target</span>
+                        <span className="text-sm font-medium">{forecast.timeToTarget} months</span>
+                      </div>
+                      <Progress value={(forecast.predictedScore / 100) * 100} className="h-2" />
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+
+                    {forecast.riskFactors.length > 0 && (
+                      <div>
+                        <h4 className="font-medium text-sm text-muted-foreground mb-2">Risk Factors</h4>
+                        <ul className="space-y-1">
+                          {forecast.riskFactors.map((risk, riskIndex) => (
+                            <li key={riskIndex} className="text-sm flex items-start gap-2">
+                              <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                              {risk}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="text-center py-8">
+                <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-foreground">No forecast data available.</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Historical data is needed to generate compliance forecasts.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="trends" className="space-y-6">
@@ -419,42 +606,66 @@ export default function PredictiveInsights() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-64 flex items-end justify-between gap-2 p-4 bg-gray-50 rounded-lg">
-                {trendData.map((data, index) => (
-                  <div key={index} className="flex flex-col items-center gap-2">
-                    <div className="flex flex-col items-center gap-1">
-                      <div
-                        className="bg-blue-500 rounded-t-sm w-8"
-                        style={{
-                          height: `${(data.value / 100) * 150}px`,
-                          minHeight: '20px'
-                        }}
-                      />
-                      <div
-                        className="bg-blue-300 border-2 border-dashed border-blue-500 rounded-t-sm w-8"
-                        style={{
-                          height: `${(data.predicted / 100) * 150}px`,
-                          minHeight: '20px'
-                        }}
-                      />
+              {trendData.length > 0 ? (
+                <>
+                  <div className="h-64 flex items-end justify-between gap-2 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    {trendData.map((data, index) => {
+                      // Ensure minimum visible height even for 0 values
+                      const actualHeight = Math.max((data.value || 0) / 100 * 150, data.value === 0 ? 8 : 10);
+                      const predictedHeight = Math.max((data.predicted || 0) / 100 * 150, data.predicted === 0 ? 8 : 10);
+                      
+                      return (
+                        <div key={index} className="flex flex-col items-center gap-2 flex-1">
+                          <div className="flex flex-col items-center gap-1 w-full">
+                            {/* Actual bar */}
+                            <div
+                              className="bg-blue-500 rounded-t-sm w-full transition-all"
+                              style={{
+                                height: `${actualHeight}px`,
+                                minHeight: '8px'
+                              }}
+                              title={`Actual: ${data.value}%`}
+                            />
+                            {/* Predicted bar */}
+                            <div
+                              className="bg-blue-300 border-2 border-dashed border-blue-500 rounded-t-sm w-full transition-all"
+                              style={{
+                                height: `${predictedHeight}px`,
+                                minHeight: '8px'
+                              }}
+                              title={`Predicted: ${data.predicted}%`}
+                            />
+                          </div>
+                          <div className="text-xs text-center mt-1">
+                            <div className="font-medium">{data.period}</div>
+                            {data.value > 0 && (
+                              <div className="text-muted-foreground text-[10px]">{data.value}%</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-center gap-6 mt-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-blue-500 rounded" />
+                      <span>Actual</span>
                     </div>
-                    <div className="text-xs text-center">
-                      <div className="font-medium">{data.period}</div>
-                      <div className="text-muted-foreground">{data.confidence}%</div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-blue-300 border-2 border-dashed border-blue-500 rounded" />
+                      <span>Predicted</span>
                     </div>
                   </div>
-                ))}
-              </div>
-              <div className="flex justify-center gap-6 mt-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-blue-500 rounded" />
-                  <span>Actual</span>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-foreground">No trend data available.</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Complete assessments to generate historical compliance trends.
+                  </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-blue-300 border-2 border-dashed border-blue-500 rounded" />
-                  <span>Predicted</span>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -1367,4 +1367,179 @@ router.get("/:id/analytics",
   }
 });
 
+// GET /api/assessments/:id/findings - Get comprehensive findings and recommendations
+router.get("/:id/findings", 
+  rateLimitMiddleware.general,
+  async (req: AuthenticatedRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { intakeFormId } = req.query;
+
+    // Verify assessment exists and user has access
+    const assessment = await db.query.assessments.findFirst({
+      where: and(
+        eq(assessments.id, id),
+        eq(assessments.tenantId, req.tenant!.id)
+      ),
+    });
+
+    if (!assessment) {
+      return res.status(404).json({ error: 'Assessment not found' });
+    }
+
+    // Import required services
+    const { ExecutiveSummaryService } = await import('../services/executiveSummaryService');
+    const advancedScoringService = (await import('../services/advancedScoringService')).default;
+    const { calculateAssessmentScore } = await import('./scoring');
+
+    // Get intake-based scope if provided
+    let intakeScope = null;
+    if (intakeFormId && typeof intakeFormId === 'string') {
+      try {
+        const { IntakeProcessor } = await import('./intakeLogic');
+        intakeScope = await IntakeProcessor.generateAssessmentScope(intakeFormId);
+      } catch (error) {
+        console.warn('Failed to get intake scope for findings:', error);
+      }
+    }
+
+    // Get scoring data for compliance status
+    const scoringData = await calculateAssessmentScore(id, intakeScope);
+
+    // Generate executive summary (includes key findings)
+    let executiveSummary;
+    try {
+      executiveSummary = await ExecutiveSummaryService.generateExecutiveSummary(id);
+    } catch (error) {
+      console.warn('Failed to generate executive summary, using fallback:', error);
+      executiveSummary = {
+        summary: 'Assessment findings analysis based on current compliance status and gaps.',
+        keyFindings: [],
+        businessImpact: 'Assessment in progress. Business impact will be calculated once more data is available.',
+        recommendations: [],
+        nextSteps: [],
+        investmentAnalysis: {},
+        timeline: ''
+      };
+    }
+
+    // Generate gap analysis
+    let gapAnalysis = [];
+    try {
+      const gapAnalysisData = await advancedScoringService.generateGapAnalysis(id);
+      
+      // Transform gap analysis to match frontend interface
+      gapAnalysis = [
+        ...gapAnalysisData.criticalGaps.map((gap: any, idx: number) => ({
+          questionId: gap.questionId,
+          questionText: gap.questionText,
+          category: gap.category,
+          currentScore: gap.currentScore,
+          targetScore: gap.targetScore,
+          gapSeverity: 'CRITICAL' as const,
+          impact: gap.impact,
+          recommendation: gap.recommendation
+        })),
+        ...gapAnalysisData.majorGaps.map((gap: any, idx: number) => ({
+          questionId: gap.questionId,
+          questionText: gap.questionText,
+          category: gap.category,
+          currentScore: gap.currentScore,
+          targetScore: gap.targetScore,
+          gapSeverity: 'MAJOR' as const,
+          impact: gap.impact,
+          recommendation: gap.recommendation
+        })),
+        ...gapAnalysisData.minorGaps.map((gap: any, idx: number) => ({
+          questionId: gap.questionId,
+          questionText: gap.questionText,
+          category: gap.category,
+          currentScore: gap.currentScore,
+          targetScore: gap.targetScore,
+          gapSeverity: 'MINOR' as const,
+          impact: gap.impact,
+          recommendation: gap.recommendation
+        }))
+      ];
+    } catch (error) {
+      console.warn('Failed to generate gap analysis:', error);
+    }
+
+    // Transform key findings from executive summary
+    const keyFindings = executiveSummary.keyFindings.map((finding: string, idx: number) => {
+      // Determine severity based on finding content
+      let severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' = 'MEDIUM';
+      if (finding.toLowerCase().includes('critical') || finding.toLowerCase().includes('immediate')) {
+        severity = 'CRITICAL';
+      } else if (finding.toLowerCase().includes('high') || finding.toLowerCase().includes('significant')) {
+        severity = 'HIGH';
+      } else if (finding.toLowerCase().includes('minor') || finding.toLowerCase().includes('low')) {
+        severity = 'LOW';
+      }
+
+      return {
+        id: `finding-${idx}`,
+        title: `Finding ${idx + 1}`,
+        description: finding,
+        severity,
+        category: 'General',
+        impact: 'Review required to determine specific impact',
+        recommendation: executiveSummary.recommendations[idx] || undefined
+      };
+    });
+
+    // Transform recommendations
+    const recommendations = executiveSummary.recommendations.map((rec: string, idx: number) => {
+      // Determine priority based on recommendation content
+      let priority: 'HIGH' | 'MEDIUM' | 'LOW' = 'MEDIUM';
+      if (rec.toLowerCase().includes('critical') || rec.toLowerCase().includes('immediate') || rec.toLowerCase().includes('urgent')) {
+        priority = 'HIGH';
+      } else if (rec.toLowerCase().includes('minor') || rec.toLowerCase().includes('optional')) {
+        priority = 'LOW';
+      }
+
+      return {
+        id: `rec-${idx}`,
+        title: `Recommendation ${idx + 1}`,
+        description: rec,
+        priority,
+        category: 'General',
+        estimatedEffort: '2-4 weeks',
+        impact: 'Improves overall compliance readiness'
+      };
+    });
+
+    // If we have scoring data recommendations, merge them
+    if (scoringData.recommendations && scoringData.recommendations.length > 0) {
+      scoringData.recommendations.forEach((rec: string, idx: number) => {
+        if (!recommendations.find(r => r.description === rec)) {
+          recommendations.push({
+            id: `scoring-rec-${idx}`,
+            title: `Recommendation ${recommendations.length + 1}`,
+            description: rec,
+            priority: rec.toLowerCase().includes('critical') ? 'HIGH' as const : 'MEDIUM' as const,
+            category: 'Compliance',
+            estimatedEffort: '1-3 weeks',
+            impact: 'Addresses compliance gaps'
+          });
+        }
+      });
+    }
+
+    res.json({
+      summary: executiveSummary.summary,
+      keyFindings,
+      recommendations,
+      gapAnalysis,
+      complianceStatus: scoringData.complianceStatus,
+      businessImpact: executiveSummary.businessImpact,
+      nextSteps: executiveSummary.nextSteps,
+      lastCalculated: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error generating findings:', error);
+    res.status(500).json({ error: 'Failed to generate findings' });
+  }
+});
+
 export default router;

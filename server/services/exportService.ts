@@ -148,6 +148,7 @@ class ExportService {
 
   static async generateWord(assessmentId: string, tenantId: string, templateType: string = 'executive-summary'): Promise<Buffer> {
     try {
+<<<<<<< HEAD
       // Use the real templateProcessor instance, not the stub TemplateProcessor class
       switch (templateType) {
         case 'action-plan':
@@ -157,6 +158,11 @@ class ExportService {
         default:
           return templateProcessor.generateWordReport(assessmentId, tenantId);
       }
+=======
+      // All template types use generateWordReport for now
+      // Future: implement specific methods for action-plan and compliance-manual if needed
+      return templateProcessor.generateWordReport(assessmentId, tenantId);
+>>>>>>> dc36b2c4f0de47999ce88ca4fdda70d44c53e049
     } catch (error) {
       console.error('Word generation failed:', error);
       throw new Error(`Word generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -165,12 +171,19 @@ class ExportService {
 
   static async generateEmail(assessmentId: string, tenantId: string, templateType: string = 'consultation'): Promise<string> {
     try {
+<<<<<<< HEAD
       // Use the real templateProcessor instance, not the stub TemplateProcessor class
       switch (templateType) {
         case 'progress-update':
           return templateProcessor.generateProgressUpdateEmail(assessmentId, tenantId);
         case 'completion-notice':
           return templateProcessor.generateCompletionNoticeEmail(assessmentId, tenantId);
+=======
+      // Use templateProcessor for email generation
+      switch (templateType) {
+        case 'consultation':
+          return templateProcessor.generateEmailConsultation(assessmentId, tenantId);
+>>>>>>> dc36b2c4f0de47999ce88ca4fdda70d44c53e049
         default:
           return templateProcessor.generateEmailSummary(assessmentId, tenantId);
       }
