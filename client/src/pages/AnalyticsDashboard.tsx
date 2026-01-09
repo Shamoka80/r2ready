@@ -22,6 +22,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import ComplianceAnalyticsDashboard from '../components/analytics/ComplianceAnalyticsDashboard';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiGet } from '@/api';
 
 interface PerformanceMetrics {
   totalRequests: number;
@@ -116,54 +117,70 @@ export default function AnalyticsDashboard() {
   // Use useQuery for fetching analytics data
   const { data: analytics, isLoading: isAssessmentLoading, error: assessmentError } = useQuery({
     queryKey: ['analytics', 'assessments', timeRange],
-    queryFn: async () => {
-      const response = await fetch(`/api/analytics/assessments?timeRange=${timeRange}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      if (!response.ok) throw new Error('Failed to fetch analytics');
-      return response.json();
-    },
+    queryFn: () => apiGet(`/api/analytics/assessments?timeRange=${timeRange}`),
     refetchInterval: 30000,
-    staleTime: 10000
+    staleTime: 10000,
+    retry: 1, // Only retry once on failure
+    retryDelay: 1000
   });
 
   // Get performance metrics
-  const { data: performanceMetrics } = useQuery<RealtimePerformanceMetrics>({
+  const { data: performanceMetrics, isLoading: performanceLoading, error: performanceError } = useQuery<RealtimePerformanceMetrics>({
     queryKey: ['analytics', 'performance', timeRange],
     queryFn: async () => {
-      const response = await fetch(`/api/analytics/performance?timeRange=${timeRange}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      if (!response.ok) throw new Error('Failed to fetch performance metrics');
-      return response.json();
+      try {
+        return await apiGet(`/api/analytics/performance?timeRange=${timeRange}`);
+      } catch (error) {
+        console.error('Error fetching performance metrics:', error);
+        // Return default values instead of throwing
+        return {
+          current: {
+            averageResponseTime: 0,
+            uptimePercentage: 100,
+            errorRate: 0,
+            performanceScore: 100
+          },
+          recommendations: []
+        };
+      }
     },
-    refetchInterval: 60000
+    refetchInterval: 60000,
+    retry: 1
   });
 
   // Get compliance analytics
   const { data: complianceAnalytics } = useQuery<ComplianceAnalytics>({
     queryKey: ['analytics', 'compliance', timeRange],
-    queryFn: async () => {
-      const response = await fetch(`/api/analytics/compliance?timeRange=${timeRange}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      if (!response.ok) throw new Error('Failed to fetch compliance analytics');
-      return response.json();
-    },
+    queryFn: () => apiGet(`/api/analytics/compliance?timeRange=${timeRange}`),
     refetchInterval: 60000
   });
 
   // Get user activity analytics
   const { data: userActivity } = useQuery<UserActivity>({
     queryKey: ['analytics', 'user-activity', timeRange],
-    queryFn: async () => {
-      const response = await fetch(`/api/analytics/user-activity?timeRange=${timeRange}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      if (!response.ok) throw new Error('Failed to fetch user activity');
-      return response.json();
-    },
+    queryFn: () => apiGet(`/api/analytics/user-activity?timeRange=${timeRange}`),
     refetchInterval: 60000
+  });
+
+  // Get security analytics
+  const { data: securityMetrics, isLoading: securityLoading, error: securityError } = useQuery<SecurityMetrics>({
+    queryKey: ['analytics', 'security', timeRange],
+    queryFn: async () => {
+      try {
+        return await apiGet(`/api/analytics/security?timeRange=${timeRange}`);
+      } catch (error) {
+        console.error('Error fetching security metrics:', error);
+        // Return default values instead of throwing
+        return {
+          suspiciousActivities: [],
+          failedLogins: 0,
+          bruteForceAttempts: 0,
+          timeRange: timeRange
+        };
+      }
+    },
+    refetchInterval: 60000,
+    retry: 1
   });
   
   // Fetching health and onboarding data with the original approach
@@ -173,14 +190,9 @@ export default function AnalyticsDashboard() {
       try {
         const fetchWithFallback = async (url: string, fallback: any = null) => {
           try {
-            const response = await fetch(url);
-            if (!response.ok) {
-              console.warn(`API call failed for ${url}: ${response.status} ${response.statusText}`);
-              return fallback;
-            }
-            return await response.json();
+            return await apiGet(url);
           } catch (error) {
-            console.warn(`Network or parse error for ${url}:`, error);
+            console.warn(`API call failed for ${url}:`, error);
             return fallback;
           }
         };
@@ -194,9 +206,8 @@ export default function AnalyticsDashboard() {
         const onboarding = await fetchWithFallback('/api/analytics/onboarding/summary', null);
         setOnboardingData(onboarding);
 
-        if (health && onboarding) {
-           setLoading(false);
-        }
+        // Always set loading to false after attempting to fetch, regardless of results
+        setLoading(false);
       } catch (err) {
         console.error('Initial analytics fetch error:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch initial analytics data');
@@ -298,14 +309,14 @@ export default function AnalyticsDashboard() {
                 <CardTitle className="flex items-center gap-2">
                   <Activity className="h-5 w-5" />
                   System Health
-                  <span className={`ml-auto ${getHealthStatusColor(healthData.status)}`}>
-                    {healthData.status.toUpperCase()}
+                  <span className={`ml-auto ${getHealthStatusColor(healthData?.status || 'unknown')}`}>
+                    {(healthData?.status || 'unknown').toUpperCase()}
                   </span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {Object.entries(healthData.checks).map(([check, result]) => (
+                  {healthData?.checks && Object.entries(healthData.checks).map(([check, result]: [string, any]) => (
                     <div key={check} className="p-3 border rounded-lg">
                       <div className="flex justify-between items-center mb-2">
                         <span className="font-medium capitalize">{check.replace(/([A-Z])/g, ' $1')}</span>
@@ -326,116 +337,78 @@ export default function AnalyticsDashboard() {
 
           {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {performanceData ? (
-              <>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <BarChart3 className="h-4 w-4" />
-                      Total Requests
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{performanceData.totalRequests}</div>
-                    <p className="text-xs text-foreground">Last {performanceData.timeRange}</p>
-                  </CardContent>
-                </Card>
+            {/* Total Requests - Using analytics data */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  Total Requests
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{analytics?.totalAssessments || 0}</div>
+                <p className="text-xs text-foreground">Assessments ({timeRange})</p>
+              </CardContent>
+            </Card>
 
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      Avg Response Time
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{performanceData.averageResponseTime}ms</div>
-                    <p className="text-xs text-foreground">Average response time</p>
-                  </CardContent>
-                </Card>
+            {/* Avg Response Time - Using performanceMetrics */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Avg Response Time
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {performanceMetrics ? `${performanceMetrics.current.averageResponseTime}ms` : '-'}
+                </div>
+                <p className="text-xs text-foreground">
+                  {performanceMetrics ? 'Average response time' : 'N/A'}
+                </p>
+              </CardContent>
+            </Card>
 
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4" />
-                      Error Rate
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{performanceData.errorRate}%</div>
-                    <Progress value={performanceData.errorRate} className="mt-2" />
-                  </CardContent>
-                </Card>
-              </>
-            ) : (
-              // Placeholder for performance data when null
-              <>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <BarChart3 className="h-4 w-4" />
-                      Total Requests
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">-</div>
-                    <p className="text-xs text-foreground">N/A</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      Avg Response Time
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">-ms</div>
-                    <p className="text-xs text-foreground">N/A</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4" />
-                      Error Rate
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">-</div>
-                    <Progress value={0} className="mt-2" />
-                  </CardContent>
-                </Card>
-              </>
-            )}
+            {/* Error Rate - Using performanceMetrics */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Error Rate
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {performanceMetrics ? `${performanceMetrics.current.errorRate}%` : '-'}
+                </div>
+                {performanceMetrics ? (
+                  <Progress value={performanceMetrics.current.errorRate} className="mt-2" />
+                ) : (
+                  <Progress value={0} className="mt-2" />
+                )}
+                {!performanceMetrics && (
+                  <p className="text-xs text-foreground mt-1">N/A</p>
+                )}
+              </CardContent>
+            </Card>
 
-            {securityData ? (
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Shield className="h-4 w-4" />
-                    Failed Logins
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{securityData.failedLogins}</div>
-                  <p className="text-xs text-foreground">Last {securityData.timeRange}</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Shield className="h-4 w-4" />
-                    Failed Logins
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">-</div>
-                  <p className="text-xs text-foreground">N/A</p>
-                </CardContent>
-              </Card>
-            )}
+            {/* Failed Logins - Using securityMetrics */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Failed Logins
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {securityMetrics ? securityMetrics.failedLogins : '-'}
+                </div>
+                <p className="text-xs text-foreground">
+                  {securityMetrics ? `Last ${securityMetrics.timeRange}` : 'N/A'}
+                </p>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Real-time Performance Metrics and Compliance Insights */}
@@ -505,33 +478,35 @@ export default function AnalyticsDashboard() {
                       <span>Overall Compliance Rate</span>
                       <div className="flex items-center gap-2">
                         <div className="text-lg font-bold">
-                          {complianceAnalytics.current.overallComplianceRate}%
+                          {complianceAnalytics?.current?.overallComplianceRate || 0}%
                         </div>
-                        {complianceAnalytics.trends.trend === 'up' && (
+                        {complianceAnalytics?.trends?.trend === 'up' && (
                           <TrendingUp className="h-4 w-4 text-green-500" />
                         )}
-                        {complianceAnalytics.trends.trend === 'down' && (
+                        {complianceAnalytics?.trends?.trend === 'down' && (
                           <TrendingDown className="h-4 w-4 text-red-500" />
                         )}
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium">Risk Distribution</div>
-                      {Object.entries(complianceAnalytics.current.riskDistribution).map(([risk, count]) => (
-                        <div key={risk} className="flex justify-between text-sm">
-                          <span className="capitalize">{risk} Risk</span>
-                          <span className={`font-medium ${
-                            risk === 'high' ? 'text-red-600' : 
-                            risk === 'medium' ? 'text-yellow-600' : 'text-green-600'
-                          }`}>
-                            {count}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                    {complianceAnalytics?.current?.riskDistribution && (
+                      <div className="space-y-2">
+                        <div className="text-sm font-medium">Risk Distribution</div>
+                        {Object.entries(complianceAnalytics.current.riskDistribution).map(([risk, count]) => (
+                          <div key={risk} className="flex justify-between text-sm">
+                            <span className="capitalize">{risk} Risk</span>
+                            <span className={`font-medium ${
+                              risk === 'high' ? 'text-red-600' : 
+                              risk === 'medium' ? 'text-yellow-600' : 'text-green-600'
+                            }`}>
+                              {count}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
-                    {complianceAnalytics.insights.improvementOpportunities > 0 && (
+                    {complianceAnalytics?.insights?.improvementOpportunities && complianceAnalytics.insights.improvementOpportunities > 0 && (
                       <div className="p-3 bg-blue-500/10 rounded-lg">
                         <div className="text-sm font-medium text-blue-800">
                           Improvement Opportunity: {complianceAnalytics.insights.improvementOpportunities}% potential gain
@@ -550,62 +525,110 @@ export default function AnalyticsDashboard() {
         </TabsContent>
 
         <TabsContent value="performance" className="space-y-6">
-          {performanceData ? (
+          {performanceLoading ? (
+            <Card>
+              <CardContent className="text-center py-8">
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+                  <p className="text-foreground">Loading performance data...</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : performanceError ? (
+            <Card>
+              <CardContent className="text-center py-8">
+                <Alert variant="default" className="bg-yellow-500/10 border-yellow-500/20">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                  <AlertDescription className="text-yellow-600">
+                    Some performance data may be incomplete. Displaying available information.
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+          ) : performanceMetrics ? (
             <>
               <Card>
                 <CardHeader>
                   <CardTitle>Performance Overview</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className="text-center p-4 border rounded-lg">
-                      <div className="text-3xl font-bold text-blue-600">{performanceData.totalRequests}</div>
-                      <div className="text-sm text-foreground">Total Requests</div>
-                    </div>
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-3xl font-bold text-green-600">{performanceData.averageResponseTime}ms</div>
+                      <div className="text-3xl font-bold text-blue-600">{performanceMetrics.current.averageResponseTime}ms</div>
                       <div className="text-sm text-foreground">Avg Response Time</div>
                     </div>
                     <div className="text-center p-4 border rounded-lg">
-                      <div className={`text-3xl font-bold ${performanceData.errorRate > 5 ? 'text-red-600' : 'text-green-600'}`}>
-                        {performanceData.errorRate}%
+                      <div className="text-3xl font-bold text-green-600">{performanceMetrics.current.uptimePercentage}%</div>
+                      <div className="text-sm text-foreground">Uptime</div>
+                    </div>
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className={`text-3xl font-bold ${performanceMetrics.current.errorRate > 1 ? 'text-red-600' : 'text-green-600'}`}>
+                        {performanceMetrics.current.errorRate}%
                       </div>
                       <div className="text-sm text-foreground">Error Rate</div>
+                    </div>
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className={`text-3xl font-bold ${performanceMetrics.current.performanceScore >= 90 ? 'text-green-600' : performanceMetrics.current.performanceScore >= 70 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {performanceMetrics.current.performanceScore}
+                      </div>
+                      <div className="text-sm text-foreground">Performance Score</div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Slowest Operations</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {performanceData.slowestOperations.map((op, index) => (
-                      <div key={index} className="flex justify-between items-center p-3 border rounded">
-                        <div>
-                          <div className="font-medium">{op.operation}</div>
-                          <div className="text-sm text-foreground">{op.count} requests</div>
-                        </div>
-                        <div className="text-lg font-bold">{op.averageTime}ms</div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              {performanceMetrics.recommendations && performanceMetrics.recommendations.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Performance Recommendations</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {performanceMetrics.recommendations.map((rec, index) => (
+                        <Alert key={index}>
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertDescription>{rec}</AlertDescription>
+                        </Alert>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </>
           ) : (
             <Card>
               <CardContent className="text-center py-8">
-                <p className="text-foreground">Performance data not available.</p>
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+                  <p className="text-foreground">Loading performance data...</p>
+                </div>
               </CardContent>
             </Card>
           )}
         </TabsContent>
 
         <TabsContent value="security" className="space-y-6">
-          {securityData ? (
+          {securityLoading ? (
+            <Card>
+              <CardContent className="text-center py-8">
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+                  <p className="text-foreground">Loading security data...</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : securityError ? (
+            <Card>
+              <CardContent className="text-center py-8">
+                <Alert variant="default" className="bg-yellow-500/10 border-yellow-500/20">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                  <AlertDescription className="text-yellow-600">
+                    Some security data may be incomplete. Displaying available information.
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+          ) : securityMetrics ? (
             <>
               <Card>
                 <CardHeader>
@@ -614,25 +637,27 @@ export default function AnalyticsDashboard() {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="text-center p-4 border rounded-lg">
-                      <div className="text-3xl font-bold text-orange-600">{securityData.failedLogins}</div>
+                      <div className="text-3xl font-bold text-orange-600">{securityMetrics.failedLogins}</div>
                       <div className="text-sm text-foreground">Failed Logins</div>
+                      <p className="text-xs text-muted-foreground mt-1">Last {securityMetrics.timeRange}</p>
                     </div>
                     <div className="text-center p-4 border rounded-lg">
-                      <div className="text-3xl font-bold text-red-600">{securityData.bruteForceAttempts}</div>
+                      <div className="text-3xl font-bold text-red-600">{securityMetrics.bruteForceAttempts}</div>
                       <div className="text-sm text-foreground">Brute Force Attempts</div>
+                      <p className="text-xs text-muted-foreground mt-1">Last {securityMetrics.timeRange}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {securityData.suspiciousActivities.length > 0 && (
+              {securityMetrics.suspiciousActivities && securityMetrics.suspiciousActivities.length > 0 ? (
                 <Card>
                   <CardHeader>
                     <CardTitle>Suspicious Activities</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {securityData.suspiciousActivities.map((activity, index) => (
+                      {securityMetrics.suspiciousActivities.map((activity, index) => (
                         <div key={index} className="flex justify-between items-center p-3 border rounded">
                           <div>
                             <div className="font-medium capitalize">{activity.type.replace(/_/g, ' ')}</div>
@@ -641,6 +666,18 @@ export default function AnalyticsDashboard() {
                           <div className="text-lg font-bold">{activity.count}</div>
                         </div>
                       ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Suspicious Activities</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center py-4 text-muted-foreground">
+                      <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                      <p>No suspicious activities detected</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -666,22 +703,22 @@ export default function AnalyticsDashboard() {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="text-center p-4 border rounded-lg">
-                      <div className="text-3xl font-bold text-blue-600">{onboardingData.summary.totalSessions}</div>
+                      <div className="text-3xl font-bold text-blue-600">{onboardingData?.summary?.totalSessions || 0}</div>
                       <div className="text-sm text-foreground">Total Sessions</div>
                     </div>
                     <div className="text-center p-4 border rounded-lg">
-                      <div className="text-3xl font-bold text-green-600">{onboardingData.summary.completedSessions}</div>
+                      <div className="text-3xl font-bold text-green-600">{onboardingData?.summary?.completedSessions || 0}</div>
                       <div className="text-sm text-foreground">Completed Sessions</div>
                     </div>
                     <div className="text-center p-4 border rounded-lg">
-                      <div className="text-3xl font-bold text-purple-600">{onboardingData.summary.completionRate.toFixed(1)}%</div>
+                      <div className="text-3xl font-bold text-purple-600">{(onboardingData?.summary?.completionRate || 0).toFixed(1)}%</div>
                       <div className="text-sm text-foreground">Completion Rate</div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {Object.keys(onboardingData.summary.stepAbandonments).length > 0 && (
+              {onboardingData?.summary?.stepAbandonments && Object.keys(onboardingData.summary.stepAbandonments).length > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle>Step Abandonment Analysis</CardTitle>

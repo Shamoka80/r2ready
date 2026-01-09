@@ -140,6 +140,7 @@ import { sql } from 'drizzle-orm';
 import authRoutes from './routes/auth';
 import serviceDirectoryRoutes from './routes/service-directory';
 import jobRoutes from './routes/jobs.js';
+import teamRoutes from './routes/team.js';
 import Stripe from 'stripe';
 import { handleStripeWebhook } from './routes/stripe-webhooks.js';
 import { jobWorker } from './workers/jobWorker.js';
@@ -686,6 +687,7 @@ async function startServer() {
   app.use('/api/auth', authRoutes);
   app.use('/api/directory', serviceDirectoryRoutes);
   app.use('/api/jobs', jobRoutes);
+  app.use('/api/team', teamRoutes);
 
   // Start server
   const port = parseInt(process.env.PORT || '5000', 10);
