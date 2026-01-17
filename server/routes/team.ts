@@ -434,7 +434,7 @@ router.get('/invitation/:token', async (req, res) => {
         lastName: user.lastName,
         role: toFrontendRole(user.businessRole || user.consultantRole),
       },
-      tenant: user.tenant,
+      tenant: (user as any).tenant,
     });
 
   } catch (error) {

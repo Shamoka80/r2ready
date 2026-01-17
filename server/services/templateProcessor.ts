@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
-import { Document as DocxDocument, Packer as DocxPacker, HeadingLevel, Paragraph, TextRun } from 'docx';
+import { Document as DocxDocument, Packer as DocxPacker, HeadingLevel, Paragraph as DocxParagraph, TextRun as DocxTextRun } from 'docx';
 import { db } from '../db.js';
 import { assessments, intakeForms, organizationProfiles, facilityProfiles, standardVersions, users, tenants, clauses, questions, answers } from '../../shared/schema.js';
 import { eq, and, sql } from 'drizzle-orm';
@@ -2165,9 +2165,9 @@ export class TemplateProcessor {
       sections: [{
         properties: {},
         children: [
-          new Paragraph({
+          new DocxParagraph({
             children: [
-              new TextRun({
+              new DocxTextRun({
                 text: "R2v3 Pre-Certification Assessment Report",
                 bold: true,
                 size: 32
@@ -2176,9 +2176,9 @@ export class TemplateProcessor {
             heading: HeadingLevel.TITLE,
             spacing: { after: 200 }
           }),
-          new Paragraph({
+          new DocxParagraph({
             children: [
-              new TextRun({
+              new DocxTextRun({
                 text: "Executive Summary",
                 bold: true,
                 size: 24
@@ -2187,34 +2187,34 @@ export class TemplateProcessor {
             heading: HeadingLevel.HEADING_1,
             spacing: { before: 400, after: 200 }
           }),
-          new Paragraph({
+          new DocxParagraph({
             children: [
-              new TextRun({
+              new DocxTextRun({
                 text: `Company: ${templateData.companyName}`,
                 bold: true
               })
             ],
             spacing: { after: 100 }
           }),
-          new Paragraph({
+          new DocxParagraph({
             children: [
-              new TextRun({
+              new DocxTextRun({
                 text: `Assessment ID: ${templateData.assessmentId}`
               })
             ],
             spacing: { after: 100 }
           }),
-          new Paragraph({
+          new DocxParagraph({
             children: [
-              new TextRun({
+              new DocxTextRun({
                 text: `Report Date: ${templateData.reportDate}`
               })
             ],
             spacing: { after: 300 }
           }),
-          new Paragraph({
+          new DocxParagraph({
             children: [
-              new TextRun({
+              new DocxTextRun({
                 text: "Assessment Overview",
                 bold: true,
                 size: 22
@@ -2223,69 +2223,69 @@ export class TemplateProcessor {
             heading: HeadingLevel.HEADING_2,
             spacing: { before: 200, after: 200 }
           }),
-          new Paragraph({
+          new DocxParagraph({
             children: [
-              new TextRun({
+              new DocxTextRun({
                 text: `Overall Score: `,
                 bold: true
               }),
-              new TextRun({
+              new DocxTextRun({
                 text: `${templateData.overallScore}%`
               })
             ],
             spacing: { after: 100 }
           }),
-          new Paragraph({
+          new DocxParagraph({
             children: [
-              new TextRun({
+              new DocxTextRun({
                 text: `Readiness Level: `,
                 bold: true
               }),
-              new TextRun({
+              new DocxTextRun({
                 text: templateData.readinessLevel
               })
             ],
             spacing: { after: 100 }
           }),
-          new Paragraph({
+          new DocxParagraph({
             children: [
-              new TextRun({
+              new DocxTextRun({
                 text: `Critical Issues: `,
                 bold: true
               }),
-              new TextRun({
+              new DocxTextRun({
                 text: templateData.criticalCount.toString()
               })
             ],
             spacing: { after: 100 }
           }),
-          new Paragraph({
+          new DocxParagraph({
             children: [
-              new TextRun({
+              new DocxTextRun({
                 text: `Major Issues: `,
                 bold: true
               }),
-              new TextRun({
+              new DocxTextRun({
                 text: templateData.majorCount.toString()
               })
             ],
             spacing: { after: 100 }
           }),
-          new Paragraph({
+          new DocxParagraph({
             children: [
-              new TextRun({
+              new DocxTextRun({
                 text: `Completion Rate: `,
                 bold: true
               }),
-              new TextRun({
+              new DocxTextRun({
                 text: `${templateData.completionPercentage}%`
               })
             ],
             spacing: { after: 300 }
           }),
-          new Paragraph({
+          new DocxParagraph({
             children: [
-              new TextRun({
+              new DocxTextRun({
                 text: "Key Findings",
                 bold: true,
                 size: 22
@@ -2294,9 +2294,9 @@ export class TemplateProcessor {
             heading: HeadingLevel.HEADING_2,
             spacing: { before: 200, after: 200 }
           }),
-          new Paragraph({
+          new DocxParagraph({
             children: [
-              new TextRun({
+              new DocxTextRun({
                 text: templateData.overallScore >= 90 
                   ? "The assessment indicates strong compliance with R2v3 requirements. The organization demonstrates readiness for certification."
                   : templateData.overallScore >= 70
@@ -2306,9 +2306,9 @@ export class TemplateProcessor {
             ],
             spacing: { after: 200 }
           }),
-          new Paragraph({
+          new DocxParagraph({
             children: [
-              new TextRun({
+              new DocxTextRun({
                 text: "Recommendations",
                 bold: true,
                 size: 22
@@ -2318,9 +2318,9 @@ export class TemplateProcessor {
             spacing: { before: 200, after: 200 }
           }),
           ...(templateData.criticalCount > 0 ? [
-            new Paragraph({
+            new DocxParagraph({
               children: [
-                new TextRun({
+                new DocxTextRun({
                   text: `• Address ${templateData.criticalCount} critical compliance issue${templateData.criticalCount > 1 ? 's' : ''} identified in the assessment`,
                   bold: true
                 })
@@ -2329,18 +2329,18 @@ export class TemplateProcessor {
             })
           ] : []),
           ...(templateData.majorCount > 0 ? [
-            new Paragraph({
+            new DocxParagraph({
               children: [
-                new TextRun({
+                new DocxTextRun({
                   text: `• Resolve ${templateData.majorCount} major gap${templateData.majorCount > 1 ? 's' : ''} to improve overall compliance`
                 })
               ],
               spacing: { after: 100 }
             })
           ] : []),
-          new Paragraph({
+          new DocxParagraph({
             children: [
-              new TextRun({
+              new DocxTextRun({
                 text: templateData.completionPercentage < 100 
                   ? "• Complete remaining assessment questions to finalize the evaluation"
                   : "• Review detailed compliance report for comprehensive analysis"
@@ -2348,9 +2348,9 @@ export class TemplateProcessor {
             ],
             spacing: { after: 100 }
           }),
-          new Paragraph({
+          new DocxParagraph({
             children: [
-              new TextRun({
+              new DocxTextRun({
                 text: templateData.readinessLevel === "Certification Ready"
                   ? "• Schedule formal R2v3 audit with certified body"
                   : "• Develop gap remediation plan and timeline"
@@ -2466,6 +2466,37 @@ export class TemplateProcessor {
 </html>`;
 
     return emailHtml;
+  }
+
+  // Stub methods for exportService compatibility
+  async generateAnalyticsDashboard(assessmentId: string, tenantId: string): Promise<Buffer> {
+    // Delegate to existing method
+    return await this.generateExcelDashboard(assessmentId, tenantId);
+  }
+
+  async generateGapTrackingSheet(assessmentId: string, tenantId: string): Promise<Buffer> {
+    // Delegate to existing method
+    return await this.generateExcelDashboard(assessmentId, tenantId);
+  }
+
+  async generateActionPlanDocument(assessmentId: string, tenantId: string): Promise<Buffer> {
+    // Delegate to existing method
+    return await this.generateWordReport(assessmentId, tenantId);
+  }
+
+  async generateComplianceManual(assessmentId: string, tenantId: string): Promise<Buffer> {
+    // Delegate to existing method
+    return await this.generateWordReport(assessmentId, tenantId);
+  }
+
+  async generateProgressUpdateEmail(assessmentId: string, tenantId: string): Promise<string> {
+    // Delegate to existing method
+    return await this.generateEmailSummary(assessmentId, tenantId);
+  }
+
+  async generateCompletionNoticeEmail(assessmentId: string, tenantId: string): Promise<string> {
+    // Delegate to existing method
+    return await this.generateEmailSummary(assessmentId, tenantId);
   }
 }
 

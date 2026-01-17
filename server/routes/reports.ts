@@ -44,7 +44,7 @@ router.get('/', (async (req: AuthenticatedRequest, res: Response) => {
           const facility = await db.query.facilityProfiles.findFirst({
             where: eq(facilityProfiles.id, assessment.facilityId)
           });
-          facilityName = facility?.facilityName;
+          facilityName = facility?.name;
         }
 
         // Determine report type from format

@@ -655,7 +655,7 @@ router.post("/:id/submit", async (req: AuthenticatedRequest, res) => {
     const facilityCount = intakeForm.totalFacilities ? ` (${intakeForm.totalFacilities} facilities)` : '';
     const assessmentTitle = `${companyName}${facilityCount} - R2v3 Pre-Certification Assessment`;
 
-    const [assessment] = await db.insert(assessments).values({
+    const assessmentResult = await db.insert(assessments).values({
       tenantId: req.tenant!.id,
       createdBy: req.user!.id,
       stdId: standard.id,
@@ -664,6 +664,7 @@ router.post("/:id/submit", async (req: AuthenticatedRequest, res) => {
       description: assessmentScope.scopeStatement,
       status: "DRAFT",
     }).returning();
+    const assessment = Array.isArray(assessmentResult) ? assessmentResult[0] : (assessmentResult as any)[0];
 
     console.log('✅ Assessment created:', assessment.id);
 
@@ -818,7 +819,7 @@ router.post("/:id/create-assessment", async (req: AuthenticatedRequest, res) => 
     }
 
     // Create assessment
-    const [assessment] = await db.insert(assessments).values({
+    const assessmentResult = await db.insert(assessments).values({
       tenantId: req.tenant!.id,
       createdBy: req.user!.id,
       stdId: standard.id,
@@ -827,6 +828,7 @@ router.post("/:id/create-assessment", async (req: AuthenticatedRequest, res) => 
       description: assessmentDescription,
       status: "DRAFT",
     }).returning();
+    const assessment = Array.isArray(assessmentResult) ? assessmentResult[0] : (assessmentResult as any)[0];
 
     // Log audit event
     await AuthService.logAuditEvent(

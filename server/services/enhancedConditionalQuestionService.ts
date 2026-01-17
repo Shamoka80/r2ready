@@ -57,10 +57,10 @@ export class EnhancedConditionalQuestionService {
     return rules.map(rule => ({
       id: rule.id,
       ruleName: rule.ruleName,
-      ruleCode: rule.ruleCode,
+      ruleCode: (rule as any).ruleScope || (rule as any).ruleCode, // Support both for compatibility
       triggerCondition: rule.triggerCondition,
       action: rule.action,
-      targetQuestionIds: rule.ruleTargets.map((rt: any) => rt.questionId),
+      targetQuestionIds: rule.ruleTargets.map((rt: any) => rt.targetQuestionId || rt.questionId),
       priority: rule.priority,
       isActive: rule.isActive
     }));
@@ -80,10 +80,10 @@ export class EnhancedConditionalQuestionService {
 
     return deps.map(dep => ({
       questionId: dep.questionId,
-      parentQuestionId: dep.parentQuestionId,
+      parentQuestionId: dep.dependsOnQuestionId, // Map dependsOnQuestionId to parentQuestionId for API compatibility
       dependencyType: dep.dependencyType,
       dependencyCondition: dep.dependencyCondition,
-      isRequired: dep.isRequired
+      isRequired: (dep as any).isRequired || false // Default to false if not present
     }));
   }
 
@@ -107,7 +107,9 @@ export class EnhancedConditionalQuestionService {
 
     const intakeMap = new Map<string, any>();
     for (const answer of intakeData) {
-      intakeMap.set(answer.fieldName, answer.value);
+      // Use intakeQuestionId as key since fieldName doesn't exist in schema
+      const key = (answer as any).fieldName || answer.intakeQuestionId;
+      intakeMap.set(key, answer.value);
     }
 
     const activeRules = await this.getActiveConditionalRules();
@@ -339,7 +341,9 @@ export class EnhancedConditionalQuestionService {
     const result = await db.insert(conditionalRules)
       .values({
         ruleName: rule.ruleName,
-        ruleCode: rule.ruleCode,
+        ruleId: (rule as any).ruleCode || rule.ruleName.toLowerCase().replace(/\s+/g, '-'), // Generate ruleId if not provided
+        ruleScope: (rule as any).ruleScope || 'ASSESSMENT',
+        triggeredBy: (rule as any).triggeredBy || 'QUESTION',
         triggerCondition: rule.triggerCondition as any,
         action: rule.action,
         priority: rule.priority,
@@ -353,8 +357,8 @@ export class EnhancedConditionalQuestionService {
       await db.insert(conditionalRuleTargets)
         .values(
           targetQuestionIds.map(questionId => ({
-            ruleId: insertedRule.id,
-            questionId
+            conditionalRuleId: insertedRule.id,
+            targetQuestionId: questionId
           }))
         );
     }
@@ -371,10 +375,10 @@ export class EnhancedConditionalQuestionService {
     await db.insert(questionDependencies)
       .values({
         questionId: dependency.questionId,
-        parentQuestionId: dependency.parentQuestionId,
+        dependsOnQuestionId: dependency.parentQuestionId, // Map parentQuestionId to dependsOnQuestionId
         dependencyType: dependency.dependencyType,
         dependencyCondition: dependency.dependencyCondition as any,
-        isRequired: dependency.isRequired
+        logic: (dependency as any).logic || 'AND'
       });
   }
 

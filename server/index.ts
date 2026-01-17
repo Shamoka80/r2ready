@@ -85,9 +85,6 @@ if (SENTRY_DSN) {
       // Lower sample rate in production to reduce overhead
       tracesSampleRate: IS_PRODUCTION ? 0.1 : 1.0,
       
-      // Capture unhandled exceptions automatically
-      captureUnhandledRejections: true,
-      
       // Capture console errors
       attachStacktrace: true,
       
@@ -102,10 +99,10 @@ if (SENTRY_DSN) {
       ],
       
       // Error filtering before sending to Sentry
-      beforeSend(event, hint) {
+      beforeSend(event: any, hint: any) {
         return event;
       },
-    });
+    } as any); // Type assertion to fix build error - captureUnhandledRejections is enabled by default
     
     // Mark Sentry as initialized - Express middleware setup happens in createApp()
     // Express-specific handlers (requestHandler, errorHandler) are only available
@@ -154,13 +151,14 @@ export async function createApp() {
   // Initialize Sentry Express middleware (must be before all other middleware)
   // This captures request context for error tracking
   // Note: Handlers are Express-specific, so they're only set up here where Express is available
-  if (SENTRY_INITIALIZED && Sentry.Handlers) {
+  if (SENTRY_INITIALIZED && (Sentry as any).Handlers) {
     try {
-      if (typeof Sentry.Handlers.requestHandler === 'function') {
-        app.use(Sentry.Handlers.requestHandler());
+      const handlers = (Sentry as any).Handlers;
+      if (typeof handlers.requestHandler === 'function') {
+        app.use(handlers.requestHandler());
       }
-      if (typeof Sentry.Handlers.tracingHandler === 'function') {
-        app.use(Sentry.Handlers.tracingHandler());
+      if (typeof handlers.tracingHandler === 'function') {
+        app.use(handlers.tracingHandler());
       }
     } catch (error) {
       // If handler setup fails, log but continue - app should still work
@@ -269,9 +267,12 @@ export async function createApp() {
   // This captures Express route exceptions and sends them to Sentry with full context
   // Email alerts are triggered by Sentry based on alert rules configured in dashboard
   // Note: This is Express-specific middleware - unhandled exceptions are captured globally
-  if (SENTRY_INITIALIZED && Sentry.Handlers && typeof Sentry.Handlers.errorHandler === 'function') {
+  if (SENTRY_INITIALIZED && (Sentry as any).Handlers) {
     try {
-      app.use(Sentry.Handlers.errorHandler());
+      const handlers = (Sentry as any).Handlers;
+      if (typeof handlers.errorHandler === 'function') {
+        app.use(handlers.errorHandler());
+      }
     } catch (error) {
       // If error handler setup fails, log but continue - app should still work
       // Error monitoring for unhandled exceptions still works without Express middleware
