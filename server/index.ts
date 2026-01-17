@@ -154,8 +154,9 @@ export async function createApp() {
   if (SENTRY_INITIALIZED) {
     try {
       // Type assertion for Sentry Handlers - may not exist in all Sentry versions
-      const sentryAny = Sentry as any;
-      const handlers = sentryAny.Handlers;
+      // Using explicit any cast to bypass TypeScript's strict type checking
+      const sentryAny: any = Sentry;
+      const handlers: any = sentryAny.Handlers;
       if (handlers && typeof handlers.requestHandler === 'function') {
         app.use(handlers.requestHandler());
       }
@@ -272,8 +273,9 @@ export async function createApp() {
   if (SENTRY_INITIALIZED) {
     try {
       // Type assertion for Sentry Handlers - may not exist in all Sentry versions
-      const sentryAny = Sentry as any;
-      const handlers = sentryAny.Handlers;
+      // Using explicit any cast to bypass TypeScript's strict type checking
+      const sentryAny: any = Sentry;
+      const handlers: any = sentryAny.Handlers;
       if (handlers && typeof handlers.errorHandler === 'function') {
         app.use(handlers.errorHandler());
       }
