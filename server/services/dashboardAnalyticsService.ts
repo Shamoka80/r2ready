@@ -107,6 +107,8 @@ export class DashboardAnalyticsService {
    */
   static async getDashboardKPIs(tenantId: string): Promise<DashboardKPIs> {
     try {
+      console.log(`📊 [Dashboard KPIs] Starting calculation for tenant ${tenantId}`);
+      
       // Try to get assessment stats from materialized view first
       let stats: any = null;
       let usingMaterializedView = false;
@@ -129,18 +131,23 @@ export class DashboardAnalyticsService {
         if (statsResultAny && statsResultAny.rows && Array.isArray(statsResultAny.rows) && statsResultAny.rows.length > 0) {
           stats = statsResultAny.rows[0];
           usingMaterializedView = true;
+          console.log(`✅ [Dashboard KPIs] Using materialized view for tenant ${tenantId}`);
         } else if (Array.isArray(statsResultAny) && statsResultAny.length > 0) {
           stats = statsResultAny[0];
           usingMaterializedView = true;
+          console.log(`✅ [Dashboard KPIs] Using materialized view (array format) for tenant ${tenantId}`);
+        } else {
+          console.log(`⚠️ [Dashboard KPIs] Materialized view returned no data for tenant ${tenantId}`);
         }
       } catch (viewError: any) {
         // Materialized view doesn't exist or query failed - fall back to direct calculation
-        console.warn(`⚠️ Materialized view not available, calculating stats directly:`, viewError.message);
+        console.warn(`⚠️ [Dashboard KPIs] Materialized view not available, calculating stats directly:`, viewError.message);
         usingMaterializedView = false;
       }
 
       // If materialized view didn't work, calculate stats directly
       if (!stats) {
+        console.log(`📊 [Dashboard KPIs] Calculating stats directly from assessments table for tenant ${tenantId}`);
         const allAssessments = await db
           .select({
             status: assessments.status,
@@ -148,6 +155,8 @@ export class DashboardAnalyticsService {
           })
           .from(assessments)
           .where(eq(assessments.tenantId, tenantId));
+
+        console.log(`📊 [Dashboard KPIs] Found ${allAssessments.length} assessments for tenant ${tenantId}`);
 
         const totalAssessments = allAssessments.length;
         const inProgressCount = allAssessments.filter(a => a.status === 'IN_PROGRESS').length;
@@ -173,15 +182,24 @@ export class DashboardAnalyticsService {
           avg_readiness_score: avgReadinessScore,
           certification_ready_count: certificationReadyCount,
         };
+        
+        console.log(`📊 [Dashboard KPIs] Calculated stats:`, stats);
       }
 
       // Get facility count (separate query - not in materialized view)
-      const facilityCountResult = await db
-        .select({ count: count() })
-        .from(facilityProfiles)
-        .where(eq(facilityProfiles.tenantId, tenantId));
-      
-      const facilityCount = facilityCountResult.length > 0 ? facilityCountResult[0] : null;
+      let facilityCount: any = null;
+      try {
+        const facilityCountResult = await db
+          .select({ count: count() })
+          .from(facilityProfiles)
+          .where(eq(facilityProfiles.tenantId, tenantId));
+        
+        facilityCount = facilityCountResult.length > 0 ? facilityCountResult[0] : null;
+        console.log(`📊 [Dashboard KPIs] Facility count query result:`, facilityCount);
+      } catch (facilityError) {
+        console.warn(`⚠️ [Dashboard KPIs] Error getting facility count:`, facilityError);
+        facilityCount = null;
+      }
 
       // Count critical gaps (separate query - complex join, better left as-is)
       let criticalGapCount = 0;
@@ -217,10 +235,14 @@ export class DashboardAnalyticsService {
         facilities: Number(facilityCount?.count || 0),
       };
 
-      console.log(`✅ Dashboard KPIs calculated for tenant ${tenantId} (${usingMaterializedView ? 'using materialized view' : 'calculated directly'}):`, kpis);
+      console.log(`✅ [Dashboard KPIs] Final KPIs for tenant ${tenantId} (${usingMaterializedView ? 'using materialized view' : 'calculated directly'}):`, kpis);
       return kpis;
     } catch (error) {
-      console.error('Error getting dashboard KPIs:', error);
+      console.error(`❌ [Dashboard KPIs] Error getting dashboard KPIs for tenant ${tenantId}:`, {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        tenantId
+      });
       // Return safe defaults instead of throwing to prevent dashboard from breaking
       return {
         totalAssessments: 0,
@@ -240,11 +262,14 @@ export class DashboardAnalyticsService {
    */
   static async getReadinessSnapshot(tenantId: string, assessmentId?: string): Promise<ReadinessSnapshot> {
     try {
+      console.log(`📊 [Readiness Snapshot] Starting calculation for tenant ${tenantId}, assessmentId: ${assessmentId || 'not specified'}`);
       let targetAssessmentId = assessmentId;
 
       // If no assessment specified, get the most recent one (IN_PROGRESS or COMPLETED)
       if (!targetAssessmentId) {
         try {
+          console.log(`📊 [Readiness Snapshot] Looking for latest assessment for tenant ${tenantId}`);
+          
           // First try to get a completed assessment
           let latestAssessmentResult = await db
             .select({ id: assessments.id })
@@ -261,6 +286,8 @@ export class DashboardAnalyticsService {
           let latestAssessment = (latestAssessmentResult && Array.isArray(latestAssessmentResult) && latestAssessmentResult.length > 0)
             ? latestAssessmentResult[0]
             : null;
+
+          console.log(`📊 [Readiness Snapshot] Completed assessments found: ${latestAssessment ? 'Yes' : 'No'}`);
 
           // If no completed assessment, get the most recent in-progress one
           if (!latestAssessment) {
@@ -279,6 +306,8 @@ export class DashboardAnalyticsService {
             latestAssessment = (latestAssessmentResult && Array.isArray(latestAssessmentResult) && latestAssessmentResult.length > 0)
               ? latestAssessmentResult[0]
               : null;
+            
+            console.log(`📊 [Readiness Snapshot] In-progress assessments found: ${latestAssessment ? 'Yes' : 'No'}`);
           }
 
           // If still no assessment, get the most recent one regardless of status
@@ -293,18 +322,23 @@ export class DashboardAnalyticsService {
             latestAssessment = (latestAssessmentResult && Array.isArray(latestAssessmentResult) && latestAssessmentResult.length > 0)
               ? latestAssessmentResult[0]
               : null;
+            
+            console.log(`📊 [Readiness Snapshot] Any assessments found: ${latestAssessment ? 'Yes' : 'No'}`);
           }
 
           if (!latestAssessment) {
             // Return default empty snapshot if no assessments exist at all
-            console.log('⚠️  No assessments found for tenant, returning default snapshot');
+            console.log(`⚠️ [Readiness Snapshot] No assessments found for tenant ${tenantId}, returning default snapshot`);
             return this.getDefaultReadinessSnapshot();
           }
 
           targetAssessmentId = latestAssessment.id;
-          console.log(`✅ Using assessment ${targetAssessmentId} for readiness snapshot`);
+          console.log(`✅ [Readiness Snapshot] Using assessment ${targetAssessmentId} for readiness snapshot`);
         } catch (error) {
-          console.warn('⚠️  Error getting latest assessment, using default snapshot:', error);
+          console.error(`❌ [Readiness Snapshot] Error getting latest assessment for tenant ${tenantId}:`, {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+          });
           return this.getDefaultReadinessSnapshot();
         }
       }
