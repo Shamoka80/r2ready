@@ -365,9 +365,15 @@ router.post("/",
       filteringInfo: recMappingInfo, // Store REC mapping results for question filtering
     }).returning();
     // Handle both array and non-array return types from drizzle
-    const assessment = (Array.isArray(assessmentResult) && assessmentResult.length > 0) 
-      ? assessmentResult[0] 
-      : (assessmentResult as any)?.rows?.[0] || (assessmentResult as any)?.[0];
+    // Type assertion to handle different return types from drizzle ORM
+    let assessment: typeof assessmentResult extends Array<infer T> ? T : any;
+    if (Array.isArray(assessmentResult)) {
+      assessment = assessmentResult.length > 0 ? assessmentResult[0] : undefined as any;
+    } else {
+      // Handle non-array return types (e.g., NeonHttpQueryResult)
+      const resultAny = assessmentResult as any;
+      assessment = resultAny?.rows?.[0] || resultAny?.[0] || resultAny;
+    }
 
     // Log audit event with facility or client information
     const auditDetails: any = { 

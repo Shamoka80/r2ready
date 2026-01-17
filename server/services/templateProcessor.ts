@@ -2,7 +2,15 @@ import fs from 'fs';
 import path from 'path';
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
-import { Document as DocxDocument, Packer as DocxPacker, HeadingLevel, Paragraph as DocxParagraph, TextRun as DocxTextRun } from 'docx';
+// Import docx using namespace to completely avoid naming conflicts with local classes
+// This prevents TypeScript from seeing conflicts between imported Paragraph/TextRun and local MockParagraph/MockTextRun
+import * as DocxNamespace from 'docx';
+// Extract needed exports with aliases to avoid any naming conflicts
+const DocxDocument = DocxNamespace.Document;
+const DocxPacker = DocxNamespace.Packer;
+const HeadingLevel = DocxNamespace.HeadingLevel;
+const DocxParagraph = DocxNamespace.Paragraph;
+const DocxTextRun = DocxNamespace.TextRun;
 import { db } from '../db.js';
 import { assessments, intakeForms, organizationProfiles, facilityProfiles, standardVersions, users, tenants, clauses, questions, answers } from '../../shared/schema.js';
 import { eq, and, sql } from 'drizzle-orm';
