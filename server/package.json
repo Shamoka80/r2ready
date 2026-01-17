@@ -17,6 +17,7 @@
     "seed:mappings:fresh": "SEED_MODE=fresh CONFIRM_FRESH=yes tsx tools/seed-question-mappings.ts"
   },
   "dependencies": {
+    "@sentry/node": "^10.32.1",
     "@types/nodemailer": "^7.0.4",
     "@types/speakeasy": "^2.0.10",
     "dotenv": "^17.2.3",
