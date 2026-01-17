@@ -35,7 +35,8 @@ if (!stripeSecretKey) {
 }
 
 // Validate that we're using live keys in production
-if (process.env.NODE_ENV === 'production' && stripeSecretKey?.includes('sk_test_')) {
+// Allow test keys in production ONLY when explicitly enabled via environment flag
+if (process.env.NODE_ENV === 'production' && stripeSecretKey?.includes('sk_test_') && process.env.ALLOW_TEST_STRIPE_KEYS_IN_PRODUCTION !== 'true') {
   console.error('❌ Test Stripe keys detected in production environment');
   process.exit(1);
 }
