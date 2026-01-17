@@ -1338,52 +1338,139 @@ router.get("/:id/analytics",
   rateLimitMiddleware.general,
   async (req: AuthenticatedRequest, res) => {
   try {
+    // Validate request parameters
     const { id } = req.params;
+    if (!id || typeof id !== 'string') {
+      return res.status(400).json({ error: 'Invalid assessment ID' });
+    }
+
+    // Validate tenant context
+    if (!req.tenant || !req.tenant.id) {
+      console.error('[Analytics] Missing tenant context', { userId: req.user?.id, assessmentId: id });
+      return res.status(401).json({ error: 'Tenant context required' });
+    }
+
     const { intakeFormId } = req.query;
 
     // Verify assessment exists and user has access
-    const assessment = await db.query.assessments.findFirst({
-      where: and(
-        eq(assessments.id, id),
-        eq(assessments.tenantId, req.tenant!.id)
-      ),
-    });
+    let assessment;
+    try {
+      assessment = await db.query.assessments.findFirst({
+        where: and(
+          eq(assessments.id, id),
+          eq(assessments.tenantId, req.tenant.id)
+        ),
+      });
+    } catch (dbError) {
+      console.error('[Analytics] Database query failed:', {
+        error: dbError instanceof Error ? dbError.message : String(dbError),
+        stack: dbError instanceof Error ? dbError.stack : undefined,
+        assessmentId: id,
+        tenantId: req.tenant.id
+      });
+      return res.status(500).json({ error: 'Database query failed', details: 'Failed to fetch assessment' });
+    }
 
     if (!assessment) {
       return res.status(404).json({ error: 'Assessment not found' });
     }
 
-    // Import scoring function
-    const { calculateAssessmentScore } = await import('./scoring');
+    // Import scoring function with error handling
+    let calculateAssessmentScore;
+    try {
+      const scoringModule = await import('./scoring');
+      calculateAssessmentScore = scoringModule.calculateAssessmentScore;
+      if (!calculateAssessmentScore || typeof calculateAssessmentScore !== 'function') {
+        throw new Error('calculateAssessmentScore function not found in scoring module');
+      }
+    } catch (importError) {
+      console.error('[Analytics] Failed to import scoring module:', {
+        error: importError instanceof Error ? importError.message : String(importError),
+        stack: importError instanceof Error ? importError.stack : undefined,
+        assessmentId: id
+      });
+      return res.status(500).json({ error: 'Failed to load scoring module', details: 'Module import failed' });
+    }
     
-    // Get intake-based scope if provided
+    // Get intake-based scope if provided (non-blocking)
     let intakeScope = null;
     if (intakeFormId && typeof intakeFormId === 'string') {
       try {
         const { IntakeProcessor } = await import('./intakeLogic');
         intakeScope = await IntakeProcessor.generateAssessmentScope(intakeFormId);
       } catch (error) {
-        console.warn('Failed to get intake scope for analytics:', error);
+        console.warn('[Analytics] Failed to get intake scope (non-critical):', {
+          error: error instanceof Error ? error.message : String(error),
+          intakeFormId
+        });
+        // Continue without intake scope - not critical for analytics
       }
     }
 
-    const scoringData = await calculateAssessmentScore(id, intakeScope);
+    // Calculate assessment score with error handling
+    let scoringData;
+    try {
+      scoringData = await calculateAssessmentScore(id, intakeScope);
+    } catch (scoreError) {
+      console.error('[Analytics] Failed to calculate assessment score:', {
+        error: scoreError instanceof Error ? scoreError.message : String(scoreError),
+        stack: scoreError instanceof Error ? scoreError.stack : undefined,
+        assessmentId: id,
+        hasIntakeScope: !!intakeScope
+      });
+      return res.status(500).json({ error: 'Failed to calculate assessment score', details: scoreError instanceof Error ? scoreError.message : 'Unknown scoring error' });
+    }
+
+    // Validate scoringData structure before accessing properties
+    if (!scoringData || typeof scoringData !== 'object') {
+      console.error('[Analytics] Invalid scoringData structure:', {
+        assessmentId: id,
+        scoringDataType: typeof scoringData,
+        isNull: scoringData === null,
+        isUndefined: scoringData === undefined
+      });
+      return res.status(500).json({ error: 'Invalid scoring data returned', details: 'Scoring function returned invalid data structure' });
+    }
+
+    // Ensure all required properties exist with safe defaults
+    const safeScoringData = {
+      scorePercentage: typeof scoringData.scorePercentage === 'number' ? scoringData.scorePercentage : 0,
+      complianceStatus: scoringData.complianceStatus || 'UNKNOWN',
+      readinessLevel: scoringData.readinessLevel || 'NOT_READY',
+      estimatedAuditSuccess: typeof scoringData.estimatedAuditSuccess === 'number' ? scoringData.estimatedAuditSuccess : 0,
+      categoryScores: Array.isArray(scoringData.categoryScores) ? scoringData.categoryScores : [],
+      criticalIssues: Array.isArray(scoringData.criticalIssues) ? scoringData.criticalIssues : [],
+      recommendations: Array.isArray(scoringData.recommendations) ? scoringData.recommendations : [],
+      lastCalculated: scoringData.lastCalculated || new Date().toISOString(),
+      intakeBasedScoring: scoringData.intakeBasedScoring || undefined
+    };
 
     res.json({
       assessmentId: id,
-      overallScore: scoringData.scorePercentage,
-      complianceStatus: scoringData.complianceStatus,
-      readinessLevel: scoringData.readinessLevel,
-      estimatedAuditSuccess: scoringData.estimatedAuditSuccess,
-      categoryScores: scoringData.categoryScores,
-      criticalIssues: scoringData.criticalIssues,
-      recommendations: scoringData.recommendations,
-      lastCalculated: scoringData.lastCalculated,
-      intakeBasedAnalytics: scoringData.intakeBasedScoring
+      overallScore: safeScoringData.scorePercentage,
+      complianceStatus: safeScoringData.complianceStatus,
+      readinessLevel: safeScoringData.readinessLevel,
+      estimatedAuditSuccess: safeScoringData.estimatedAuditSuccess,
+      categoryScores: safeScoringData.categoryScores,
+      criticalIssues: safeScoringData.criticalIssues,
+      recommendations: safeScoringData.recommendations,
+      lastCalculated: safeScoringData.lastCalculated,
+      intakeBasedAnalytics: safeScoringData.intakeBasedScoring
     });
   } catch (error) {
-    console.error('Error generating analytics:', error);
-    res.status(500).json({ error: 'Failed to generate analytics' });
+    // Catch-all error handler with detailed logging
+    console.error('[Analytics] Unexpected error generating analytics:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      assessmentId: req.params?.id,
+      userId: req.user?.id,
+      tenantId: req.tenant?.id,
+      errorType: error instanceof Error ? error.constructor.name : typeof error
+    });
+    res.status(500).json({ 
+      error: 'Failed to generate analytics',
+      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : 'Internal server error'
+    });
   }
 });
 
@@ -1392,46 +1479,160 @@ router.get("/:id/findings",
   rateLimitMiddleware.general,
   async (req: AuthenticatedRequest, res) => {
   try {
+    // Validate request parameters
     const { id } = req.params;
+    if (!id || typeof id !== 'string') {
+      return res.status(400).json({ error: 'Invalid assessment ID' });
+    }
+
+    // Validate tenant context
+    if (!req.tenant || !req.tenant.id) {
+      console.error('[Findings] Missing tenant context', { userId: req.user?.id, assessmentId: id });
+      return res.status(401).json({ error: 'Tenant context required' });
+    }
+
     const { intakeFormId } = req.query;
 
     // Verify assessment exists and user has access
-    const assessment = await db.query.assessments.findFirst({
-      where: and(
-        eq(assessments.id, id),
-        eq(assessments.tenantId, req.tenant!.id)
-      ),
-    });
+    let assessment;
+    try {
+      assessment = await db.query.assessments.findFirst({
+        where: and(
+          eq(assessments.id, id),
+          eq(assessments.tenantId, req.tenant.id)
+        ),
+      });
+    } catch (dbError) {
+      console.error('[Findings] Database query failed:', {
+        error: dbError instanceof Error ? dbError.message : String(dbError),
+        stack: dbError instanceof Error ? dbError.stack : undefined,
+        assessmentId: id,
+        tenantId: req.tenant.id
+      });
+      return res.status(500).json({ error: 'Database query failed', details: 'Failed to fetch assessment' });
+    }
 
     if (!assessment) {
       return res.status(404).json({ error: 'Assessment not found' });
     }
 
-    // Import required services
-    const { ExecutiveSummaryService } = await import('../services/executiveSummaryService');
-    const advancedScoringService = (await import('../services/advancedScoringService')).default;
-    const { calculateAssessmentScore } = await import('./scoring');
+    // Import required services with error handling
+    let ExecutiveSummaryService, advancedScoringService, calculateAssessmentScore;
+    try {
+      const executiveSummaryModule = await import('../services/executiveSummaryService');
+      ExecutiveSummaryService = executiveSummaryModule.ExecutiveSummaryService;
+      if (!ExecutiveSummaryService) {
+        throw new Error('ExecutiveSummaryService not found in module');
+      }
+    } catch (importError) {
+      console.error('[Findings] Failed to import ExecutiveSummaryService:', {
+        error: importError instanceof Error ? importError.message : String(importError),
+        stack: importError instanceof Error ? importError.stack : undefined,
+        assessmentId: id
+      });
+      return res.status(500).json({ error: 'Failed to load executive summary service', details: 'Module import failed' });
+    }
 
-    // Get intake-based scope if provided
+    try {
+      const advancedScoringModule = await import('../services/advancedScoringService');
+      advancedScoringService = advancedScoringModule.default;
+      if (!advancedScoringService) {
+        throw new Error('advancedScoringService default export not found');
+      }
+    } catch (importError) {
+      console.error('[Findings] Failed to import advancedScoringService:', {
+        error: importError instanceof Error ? importError.message : String(importError),
+        stack: importError instanceof Error ? importError.stack : undefined,
+        assessmentId: id
+      });
+      return res.status(500).json({ error: 'Failed to load advanced scoring service', details: 'Module import failed' });
+    }
+
+    try {
+      const scoringModule = await import('./scoring');
+      calculateAssessmentScore = scoringModule.calculateAssessmentScore;
+      if (!calculateAssessmentScore || typeof calculateAssessmentScore !== 'function') {
+        throw new Error('calculateAssessmentScore function not found');
+      }
+    } catch (importError) {
+      console.error('[Findings] Failed to import scoring module:', {
+        error: importError instanceof Error ? importError.message : String(importError),
+        stack: importError instanceof Error ? importError.stack : undefined,
+        assessmentId: id
+      });
+      return res.status(500).json({ error: 'Failed to load scoring module', details: 'Module import failed' });
+    }
+
+    // Get intake-based scope if provided (non-blocking)
     let intakeScope = null;
     if (intakeFormId && typeof intakeFormId === 'string') {
       try {
         const { IntakeProcessor } = await import('./intakeLogic');
         intakeScope = await IntakeProcessor.generateAssessmentScope(intakeFormId);
       } catch (error) {
-        console.warn('Failed to get intake scope for findings:', error);
+        console.warn('[Findings] Failed to get intake scope (non-critical):', {
+          error: error instanceof Error ? error.message : String(error),
+          intakeFormId
+        });
+        // Continue without intake scope - not critical for findings
       }
     }
 
-    // Get scoring data for compliance status
-    const scoringData = await calculateAssessmentScore(id, intakeScope);
+    // Get scoring data for compliance status with error handling
+    let scoringData;
+    try {
+      scoringData = await calculateAssessmentScore(id, intakeScope);
+    } catch (scoreError) {
+      console.error('[Findings] Failed to calculate assessment score:', {
+        error: scoreError instanceof Error ? scoreError.message : String(scoreError),
+        stack: scoreError instanceof Error ? scoreError.stack : undefined,
+        assessmentId: id,
+        hasIntakeScope: !!intakeScope
+      });
+      return res.status(500).json({ error: 'Failed to calculate assessment score', details: scoreError instanceof Error ? scoreError.message : 'Unknown scoring error' });
+    }
 
-    // Generate executive summary (includes key findings)
+    // Validate scoringData structure
+    if (!scoringData || typeof scoringData !== 'object') {
+      console.error('[Findings] Invalid scoringData structure:', {
+        assessmentId: id,
+        scoringDataType: typeof scoringData,
+        isNull: scoringData === null,
+        isUndefined: scoringData === undefined
+      });
+      return res.status(500).json({ error: 'Invalid scoring data returned', details: 'Scoring function returned invalid data structure' });
+    }
+
+    // Ensure scoringData has safe defaults
+    const safeScoringData = {
+      scorePercentage: typeof scoringData.scorePercentage === 'number' ? scoringData.scorePercentage : 0,
+      complianceStatus: scoringData.complianceStatus || 'UNKNOWN',
+      recommendations: Array.isArray(scoringData.recommendations) ? scoringData.recommendations : []
+    };
+
+    // Generate executive summary (includes key findings) with error handling
     let executiveSummary;
     try {
       executiveSummary = await ExecutiveSummaryService.generateExecutiveSummary(id);
     } catch (error) {
-      console.warn('Failed to generate executive summary, using fallback:', error);
+      console.warn('[Findings] Failed to generate executive summary, using fallback:', {
+        error: error instanceof Error ? error.message : String(error),
+        assessmentId: id
+      });
+      executiveSummary = {
+        summary: 'Assessment findings analysis based on current compliance status and gaps.',
+        keyFindings: [],
+        businessImpact: 'Assessment in progress. Business impact will be calculated once more data is available.',
+        recommendations: [],
+        nextSteps: [],
+        investmentAnalysis: {},
+        timeline: ''
+      };
+    }
+
+    // Validate executiveSummary structure
+    if (!executiveSummary || typeof executiveSummary !== 'object') {
+      console.warn('[Findings] Invalid executiveSummary, using fallback');
       executiveSummary = {
         summary: 'Assessment findings analysis based on current compliance status and gaps.',
         keyFindings: [],
@@ -1458,45 +1659,58 @@ router.get("/:id/findings",
     try {
       const gapAnalysisData = await advancedScoringService.generateGapAnalysis(id);
       
-      // Transform gap analysis to match frontend interface
-      gapAnalysis = [
-        ...gapAnalysisData.criticalGaps.map((gap: any, idx: number) => ({
-          questionId: gap.questionId,
-          questionText: gap.questionText,
-          category: gap.category,
-          currentScore: gap.currentScore,
-          targetScore: gap.targetScore,
-          gapSeverity: 'CRITICAL' as const,
-          impact: gap.impact,
-          recommendation: gap.recommendation
-        })),
-        ...gapAnalysisData.majorGaps.map((gap: any, idx: number) => ({
-          questionId: gap.questionId,
-          questionText: gap.questionText,
-          category: gap.category,
-          currentScore: gap.currentScore,
-          targetScore: gap.targetScore,
-          gapSeverity: 'MAJOR' as const,
-          impact: gap.impact,
-          recommendation: gap.recommendation
-        })),
-        ...gapAnalysisData.minorGaps.map((gap: any, idx: number) => ({
-          questionId: gap.questionId,
-          questionText: gap.questionText,
-          category: gap.category,
-          currentScore: gap.currentScore,
-          targetScore: gap.targetScore,
-          gapSeverity: 'MINOR' as const,
-          impact: gap.impact,
-          recommendation: gap.recommendation
-        }))
-      ];
+      // Validate gapAnalysisData structure before processing
+      if (gapAnalysisData && typeof gapAnalysisData === 'object') {
+        // Safely transform gap analysis with null checks
+        const criticalGaps = Array.isArray(gapAnalysisData.criticalGaps) ? gapAnalysisData.criticalGaps : [];
+        const majorGaps = Array.isArray(gapAnalysisData.majorGaps) ? gapAnalysisData.majorGaps : [];
+        const minorGaps = Array.isArray(gapAnalysisData.minorGaps) ? gapAnalysisData.minorGaps : [];
+        
+        // Transform gap analysis to match frontend interface
+        gapAnalysis = [
+          ...criticalGaps.map((gap: any, idx: number) => ({
+            questionId: gap?.questionId || `critical-${idx}`,
+            questionText: gap?.questionText || '',
+            category: gap?.category || 'Unknown',
+            currentScore: typeof gap?.currentScore === 'number' ? gap.currentScore : 0,
+            targetScore: typeof gap?.targetScore === 'number' ? gap.targetScore : 100,
+            gapSeverity: 'CRITICAL' as const,
+            impact: gap?.impact || '',
+            recommendation: gap?.recommendation || ''
+          })),
+          ...majorGaps.map((gap: any, idx: number) => ({
+            questionId: gap?.questionId || `major-${idx}`,
+            questionText: gap?.questionText || '',
+            category: gap?.category || 'Unknown',
+            currentScore: typeof gap?.currentScore === 'number' ? gap.currentScore : 0,
+            targetScore: typeof gap?.targetScore === 'number' ? gap.targetScore : 100,
+            gapSeverity: 'MAJOR' as const,
+            impact: gap?.impact || '',
+            recommendation: gap?.recommendation || ''
+          })),
+          ...minorGaps.map((gap: any, idx: number) => ({
+            questionId: gap?.questionId || `minor-${idx}`,
+            questionText: gap?.questionText || '',
+            category: gap?.category || 'Unknown',
+            currentScore: typeof gap?.currentScore === 'number' ? gap.currentScore : 0,
+            targetScore: typeof gap?.targetScore === 'number' ? gap.targetScore : 100,
+            gapSeverity: 'MINOR' as const,
+            impact: gap?.impact || '',
+            recommendation: gap?.recommendation || ''
+          }))
+        ];
+      }
     } catch (error) {
-      console.warn('Failed to generate gap analysis:', error);
+      console.warn('[Findings] Failed to generate gap analysis (non-critical):', {
+        error: error instanceof Error ? error.message : String(error),
+        assessmentId: id
+      });
+      // Continue with empty gapAnalysis - not critical for findings
     }
 
-    // Transform key findings from executive summary
-    const keyFindings = executiveSummary.keyFindings.map((finding: string, idx: number) => {
+    // Transform key findings from executive summary with null checks
+    const keyFindingsArray = Array.isArray(executiveSummary.keyFindings) ? executiveSummary.keyFindings : [];
+    const keyFindings = keyFindingsArray.map((finding: string, idx: number) => {
       // Determine severity based on finding content
       let severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' = 'MEDIUM';
       if (finding.toLowerCase().includes('critical') || finding.toLowerCase().includes('immediate')) {
@@ -1518,8 +1732,9 @@ router.get("/:id/findings",
       };
     });
 
-    // Transform recommendations
-    const recommendations = executiveSummary.recommendations.map((rec: string, idx: number) => {
+    // Transform recommendations with null checks
+    const recommendationsArray = Array.isArray(executiveSummary.recommendations) ? executiveSummary.recommendations : [];
+    const recommendations = recommendationsArray.map((rec: string, idx: number) => {
       // Determine priority based on recommendation content
       let priority: 'HIGH' | 'MEDIUM' | 'LOW' = 'MEDIUM';
       if (rec.toLowerCase().includes('critical') || rec.toLowerCase().includes('immediate') || rec.toLowerCase().includes('urgent')) {
@@ -1539,10 +1754,10 @@ router.get("/:id/findings",
       };
     });
 
-    // If we have scoring data recommendations, merge them
-    if (scoringData.recommendations && scoringData.recommendations.length > 0) {
-      scoringData.recommendations.forEach((rec: string, idx: number) => {
-        if (!recommendations.find(r => r.description === rec)) {
+    // If we have scoring data recommendations, merge them safely
+    if (Array.isArray(safeScoringData.recommendations) && safeScoringData.recommendations.length > 0) {
+      safeScoringData.recommendations.forEach((rec: string, idx: number) => {
+        if (typeof rec === 'string' && !recommendations.find(r => r.description === rec)) {
           recommendations.push({
             id: `scoring-rec-${idx}`,
             title: `Recommendation ${recommendations.length + 1}`,
@@ -1556,19 +1771,33 @@ router.get("/:id/findings",
       });
     }
 
-    res.json({
-      summary: executiveSummary.summary,
-      keyFindings,
-      recommendations,
-      gapAnalysis,
-      complianceStatus: scoringData.complianceStatus,
-      businessImpact: executiveSummary.businessImpact,
-      nextSteps: executiveSummary.nextSteps,
+    // Ensure all response properties are safe
+    const safeResponse = {
+      summary: executiveSummary.summary || 'Assessment findings analysis based on current compliance status and gaps.',
+      keyFindings: Array.isArray(keyFindings) ? keyFindings : [],
+      recommendations: Array.isArray(recommendations) ? recommendations : [],
+      gapAnalysis: Array.isArray(gapAnalysis) ? gapAnalysis : [],
+      complianceStatus: safeScoringData.complianceStatus,
+      businessImpact: executiveSummary.businessImpact || 'Assessment in progress. Business impact will be calculated once more data is available.',
+      nextSteps: Array.isArray(executiveSummary.nextSteps) ? executiveSummary.nextSteps : [],
       lastCalculated: new Date().toISOString()
-    });
+    };
+
+    res.json(safeResponse);
   } catch (error) {
-    console.error('Error generating findings:', error);
-    res.status(500).json({ error: 'Failed to generate findings' });
+    // Catch-all error handler with detailed logging
+    console.error('[Findings] Unexpected error generating findings:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      assessmentId: req.params?.id,
+      userId: req.user?.id,
+      tenantId: req.tenant?.id,
+      errorType: error instanceof Error ? error.constructor.name : typeof error
+    });
+    res.status(500).json({ 
+      error: 'Failed to generate findings',
+      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : 'Internal server error'
+    });
   }
 });
 

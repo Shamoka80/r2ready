@@ -226,17 +226,43 @@ router.get('/overview', async (req: AuthenticatedRequest, res) => {
       overallScore: 0,
       readinessLevel: 'Not Ready' as const,
       coreRequirements: { cr1: 0, cr2: 0, cr3: 0, cr4: 0, cr5: 0, cr6: 0, cr7: 0, cr8: 0, cr9: 0, cr10: 0 },
-      appendices: { appA: 0, appB: 0, appC: 0, appD: 0, appE: 0 },
+      appendices: { appA: 0, appB: 0, appC: 0, appD: 0, appE: 0, appF: 0, appG: 0 },
+      gapBreakdown: { critical: 0, important: 0, minor: 0 },
     };
 
     const activities = results[2].status === 'fulfilled' ? results[2].value : [];
     const deadlines = results[3].status === 'fulfilled' ? results[3].value : [];
 
-    // Log any failures for debugging
+    // Log any failures for debugging with detailed error information
     results.forEach((result, index) => {
       if (result.status === 'rejected') {
         const methodNames = ['getDashboardKPIs', 'getReadinessSnapshot', 'getActivityFeed', 'getUpcomingDeadlines'];
-        console.warn(`⚠️  ${methodNames[index]} failed, using defaults:`, result.reason);
+        const error = result.reason;
+        console.error(`❌ [Dashboard] ${methodNames[index]} failed:`, {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          tenantId,
+          method: methodNames[index]
+        });
+      } else {
+        // Log successful results for debugging
+        const methodNames = ['getDashboardKPIs', 'getReadinessSnapshot', 'getActivityFeed', 'getUpcomingDeadlines'];
+        console.log(`✅ [Dashboard] ${methodNames[index]} succeeded for tenant ${tenantId}`);
+      }
+    });
+
+    // Debug logging: Log actual values being returned
+    console.log(`📊 [Dashboard] Returning dashboard data for tenant ${tenantId}:`, {
+      kpis: {
+        totalAssessments: kpis.totalAssessments,
+        inProgress: kpis.inProgress,
+        averageReadiness: kpis.averageReadiness,
+        facilities: kpis.facilities
+      },
+      readiness: {
+        overallScore: readiness.overallScore,
+        readinessLevel: readiness.readinessLevel,
+        hasGapBreakdown: !!readiness.gapBreakdown
       }
     });
 
