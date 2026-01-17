@@ -14,6 +14,9 @@ export interface AuthenticatedRequest extends Request {
     tenantId: string;
     sessionId: string;
     deviceId?: string;
+    // Optional user profile fields that may be present at runtime
+    firstName?: string;
+    lastName?: string;
   };
   clientInfo: {
     ipAddress: string;
