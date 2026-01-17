@@ -26,6 +26,8 @@ import { ConsistentLogService } from '../services/consistentLogService';
 import { IntakeProcessor } from './intakeLogic';
 import { refreshClientOrgStats, refreshAssessmentStats } from '../services/materializedViews';
 import { calculateAssessmentScore } from './scoring';
+import { ExecutiveSummaryService } from '../services/executiveSummaryService';
+import advancedScoringService from '../services/advancedScoringService';
 
 const router = Router();
 
@@ -1505,36 +1507,15 @@ router.get("/:id/findings",
       return res.status(404).json({ error: 'Assessment not found' });
     }
 
-    // Import required services with error handling
-    let ExecutiveSummaryService, advancedScoringService;
-    try {
-      const executiveSummaryModule = await import('../services/executiveSummaryService');
-      ExecutiveSummaryService = executiveSummaryModule.ExecutiveSummaryService;
-      if (!ExecutiveSummaryService) {
-        throw new Error('ExecutiveSummaryService not found in module');
-      }
-    } catch (importError) {
-      console.error('[Findings] Failed to import ExecutiveSummaryService:', {
-        error: importError instanceof Error ? importError.message : String(importError),
-        stack: importError instanceof Error ? importError.stack : undefined,
-        assessmentId: id
-      });
-      return res.status(500).json({ error: 'Failed to load executive summary service', details: 'Module import failed' });
+    // Use imported services (static imports for better deployment compatibility)
+    if (!ExecutiveSummaryService) {
+      console.error('[Findings] ExecutiveSummaryService not available');
+      return res.status(500).json({ error: 'Failed to load executive summary service', details: 'Service not available' });
     }
 
-    try {
-      const advancedScoringModule = await import('../services/advancedScoringService');
-      advancedScoringService = advancedScoringModule.default;
-      if (!advancedScoringService) {
-        throw new Error('advancedScoringService default export not found');
-      }
-    } catch (importError) {
-      console.error('[Findings] Failed to import advancedScoringService:', {
-        error: importError instanceof Error ? importError.message : String(importError),
-        stack: importError instanceof Error ? importError.stack : undefined,
-        assessmentId: id
-      });
-      return res.status(500).json({ error: 'Failed to load advanced scoring service', details: 'Module import failed' });
+    if (!advancedScoringService) {
+      console.error('[Findings] advancedScoringService not available');
+      return res.status(500).json({ error: 'Failed to load advanced scoring service', details: 'Service not available' });
     }
 
     // Use imported scoring function (static import for better deployment compatibility)
