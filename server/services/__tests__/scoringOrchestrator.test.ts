@@ -17,7 +17,7 @@ import { MemoryFlagStore } from '../../../shared/flags';
  */
 
 describe('ScoringOrchestrator Integration Tests', () => {
-  const flagStore = MemoryFlagStore.getInstance();
+  const flagStore = new MemoryFlagStore();
 
   beforeEach(async () => {
     // Reset all flags to default (false) before each test

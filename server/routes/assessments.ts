@@ -350,7 +350,7 @@ router.post("/",
     }
 
     // Create assessment with REC mapping information (supports both Business and Consultant paths)
-    const [assessment] = await db.insert(assessments).values({
+    const assessmentResult = await db.insert(assessments).values({
       tenantId: req.tenant!.id,
       createdBy: req.user!.id,
       stdId: standard.id,
@@ -364,6 +364,7 @@ router.post("/",
       status: "DRAFT",
       filteringInfo: recMappingInfo, // Store REC mapping results for question filtering
     }).returning();
+    const assessment = Array.isArray(assessmentResult) ? assessmentResult[0] : (assessmentResult as any)[0];
 
     // Log audit event with facility or client information
     const auditDetails: any = { 
@@ -1434,7 +1435,16 @@ router.get("/:id/findings",
     }
 
     // Generate gap analysis
-    let gapAnalysis = [];
+    let gapAnalysis: Array<{
+      questionId: string;
+      questionText: string;
+      category: string;
+      currentScore: number;
+      targetScore: number;
+      gapSeverity: 'CRITICAL' | 'MAJOR' | 'MINOR';
+      impact: string;
+      recommendation: string;
+    }> = [];
     try {
       const gapAnalysisData = await advancedScoringService.generateGapAnalysis(id);
       

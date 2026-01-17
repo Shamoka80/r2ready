@@ -27,7 +27,7 @@ router.post('/', (async (req: Request, res: Response) => {
 
     // Get user info if authenticated (optional - form can be used by non-authenticated users too)
     const authReq = req as AuthenticatedRequest;
-    const userName = authReq.user ? `${authReq.user.firstName} ${authReq.user.lastName}` : name;
+    const userName = authReq.user ? `${(authReq.user as any).firstName || ''} ${(authReq.user as any).lastName || ''}`.trim() || name : name;
     const userEmail = authReq.user?.email || email;
     const userId = authReq.user?.id || 'anonymous';
     const tenantId = authReq.user?.tenantId || null;

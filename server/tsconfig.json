@@ -33,5 +33,5 @@
     "utils/**/*.ts",
     "../shared/**/*.ts"
   ],
-  "exclude": ["node_modules", "dist", "../shared/schema-minimal.ts", "tests/**"]
+  "exclude": ["node_modules", "dist", "../shared/schema-minimal.ts", "tests/**", "**/__tests__/**", "**/*.test.ts"]
 }
