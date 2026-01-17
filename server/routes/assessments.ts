@@ -25,6 +25,7 @@ import { cacheService } from '../services/cachingService';
 import { ConsistentLogService } from '../services/consistentLogService';
 import { IntakeProcessor } from './intakeLogic';
 import { refreshClientOrgStats, refreshAssessmentStats } from '../services/materializedViews';
+import { calculateAssessmentScore } from './scoring';
 
 const router = Router();
 
@@ -1375,28 +1376,16 @@ router.get("/:id/analytics",
       return res.status(404).json({ error: 'Assessment not found' });
     }
 
-    // Import scoring function with error handling
-    let calculateAssessmentScore;
-    try {
-      const scoringModule = await import('./scoring');
-      calculateAssessmentScore = scoringModule.calculateAssessmentScore;
-      if (!calculateAssessmentScore || typeof calculateAssessmentScore !== 'function') {
-        throw new Error('calculateAssessmentScore function not found in scoring module');
-      }
-    } catch (importError) {
-      console.error('[Analytics] Failed to import scoring module:', {
-        error: importError instanceof Error ? importError.message : String(importError),
-        stack: importError instanceof Error ? importError.stack : undefined,
-        assessmentId: id
-      });
-      return res.status(500).json({ error: 'Failed to load scoring module', details: 'Module import failed' });
+    // Use imported scoring function (static import for better deployment compatibility)
+    if (!calculateAssessmentScore || typeof calculateAssessmentScore !== 'function') {
+      console.error('[Analytics] calculateAssessmentScore function not available');
+      return res.status(500).json({ error: 'Failed to load scoring module', details: 'Scoring function not available' });
     }
     
     // Get intake-based scope if provided (non-blocking)
     let intakeScope = null;
     if (intakeFormId && typeof intakeFormId === 'string') {
       try {
-        const { IntakeProcessor } = await import('./intakeLogic');
         intakeScope = await IntakeProcessor.generateAssessmentScope(intakeFormId);
       } catch (error) {
         console.warn('[Analytics] Failed to get intake scope (non-critical):', {
@@ -1548,26 +1537,16 @@ router.get("/:id/findings",
       return res.status(500).json({ error: 'Failed to load advanced scoring service', details: 'Module import failed' });
     }
 
-    try {
-      const scoringModule = await import('./scoring');
-      calculateAssessmentScore = scoringModule.calculateAssessmentScore;
-      if (!calculateAssessmentScore || typeof calculateAssessmentScore !== 'function') {
-        throw new Error('calculateAssessmentScore function not found');
-      }
-    } catch (importError) {
-      console.error('[Findings] Failed to import scoring module:', {
-        error: importError instanceof Error ? importError.message : String(importError),
-        stack: importError instanceof Error ? importError.stack : undefined,
-        assessmentId: id
-      });
-      return res.status(500).json({ error: 'Failed to load scoring module', details: 'Module import failed' });
+    // Use imported scoring function (static import for better deployment compatibility)
+    if (!calculateAssessmentScore || typeof calculateAssessmentScore !== 'function') {
+      console.error('[Findings] calculateAssessmentScore function not available');
+      return res.status(500).json({ error: 'Failed to load scoring module', details: 'Scoring function not available' });
     }
 
     // Get intake-based scope if provided (non-blocking)
     let intakeScope = null;
     if (intakeFormId && typeof intakeFormId === 'string') {
       try {
-        const { IntakeProcessor } = await import('./intakeLogic');
         intakeScope = await IntakeProcessor.generateAssessmentScope(intakeFormId);
       } catch (error) {
         console.warn('[Findings] Failed to get intake scope (non-critical):', {

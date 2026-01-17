@@ -6,6 +6,7 @@ import { assessments, questions, answers, clauses } from "../../shared/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { requireFacilityPermissionFromAssessment, type AuthenticatedRequest } from "../services/authService";
 import { ScoringOrchestrator } from "../services/scoringOrchestrator";
+import { IntakeProcessor } from './intakeLogic';
 
 const router = Router();
 
@@ -100,7 +101,6 @@ router.get('/:id/scoring',
     let intakeScope = null;
     if (intakeFormId && typeof intakeFormId === 'string') {
       try {
-        const { IntakeProcessor } = await import('./intakeLogic');
         intakeScope = await IntakeProcessor.generateAssessmentScope(intakeFormId);
       } catch (error) {
         console.warn('Failed to get intake scope for scoring:', error);
@@ -136,7 +136,6 @@ router.post('/:id/scoring/refresh',
 
     let intakeScope = null;
     if (intakeFormId) {
-      const { IntakeProcessor } = await import('./intakeLogic');
       intakeScope = await IntakeProcessor.generateAssessmentScope(intakeFormId);
     }
 
