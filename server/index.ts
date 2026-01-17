@@ -151,13 +151,15 @@ export async function createApp() {
   // Initialize Sentry Express middleware (must be before all other middleware)
   // This captures request context for error tracking
   // Note: Handlers are Express-specific, so they're only set up here where Express is available
-  if (SENTRY_INITIALIZED && (Sentry as any).Handlers) {
+  if (SENTRY_INITIALIZED) {
     try {
-      const handlers = (Sentry as any).Handlers;
-      if (typeof handlers.requestHandler === 'function') {
+      // Type assertion for Sentry Handlers - may not exist in all Sentry versions
+      const sentryAny = Sentry as any;
+      const handlers = sentryAny.Handlers;
+      if (handlers && typeof handlers.requestHandler === 'function') {
         app.use(handlers.requestHandler());
       }
-      if (typeof handlers.tracingHandler === 'function') {
+      if (handlers && typeof handlers.tracingHandler === 'function') {
         app.use(handlers.tracingHandler());
       }
     } catch (error) {
@@ -267,10 +269,12 @@ export async function createApp() {
   // This captures Express route exceptions and sends them to Sentry with full context
   // Email alerts are triggered by Sentry based on alert rules configured in dashboard
   // Note: This is Express-specific middleware - unhandled exceptions are captured globally
-  if (SENTRY_INITIALIZED && (Sentry as any).Handlers) {
+  if (SENTRY_INITIALIZED) {
     try {
-      const handlers = (Sentry as any).Handlers;
-      if (typeof handlers.errorHandler === 'function') {
+      // Type assertion for Sentry Handlers - may not exist in all Sentry versions
+      const sentryAny = Sentry as any;
+      const handlers = sentryAny.Handlers;
+      if (handlers && typeof handlers.errorHandler === 'function') {
         app.use(handlers.errorHandler());
       }
     } catch (error) {

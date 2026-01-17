@@ -41,10 +41,10 @@ router.get('/', (async (req: AuthenticatedRequest, res: Response) => {
         // Get facility name if available
         let facilityName: string | undefined;
         if (assessment?.facilityId) {
-          const facility = await db.query.facilityProfiles.findFirst({
-            where: eq(facilityProfiles.id, assessment.facilityId)
-          });
-          facilityName = facility?.name;
+          const facility = await db.select().from(facilityProfiles)
+            .where(eq(facilityProfiles.id, assessment.facilityId))
+            .limit(1);
+          facilityName = facility && facility.length > 0 ? facility[0].name : undefined;
         }
 
         // Determine report type from format

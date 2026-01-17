@@ -15,12 +15,13 @@ interface WordDocument {
   }>;
 }
 
-interface Paragraph {
+// Local interfaces for Word document generation (renamed to avoid conflict with docx imports)
+interface LocalParagraph {
   children: Array<any>;
   alignment?: string;
 }
 
-interface TextRun {
+interface LocalTextRun {
   text: string;
   bold?: boolean;
   size?: number;

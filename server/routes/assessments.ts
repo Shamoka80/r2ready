@@ -364,7 +364,10 @@ router.post("/",
       status: "DRAFT",
       filteringInfo: recMappingInfo, // Store REC mapping results for question filtering
     }).returning();
-    const assessment = Array.isArray(assessmentResult) ? assessmentResult[0] : (assessmentResult as any)[0];
+    // Handle both array and non-array return types from drizzle
+    const assessment = (Array.isArray(assessmentResult) && assessmentResult.length > 0) 
+      ? assessmentResult[0] 
+      : (assessmentResult as any)?.rows?.[0] || (assessmentResult as any)?.[0];
 
     // Log audit event with facility or client information
     const auditDetails: any = { 
@@ -1434,8 +1437,8 @@ router.get("/:id/findings",
       };
     }
 
-    // Generate gap analysis
-    let gapAnalysis: Array<{
+    // Generate gap analysis with explicit type annotation
+    type GapAnalysisItem = {
       questionId: string;
       questionText: string;
       category: string;
@@ -1444,7 +1447,8 @@ router.get("/:id/findings",
       gapSeverity: 'CRITICAL' | 'MAJOR' | 'MINOR';
       impact: string;
       recommendation: string;
-    }> = [];
+    };
+    let gapAnalysis: GapAnalysisItem[] = [];
     try {
       const gapAnalysisData = await advancedScoringService.generateGapAnalysis(id);
       
