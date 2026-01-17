@@ -1506,7 +1506,7 @@ router.get("/:id/findings",
     }
 
     // Import required services with error handling
-    let ExecutiveSummaryService, advancedScoringService, calculateAssessmentScore;
+    let ExecutiveSummaryService, advancedScoringService;
     try {
       const executiveSummaryModule = await import('../services/executiveSummaryService');
       ExecutiveSummaryService = executiveSummaryModule.ExecutiveSummaryService;
