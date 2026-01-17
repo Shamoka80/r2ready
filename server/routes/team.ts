@@ -425,6 +425,9 @@ router.get('/invitation/:token', async (req, res) => {
       });
     }
 
+    // Type assertion for user with tenant relation from query
+    const userWithTenant = user as typeof user & { tenant?: { id: string; name: string; tenantType: string } };
+    
     res.json({
       valid: true,
       user: {
@@ -434,7 +437,7 @@ router.get('/invitation/:token', async (req, res) => {
         lastName: user.lastName,
         role: toFrontendRole(user.businessRole || user.consultantRole),
       },
-      tenant: (user as any).tenant,
+      tenant: userWithTenant.tenant,
     });
 
   } catch (error) {
