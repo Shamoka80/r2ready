@@ -597,7 +597,7 @@ router.post('/test-email', authMiddleware, async (req: AuthenticatedRequest, res
     await emailService.ensureInitialized();
 
     // Get frontend URL
-    const frontendUrl = process.env.FRONTEND_URL || process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5173';
+    const frontendUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL || process.env.REPLIT_DEV_DOMAIN || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : 'http://localhost:5173');
     const testLink = `${frontendUrl}/accept-invitation?token=test-token-123`;
 
     console.log('🧪 Testing email service...', {

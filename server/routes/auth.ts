@@ -573,7 +573,11 @@ router.post('/register-tenant', rateLimitMiddleware.register, blockTestUserRegis
 
       // Send verification email synchronously (critical path)
       // Log verification details BEFORE attempting to send (so they always show)
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5173';
+      // Get frontend URL with proper fallback chain
+      const baseUrl = process.env.CLIENT_URL || 
+                      process.env.FRONTEND_URL || 
+                      process.env.REPLIT_DEV_DOMAIN || 
+                      (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : 'http://localhost:5173');
       const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
       
       // FORCE OUTPUT - Use process.stderr.write to ensure visibility
@@ -2115,7 +2119,10 @@ router.post('/forgot-password', strictRateLimit.passwordChange, async (req, res)
 
     // Send password reset email
     try {
-      const resetLink = `${process.env.CLIENT_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
+      // Ensure email service is initialized before sending
+      await emailService.ensureInitialized();
+      
+      const resetLink = `${process.env.CLIENT_URL || process.env.FRONTEND_URL || process.env.REPLIT_DEV_DOMAIN || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : 'http://localhost:5173')}/reset-password?token=${resetToken}`;
       
       const emailSent = await emailService.sendPasswordResetEmail(
         user.email,
@@ -2126,10 +2133,19 @@ router.post('/forgot-password', strictRateLimit.passwordChange, async (req, res)
 
       if (!emailSent) {
         console.error('Failed to send password reset email to:', user.email);
+      } else {
+        console.log('✅ Password reset email sent successfully to:', user.email);
       }
     } catch (emailError) {
       console.error('Error sending password reset email:', emailError);
       // Don't expose email sending errors to prevent information leakage
+      // But log the error for debugging
+      if (emailError instanceof Error) {
+        console.error('Email error details:', {
+          message: emailError.message,
+          stack: emailError.stack
+        });
+      }
     }
 
     // Log audit event

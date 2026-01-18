@@ -639,7 +639,7 @@ export class AuthService {
           // Ensure email service is initialized
           await emailService.ensureInitialized();
           
-          const frontendUrl = process.env.FRONTEND_URL || process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5173';
+          const frontendUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL || process.env.REPLIT_DEV_DOMAIN || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : 'http://localhost:5173');
           const invitationLink = `${frontendUrl}/accept-invitation?token=${invitationToken}`;
           
           console.log('📧 Attempting to send team invitation email...', {
