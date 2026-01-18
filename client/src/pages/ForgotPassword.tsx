@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, startTransition } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -75,7 +75,7 @@ export default function ForgotPassword() {
             <div className="flex items-center justify-between">
               {/* Back Button + Logo */}
               <div className="flex items-center space-x-3">
-                <Button variant="ghost" size="sm" onClick={() => setLocation("/login")} className="min-h-[44px] min-w-[44px] p-2">
+                <Button variant="ghost" size="sm" onClick={() => startTransition(() => setLocation("/login"))} className="min-h-[44px] min-w-[44px] p-2">
                   <ArrowLeft className="h-4 w-4" />
                   <span className="sr-only">Back to Login</span>
                 </Button>
@@ -108,8 +108,8 @@ export default function ForgotPassword() {
             <Card>
               <CardHeader className="space-y-3 text-center px-4 sm:px-6">
                 <div className="flex justify-center mb-4 sm:mb-6">
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-green-100 flex items-center justify-center">
-                    <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-green-950/40 dark:bg-green-950/40 flex items-center justify-center">
+                    <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-green-400" />
                   </div>
                 </div>
                 <CardTitle className="text-xl sm:text-2xl font-bold text-glow-blue">Check Your Email</CardTitle>
@@ -143,7 +143,7 @@ export default function ForgotPassword() {
                     <Button 
                       variant="ghost" 
                       className="w-full"
-                      onClick={() => setLocation("/login")}
+                      onClick={() => startTransition(() => setLocation("/login"))}
                     >
                       Back to Login
                     </Button>
@@ -165,7 +165,7 @@ export default function ForgotPassword() {
           <div className="flex items-center justify-between">
             {/* Back Button + Logo */}
             <div className="flex items-center space-x-3">
-              <Button variant="ghost" size="sm" onClick={() => setLocation("/login")} className="min-h-[44px] min-w-[44px] p-2">
+              <Button variant="ghost" size="sm" onClick={() => startTransition(() => setLocation("/login"))} className="min-h-[44px] min-w-[44px] p-2">
                 <ArrowLeft className="h-4 w-4" />
                 <span className="sr-only">Back to Login</span>
               </Button>
@@ -205,8 +205,8 @@ export default function ForgotPassword() {
           <Card>
             <CardHeader className="space-y-3 text-center px-4 sm:px-6">
               <div className="flex justify-center mb-4 sm:mb-6">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-blue-100 flex items-center justify-center">
-                  <Mail className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-blue-950/40 dark:bg-blue-950/40 flex items-center justify-center">
+                  <Mail className="h-6 w-6 sm:h-8 sm:w-8 text-blue-400" />
                 </div>
               </div>
               <CardTitle className="text-xl sm:text-2xl font-bold text-glow-blue">Reset Password</CardTitle>
@@ -243,7 +243,7 @@ export default function ForgotPassword() {
                     type="button"
                     variant="ghost" 
                     className="px-2 py-3 text-sm"
-                    onClick={() => setLocation("/login")}
+                    onClick={() => startTransition(() => setLocation("/login"))}
                   >
                     Back to Login
                   </Button>

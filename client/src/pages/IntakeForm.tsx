@@ -12,6 +12,7 @@ import { ChevronLeft, ChevronRight, Save, Send, CheckCircle } from "lucide-react
 import { apiPost, apiPut, apiGet } from "@/api";
 import { debounce } from 'lodash';
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import { queryClient } from "@/lib/queryClient";
 import ClientContextBanner from "@/components/ClientContextBanner";
 
@@ -143,6 +144,8 @@ export default function IntakeForm() {
   const [isValid, setIsValid] = useState(false);
   const [hasManualAppendixOverride, setHasManualAppendixOverride] = useState(false);
   const [overrideFlagInitialized, setOverrideFlagInitialized] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
 
   // Persist manual override flag to localStorage - initialize as soon as formId is available
   const formId = formData.id;
@@ -580,10 +583,29 @@ export default function IntakeForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.id || !isValid) {
+    // Validate all sections before submitting
+    const allSectionsValid = [];
+    for (let section = 1; section <= SECTIONS.length; section++) {
+      const isValid = validateSection(section);
+      allSectionsValid.push(isValid);
+    }
+
+    if (!formData.id || !isValid || !allSectionsValid.every(v => v)) {
+      // Mark all fields as touched to show errors
+      const allRequiredFields = [
+        'legalCompanyName', 'businessEntityType', 'hqStreet', 'hqCity', 'hqStateProvince', 'hqCountry',
+        'primaryR2ContactName', 'primaryR2ContactEmail', 'topMgmtRepName', 'topMgmtRepEmail',
+        'totalFacilities', 'certificationStructureType',
+        'totalEmployees', 'operatingSchedule',
+        'processingActivities', 'electronicsTypes', 'equipment',
+        'totalDownstreamVendors', 'primaryCountries',
+        'certificationType'
+      ];
+      setTouchedFields(new Set(allRequiredFields));
+      
       toast({
         title: "Validation Error",
-        description: "Please complete all required fields before submitting.",
+        description: "Please complete all required fields marked with (*) before submitting.",
         variant: "destructive"
       });
       return;
@@ -639,8 +661,122 @@ export default function IntakeForm() {
   };
 
 
+  // Validate required fields for a specific section
+  const validateSection = (section: number): boolean => {
+    const errors: Record<string, string> = {};
+    
+    // Section 1: Legal Entity Information
+    if (section === 1) {
+      if (!formData.legalCompanyName?.trim()) {
+        errors.legalCompanyName = 'Legal Company Name is required';
+      }
+      if (!formData.businessEntityType) {
+        errors.businessEntityType = 'Business Entity Type is required';
+      }
+      if (!formData.hqStreet?.trim()) {
+        errors.hqStreet = 'Street Address is required';
+      }
+      if (!formData.hqCity?.trim()) {
+        errors.hqCity = 'City is required';
+      }
+      if (!formData.hqStateProvince?.trim()) {
+        errors.hqStateProvince = 'State/Province is required';
+      }
+      if (!formData.hqCountry?.trim()) {
+        errors.hqCountry = 'Country is required';
+      }
+    }
+    
+    // Section 2: Key Personnel
+    if (section === 2) {
+      if (!formData.primaryR2ContactName?.trim()) {
+        errors.primaryR2ContactName = 'Primary R2 Contact Name is required';
+      }
+      if (!formData.primaryR2ContactEmail?.trim()) {
+        errors.primaryR2ContactEmail = 'Primary R2 Contact Email is required';
+      }
+      if (!formData.topMgmtRepName?.trim()) {
+        errors.topMgmtRepName = 'Top Management Representative Name is required';
+      }
+      if (!formData.topMgmtRepEmail?.trim()) {
+        errors.topMgmtRepEmail = 'Top Management Representative Email is required';
+      }
+    }
+    
+    // Section 3: Facility Structure
+    if (section === 3) {
+      if (!formData.totalFacilities) {
+        errors.totalFacilities = 'Total Facilities is required';
+      }
+      if (!formData.certificationStructureType) {
+        errors.certificationStructureType = 'Certification Structure Type is required';
+      }
+    }
+    
+    // Section 4: Workforce
+    if (section === 4) {
+      if (!formData.totalEmployees) {
+        errors.totalEmployees = 'Total Employees is required';
+      }
+      if (!formData.operatingSchedule) {
+        errors.operatingSchedule = 'Operating Schedule is required';
+      }
+    }
+    
+    // Section 6: Processing Activities
+    if (section === 6) {
+      if (!formData.processingActivities || formData.processingActivities.length === 0) {
+        errors.processingActivities = 'At least one Processing Activity is required';
+      }
+      if (!formData.electronicsTypes || formData.electronicsTypes.length === 0) {
+        errors.electronicsTypes = 'At least one Electronics Type is required';
+      }
+      if (!formData.equipment || formData.equipment.length === 0) {
+        errors.equipment = 'At least one Equipment type is required';
+      }
+    }
+    
+    // Section 7: Downstream Vendors
+    if (section === 7) {
+      if (formData.totalDownstreamVendors === undefined || formData.totalDownstreamVendors === null || formData.totalDownstreamVendors === '') {
+        errors.totalDownstreamVendors = 'Total Downstream Vendors is required';
+      }
+      if (formData.internationalShipments && !formData.primaryCountries?.trim()) {
+        errors.primaryCountries = 'Primary Countries is required when International Shipments is enabled';
+      }
+    }
+    
+    // Section 9: Certification Objectives
+    if (section === 9) {
+      if (!formData.certificationType) {
+        errors.certificationType = 'Certification Type is required';
+      }
+    }
+    
+    if (section === currentSection) {
+      setFieldErrors(errors);
+    }
+    return Object.keys(errors).length === 0;
+  };
+
+  // Validate current section (for navigation)
+  const validateCurrentSection = (): boolean => {
+    return validateSection(currentSection);
+  };
+
   const updateFormData = (updates: Partial<IntakeFormData>) => {
     setFormData(prev => ({ ...prev, ...updates }));
+    // Clear errors for updated fields
+    const updatedFields = Object.keys(updates);
+    setFieldErrors(prev => {
+      const newErrors = { ...prev };
+      updatedFields.forEach(field => {
+        if (newErrors[field]) {
+          delete newErrors[field];
+        }
+      });
+      return newErrors;
+    });
   };
 
   const calculateProgress = () => {
@@ -682,12 +818,12 @@ export default function IntakeForm() {
     <div className="space-y-6">
       {/* Pre-population Notice */}
       {formData.legalCompanyName && (
-        <div className="bg-jade/10 border border-jade/20 rounded-lg p-4 mb-6">
-          <div className="flex items-center space-x-2 text-jade-700">
-            <CheckCircle className="h-5 w-5" />
+        <div className="bg-jade/20 dark:bg-jade/20 border border-jade/30 rounded-lg p-4 mb-6">
+          <div className="flex items-center space-x-2 text-jade-300 dark:text-jade-300">
+            <CheckCircle className="h-5 w-5 text-jade-400" />
             <span className="font-medium">Pre-populated from Onboarding</span>
           </div>
-          <p className="text-sm text-jade-600 mt-1">
+          <p className="text-sm text-jade-200 dark:text-jade-200 mt-1">
             Basic company and contact information has been automatically filled from your setup wizard to save time.
           </p>
         </div>
@@ -699,13 +835,23 @@ export default function IntakeForm() {
           <Input
             id="legalCompanyName"
             value={formData.legalCompanyName || ''}
-            onChange={(e) => updateFormData({ legalCompanyName: e.target.value })}
+            onChange={(e) => {
+              updateFormData({ legalCompanyName: e.target.value });
+              setTouchedFields(prev => new Set(prev).add('legalCompanyName'));
+            }}
+            onBlur={() => setTouchedFields(prev => new Set(prev).add('legalCompanyName'))}
             placeholder="Enter legal company name"
-            className={formData.legalCompanyName ? "border-jade/30 bg-jade/5" : ""}
+            className={cn(
+              formData.legalCompanyName ? "bg-jade-override" : "",
+              fieldErrors.legalCompanyName && touchedFields.has('legalCompanyName') ? "border-red-500 border-2" : ""
+            )}
             required
           />
           {formData.legalCompanyName && (
-            <p className="text-xs text-jade-600 mt-1">✓ Pre-populated from onboarding</p>
+            <p className="text-xs text-jade-400 dark:text-jade-400 font-medium mt-1">✓ Pre-populated from onboarding</p>
+          )}
+          {fieldErrors.legalCompanyName && touchedFields.has('legalCompanyName') && (
+            <p className="text-sm text-red-500 dark:text-red-400 mt-1">{fieldErrors.legalCompanyName}</p>
           )}
         </div>
         <div>
@@ -724,9 +870,12 @@ export default function IntakeForm() {
           <Label htmlFor="businessEntityType">Business Entity Type *</Label>
           <Select
             value={formData.businessEntityType || ''}
-            onValueChange={(value) => updateFormData({ businessEntityType: value })}
+            onValueChange={(value) => {
+              updateFormData({ businessEntityType: value });
+              setTouchedFields(prev => new Set(prev).add('businessEntityType'));
+            }}
           >
-            <SelectTrigger>
+            <SelectTrigger className={fieldErrors.businessEntityType && touchedFields.has('businessEntityType') ? "border-red-500 border-2" : ""}>
               <SelectValue placeholder="Select entity type" />
             </SelectTrigger>
             <SelectContent>
@@ -736,6 +885,9 @@ export default function IntakeForm() {
               <SelectItem value="OTHER">Other</SelectItem>
             </SelectContent>
           </Select>
+          {fieldErrors.businessEntityType && touchedFields.has('businessEntityType') && (
+            <p className="text-sm text-red-500 dark:text-red-400 mt-1">{fieldErrors.businessEntityType}</p>
+          )}
         </div>
         <div>
           <Label htmlFor="taxIdEin">Tax ID/EIN</Label>
@@ -775,13 +927,23 @@ export default function IntakeForm() {
             <Input
               id="hqStreet"
               value={formData.hqStreet || ''}
-              onChange={(e) => updateFormData({ hqStreet: e.target.value })}
+              onChange={(e) => {
+                updateFormData({ hqStreet: e.target.value });
+                setTouchedFields(prev => new Set(prev).add('hqStreet'));
+              }}
+              onBlur={() => setTouchedFields(prev => new Set(prev).add('hqStreet'))}
               placeholder="Enter street address"
-              className={formData.hqStreet ? "border-jade/30 bg-jade/5" : ""}
+              className={cn(
+                formData.hqStreet ? "bg-jade-override" : "",
+                fieldErrors.hqStreet && touchedFields.has('hqStreet') ? "border-red-500 border-2" : ""
+              )}
               required
             />
             {formData.hqStreet && (
-              <p className="text-xs text-jade-600 mt-1">✓ Pre-populated from onboarding</p>
+              <p className="text-xs text-jade-400 dark:text-jade-400 font-medium mt-1">✓ Pre-populated from onboarding</p>
+            )}
+            {fieldErrors.hqStreet && touchedFields.has('hqStreet') && (
+              <p className="text-sm text-red-500 dark:text-red-400 mt-1">{fieldErrors.hqStreet}</p>
             )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -790,30 +952,54 @@ export default function IntakeForm() {
               <Input
                 id="hqCity"
                 value={formData.hqCity || ''}
-                onChange={(e) => updateFormData({ hqCity: e.target.value })}
+                onChange={(e) => {
+                  updateFormData({ hqCity: e.target.value });
+                  setTouchedFields(prev => new Set(prev).add('hqCity'));
+                }}
+                onBlur={() => setTouchedFields(prev => new Set(prev).add('hqCity'))}
                 placeholder="City"
+                className={fieldErrors.hqCity && touchedFields.has('hqCity') ? "border-red-500 border-2" : ""}
                 required
               />
+              {fieldErrors.hqCity && touchedFields.has('hqCity') && (
+                <p className="text-sm text-red-500 dark:text-red-400 mt-1">{fieldErrors.hqCity}</p>
+              )}
             </div>
             <div>
               <Label htmlFor="hqStateProvince">State/Province *</Label>
               <Input
                 id="hqStateProvince"
                 value={formData.hqStateProvince || ''}
-                onChange={(e) => updateFormData({ hqStateProvince: e.target.value })}
+                onChange={(e) => {
+                  updateFormData({ hqStateProvince: e.target.value });
+                  setTouchedFields(prev => new Set(prev).add('hqStateProvince'));
+                }}
+                onBlur={() => setTouchedFields(prev => new Set(prev).add('hqStateProvince'))}
                 placeholder="State/Province"
+                className={fieldErrors.hqStateProvince && touchedFields.has('hqStateProvince') ? "border-red-500 border-2" : ""}
                 required
               />
+              {fieldErrors.hqStateProvince && touchedFields.has('hqStateProvince') && (
+                <p className="text-sm text-red-500 dark:text-red-400 mt-1">{fieldErrors.hqStateProvince}</p>
+              )}
             </div>
             <div>
               <Label htmlFor="hqCountry">Country *</Label>
               <Input
                 id="hqCountry"
                 value={formData.hqCountry || ''}
-                onChange={(e) => updateFormData({ hqCountry: e.target.value })}
+                onChange={(e) => {
+                  updateFormData({ hqCountry: e.target.value });
+                  setTouchedFields(prev => new Set(prev).add('hqCountry'));
+                }}
+                onBlur={() => setTouchedFields(prev => new Set(prev).add('hqCountry'))}
                 placeholder="Country"
+                className={fieldErrors.hqCountry && touchedFields.has('hqCountry') ? "border-red-500 border-2" : ""}
                 required
               />
+              {fieldErrors.hqCountry && touchedFields.has('hqCountry') && (
+                <p className="text-sm text-red-500 dark:text-red-400 mt-1">{fieldErrors.hqCountry}</p>
+              )}
             </div>
             <div>
               <Label htmlFor="hqPostalCode">Postal Code</Label>
@@ -848,10 +1034,10 @@ export default function IntakeForm() {
               value={formData.email || ''}
               onChange={(e) => updateFormData({ email: e.target.value })}
               placeholder="company@example.com"
-              className={formData.email ? "border-jade/30 bg-jade/5" : ""}
+              className={formData.email ? "bg-jade-override" : ""}
             />
             {formData.email && (
-              <p className="text-xs text-jade-600 mt-1">✓ Pre-populated from onboarding</p>
+              <p className="text-xs text-jade-400 dark:text-jade-400 font-medium mt-1">✓ Pre-populated from onboarding</p>
             )}
           </div>
           <div>
@@ -1487,12 +1673,12 @@ export default function IntakeForm() {
   const renderAppendicesSection = () => (
     <div className="space-y-6">
       {/* Auto-population Notice */}
-      <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+      <div className="bg-blue-950/40 dark:bg-blue-950/40 border border-blue-800 dark:border-blue-800 rounded-lg p-4">
         <div className="flex items-start space-x-3">
-          <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+          <CheckCircle className="h-5 w-5 text-blue-400 dark:text-blue-400 mt-0.5" />
           <div className="flex-1">
-            <h4 className="font-semibold text-blue-900 dark:text-blue-100">Auto-Selected Based on Your Activities</h4>
-            <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
+            <h4 className="font-semibold text-blue-100 dark:text-blue-100">Auto-Selected Based on Your Activities</h4>
+            <p className="text-sm text-blue-200 dark:text-blue-200 mt-1">
               These R2v3 Appendices have been automatically selected based on your processing activities, downstream vendors, and other selections.
               You can modify these selections if needed.
             </p>
@@ -1701,16 +1887,16 @@ export default function IntakeForm() {
           <p className="text-muted-foreground mt-2">Complete this comprehensive intake to begin your R2v3 certification journey</p>
 
         {/* Setup Guidance Alert */}
-        <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mt-4" data-testid="alert-setup-guidance">
+        <div className="bg-blue-950/40 dark:bg-blue-950/40 border border-blue-800 dark:border-blue-800 rounded-lg p-4 mt-4" data-testid="alert-setup-guidance">
           <div className="flex items-start space-x-3">
-            <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+            <CheckCircle className="h-5 w-5 text-blue-400 dark:text-blue-400 mt-0.5" />
             <div className="flex-1">
-              <h3 className="font-semibold text-blue-900 dark:text-blue-100">Final Step: Complete Your Setup</h3>
-              <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
+              <h3 className="font-semibold text-blue-100 dark:text-blue-100">Final Step: Complete Your Setup</h3>
+              <p className="text-sm text-blue-200 dark:text-blue-200 mt-1">
                 You're almost done! This intake form is the final required step in your onboarding process.
                 Once completed, you'll have full access to your R2v3 certification dashboard and can begin creating assessments.
               </p>
-              <ul className="text-sm text-blue-700 dark:text-blue-300 mt-2 space-y-1 list-disc list-inside">
+              <ul className="text-sm text-blue-200 dark:text-blue-200 mt-2 space-y-1 list-disc list-inside">
                 <li>The form auto-saves your progress every 10 seconds</li>
                 <li>You can navigate between sections using the Previous/Next buttons</li>
                 <li>Complete all required fields marked with an asterisk (*)</li>
@@ -1774,8 +1960,23 @@ export default function IntakeForm() {
           {currentSection < SECTIONS.length ? (
             <Button
               onClick={() => {
-                setCurrentSection(Math.min(SECTIONS.length, currentSection + 1));
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                if (validateCurrentSection()) {
+                  setCurrentSection(Math.min(SECTIONS.length, currentSection + 1));
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                  toast({
+                    title: "Validation Error",
+                    description: "Please complete all required fields marked with (*) before proceeding.",
+                    variant: "destructive"
+                  });
+                  // Mark all fields in current section as touched
+                  const sectionFields = Object.keys(fieldErrors);
+                  setTouchedFields(prev => {
+                    const newTouched = new Set(prev);
+                    sectionFields.forEach(field => newTouched.add(field));
+                    return newTouched;
+                  });
+                }
               }}
               className="bg-jade text-white hover:bg-jade/90"
               data-testid="button-next-section"
