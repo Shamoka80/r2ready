@@ -350,9 +350,31 @@ If you didn't request this password reset, please ignore this email.
   }
 
 
+  // Helper function to get frontend base URL
+  private getFrontendUrl(): string {
+    // Production or explicit CLIENT_URL (highest priority)
+    if (process.env.CLIENT_URL) {
+      return process.env.CLIENT_URL;
+    }
+    // FRONTEND_URL as secondary option
+    if (process.env.FRONTEND_URL) {
+      return process.env.FRONTEND_URL;
+    }
+    // Replit development environment
+    if (process.env.REPLIT_DEV_DOMAIN) {
+      return process.env.REPLIT_DEV_DOMAIN;
+    }
+    // Replit production domains
+    if (process.env.REPLIT_DOMAINS) {
+      return `https://${process.env.REPLIT_DOMAINS}`;
+    }
+    // Local development fallback
+    return 'http://localhost:5173';
+  }
+
   // Email verification
   async sendVerificationEmail(to: string, token: string, verificationCode: string, firstName: string): Promise<boolean> {
-    const baseUrl = process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5173';
+    const baseUrl = this.getFrontendUrl();
     const verificationUrl = `${baseUrl}/verify-email?token=${token}`;
 
     return this.sendEmail({
@@ -500,7 +522,7 @@ If you didn't expect this invitation, you can safely ignore this email.
   }
 
   async sendWelcomeEmail(to: string, firstName: string): Promise<boolean> {
-    const dashboardUrl = process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5173/dashboard'; // Ensure dashboardUrl is correctly formed
+    const dashboardUrl = `${this.getFrontendUrl()}/dashboard`; // Ensure dashboardUrl is correctly formed
 
     return this.sendEmail({
       to,
