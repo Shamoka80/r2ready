@@ -140,9 +140,9 @@ export default function RegisterEmailSent() {
             <CardContent className="space-y-6 px-4 sm:px-6">
               {/* Instructions */}
               <div className="space-y-4">
-                <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800" data-testid="alert-instructions">
-                  <CheckCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                  <AlertDescription className="text-blue-900 dark:text-blue-100">
+                <Alert className="bg-blue-950/80 dark:bg-blue-950/80 border-blue-800" data-testid="alert-instructions">
+                  <CheckCircle className="h-4 w-4 text-blue-400" />
+                  <AlertDescription className="text-blue-100">
                     <strong>Next steps:</strong>
                     <ol className="list-decimal ml-5 mt-2 space-y-1">
                       <li>Check your inbox for an email from RuR2</li>
@@ -182,9 +182,9 @@ export default function RegisterEmailSent() {
                   </div>
 
                   {resendSuccess && (
-                    <Alert className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800" data-testid="alert-resend-success">
-                      <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                      <AlertDescription className="text-green-900 dark:text-green-100">
+                    <Alert className="bg-green-950/80 dark:bg-green-950/80 border-green-800" data-testid="alert-resend-success">
+                      <CheckCircle className="h-4 w-4 text-green-400" />
+                      <AlertDescription className="text-green-100">
                         Verification email sent successfully! Please check your inbox.
                       </AlertDescription>
                     </Alert>
