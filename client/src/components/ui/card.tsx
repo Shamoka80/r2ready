@@ -10,7 +10,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "floating-card glass-morphism text-foreground !bg-transparent",
+      "floating-card glass-morphism text-foreground",
       className
     )}
     {...props}

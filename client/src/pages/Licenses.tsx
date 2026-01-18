@@ -110,8 +110,23 @@ export default function Licenses() {
   const { data: licenses = [], isLoading: licensesLoading, refetch: refetchLicenses } = useQuery<License[]>({
     queryKey: ['licenses'],
     queryFn: async () => {
-      const response = await apiGet<{ licenses: License[]; count: number }>('/api/licenses');
-      return response.licenses || [];
+      try {
+        const response = await apiGet<{ licenses: License[]; count: number }>('/api/licenses');
+        // Ensure we always return an array
+        if (Array.isArray(response)) {
+          // If response is directly an array (unexpected but handle it)
+          return response;
+        }
+        if (response && typeof response === 'object' && 'licenses' in response) {
+          return Array.isArray(response.licenses) ? response.licenses : [];
+        }
+        // Fallback to empty array if structure is unexpected
+        console.warn('Unexpected licenses API response format:', response);
+        return [];
+      } catch (error) {
+        console.error('Error fetching licenses:', error);
+        return [];
+      }
     },
   });
 
@@ -264,6 +279,12 @@ export default function Licenses() {
   };
 
   const getCurrentUsage = () => {
+    // Ensure licenses is an array before filtering
+    if (!Array.isArray(licenses)) {
+      console.warn('licenses is not an array:', licenses);
+      return { totalFacilities: 0, totalSeats: 0, totalClients: 0 };
+    }
+    
     const baseLicenses = licenses.filter(l => l.licenseType === 'base' && l.isActive);
     const facilityPacks = licenses.filter(l => l.licenseType.includes('facility') && l.isActive);
     const seatPacks = licenses.filter(l => l.licenseType.includes('seat') && l.isActive);
@@ -296,8 +317,11 @@ export default function Licenses() {
     );
   }
 
+  // Ensure licenses is always an array before using it
+  const safeLicenses = Array.isArray(licenses) ? licenses : [];
+  
   const usage = getCurrentUsage();
-  const groupedLicenses = groupLicensesByType(licenses);
+  const groupedLicenses = groupLicensesByType(safeLicenses);
 
   return (
     <div className="p-6">
@@ -309,7 +333,7 @@ export default function Licenses() {
         </div>
 
         {/* Current Usage Overview */}
-        {licenses.length > 0 && (
+        {safeLicenses.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
               <CardContent className="p-6">
@@ -353,7 +377,7 @@ export default function Licenses() {
                   <h3 className="font-medium">Active Licenses</h3>
                 </div>
                 <p className="text-2xl font-bold text-foreground mt-2">
-                  {licenses.filter(l => l.isActive).length}
+                  {safeLicenses.filter(l => l.isActive).length}
                 </p>
               </CardContent>
             </Card>
@@ -367,7 +391,7 @@ export default function Licenses() {
           </TabsList>
 
           <TabsContent value="current" className="space-y-6">
-            {licenses.length === 0 ? (
+            {safeLicenses.length === 0 ? (
               <Card>
                 <CardContent className="p-8 text-center">
                   <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
