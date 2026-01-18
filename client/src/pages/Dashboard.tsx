@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation } from 'wouter';
 import { 
@@ -129,6 +129,7 @@ function Dashboard() {
   const { t } = useTranslation();
   const [location, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
+  const createAssessmentSectionRef = useRef<HTMLDivElement>(null);
 
   // Fetch dashboard overview
   const { data: dashboardResponse, isLoading: dashboardLoading } = useQuery<{ 
@@ -170,6 +171,19 @@ function Dashboard() {
       assessment.id?.toLowerCase().includes(query)
     );
   }, [allAssessments, searchQuery]);
+
+  // Scroll to create assessment section when navigating to /assessments
+  useEffect(() => {
+    if (location === '/assessments' && createAssessmentSectionRef.current) {
+      // Small delay to ensure the page has rendered
+      setTimeout(() => {
+        createAssessmentSectionRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
+        });
+      }, 100);
+    }
+  }, [location]);
 
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { variant: 'default' | 'secondary' | 'outline' | 'destructive', label: string }> = {
@@ -349,7 +363,8 @@ function Dashboard() {
         </div>
 
         {/* Saved Assessments Table */}
-        <Card data-testid="assessments-table">
+        <div ref={createAssessmentSectionRef}>
+          <Card data-testid="assessments-table">
           <CardHeader>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
               <div>
@@ -463,6 +478,7 @@ function Dashboard() {
             )}
           </CardContent>
         </Card>
+        </div>
 
         {/* Activity & Deadlines */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
