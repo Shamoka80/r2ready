@@ -327,6 +327,29 @@
     font-weight: 400;
   }
 
+  /* Force dark background on all input-glass elements (default) - inline styles will override */
+  input.input-glass:not(.bg-jade-override),
+  input[type="text"].input-glass:not(.bg-jade-override),
+  input[type="email"].input-glass:not(.bg-jade-override),
+  input[type="number"].input-glass:not(.bg-jade-override),
+  input[type="tel"].input-glass:not(.bg-jade-override),
+  input[type="url"].input-glass:not(.bg-jade-override),
+  button.input-glass:not(.bg-jade-override),
+  [role="combobox"].input-glass:not(.bg-jade-override) {
+    background: linear-gradient(
+      135deg,
+      rgba(25, 25, 25, 0.95) 0%,
+      rgba(20, 20, 20, 0.98) 100%
+    );
+    background-color: rgba(25, 25, 25, 0.95);
+  }
+
+  /* Green/jade background only for pre-populated fields */
+  .input-glass.bg-jade-override {
+    background: rgba(34, 197, 94, 0.2);
+    border-color: rgba(34, 197, 94, 0.3);
+  }
+
   /* Premium Dropdown */
   .dropdown-glass {
     @apply glass-morphism;

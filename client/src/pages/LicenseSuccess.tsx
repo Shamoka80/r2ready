@@ -80,7 +80,22 @@ export default function LicenseSuccess() {
       });
       
       if (!response.ok) {
-        throw new Error('License activation failed');
+        // Try to get error details from response
+        let errorMessage = 'License activation failed';
+        let errorCode = 'ACTIVATION_ERROR';
+        
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+          errorCode = errorData.code || errorCode;
+          console.error('❌ FRONTEND: Activation error details', errorData);
+        } catch (parseError) {
+          console.error('❌ FRONTEND: Failed to parse error response', parseError);
+        }
+        
+        const error = new Error(errorMessage) as Error & { code?: string };
+        error.code = errorCode;
+        throw error;
       }
       
       return response.json();
@@ -102,6 +117,8 @@ export default function LicenseSuccess() {
     },
     onError: (error: Error) => {
       console.error('❌ FRONTEND: License activation failed', error);
+      console.error('❌ FRONTEND: Error code:', (error as any).code);
+      console.error('❌ FRONTEND: Error message:', error.message);
     },
   });
 

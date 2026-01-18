@@ -11,7 +11,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import SetupGate from "@/components/SetupGate";
 import AppLayout from "@/components/layout/AppLayout";
-import { lazy } from "react"; // Import lazy
+import { lazy, Suspense } from "react"; // Import lazy and Suspense
 
 // Pages
 import Landing from "@/pages/Landing";
@@ -56,6 +56,10 @@ import TeamManagement from './pages/TeamManagement';
 import Reports from './pages/Reports';
 import BrandSettings from './pages/BrandSettings';
 
+// Lazy load password reset pages
+const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
+
 function App() {
   return (
     <ErrorBoundary
@@ -82,8 +86,20 @@ function App() {
             <Route path="/register/email-sent" component={RegisterEmailSent} />
             <Route path="/verify-email" component={VerifyEmail} />
             <Route path="/accept-invitation" component={AcceptInvitation} />
-            <Route path="/forgot-password" component={lazy(() => import("@/pages/ForgotPassword"))} />
-            <Route path="/reset-password" component={lazy(() => import("@/pages/ResetPassword"))} />
+            <Route path="/forgot-password">
+              {() => (
+                <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+                  <ForgotPassword />
+                </Suspense>
+              )}
+            </Route>
+            <Route path="/reset-password">
+              {() => (
+                <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+                  <ResetPassword />
+                </Suspense>
+              )}
+            </Route>
 
             {/* 2FA Routes */}
             <Route path="/setup-2fa" component={() => (

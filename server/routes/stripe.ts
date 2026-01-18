@@ -256,8 +256,32 @@ router.post("/session/:sessionId/activate",
 
       const tier = metadata.tier;
       
+      // Validate tier is a valid ValidTier
+      const validTiers: ValidTier[] = [
+        'BUSINESS_SOLO', 'BUSINESS_TEAM', 'BUSINESS_ENTERPRISE',
+        'CONSULTANT_INDEPENDENT', 'CONSULTANT_AGENCY', 'CONSULTANT_ENTERPRISE'
+      ];
+      
+      if (!validTiers.includes(tier as ValidTier)) {
+        console.error('❌ LICENSE-ACTIVATION: Invalid tier', { tier, sessionId });
+        return res.status(400).json({ 
+          error: "Invalid license tier",
+          code: "INVALID_TIER",
+          tier
+        });
+      }
+      
       // Get baseline allocations for the tier
       const tierBaselines = getTierBaselines(tier as ValidTier);
+      
+      if (!tierBaselines) {
+        console.error('❌ LICENSE-ACTIVATION: Failed to get tier baselines', { tier, sessionId });
+        return res.status(500).json({ 
+          error: "Failed to calculate license capacity",
+          code: "TIER_BASELINE_ERROR",
+          tier
+        });
+      }
       
       // Calculate total capacity (baseline + add-on packs)
       const facilityPacks = parseInt(metadata.facilityPacks || '0');
@@ -325,34 +349,81 @@ router.post("/session/:sessionId/activate",
     } catch (error) {
       console.error('❌ LICENSE-ACTIVATION: Error activating license', error);
       
+      // Log detailed error information for debugging
+      if (error instanceof Error) {
+        console.error('❌ LICENSE-ACTIVATION: Error details', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name,
+          sessionId: req.params.sessionId,
+          tenantId: req.tenant?.id,
+          userId: req.user?.id
+        });
+      }
+      
       // Check for duplicate key errors (race condition)
-      if (error instanceof Error && error.message.includes('duplicate key')) {
+      if (error instanceof Error && (
+        error.message.includes('duplicate key') || 
+        error.message.includes('unique constraint') ||
+        error.message.includes('already exists')
+      )) {
         console.log('⚠️ LICENSE-ACTIVATION: Duplicate detected, fetching existing');
         
-        const existingLicense = await db.query.licenses.findFirst({
-          where: eq(licenses.stripeSessionId, req.params.sessionId)
-        });
-
-        if (existingLicense) {
-          return res.json({
-            success: true,
-            alreadyActivated: true,
-            license: {
-              id: existingLicense.id,
-              tier: existingLicense.tier,
-              status: existingLicense.status,
-              maxFacilities: existingLicense.maxFacilities,
-              maxSeats: existingLicense.maxSeats
-            },
-            nextRoute: '/onboarding'
+        try {
+          const existingLicense = await db.query.licenses.findFirst({
+            where: eq(licenses.stripeSessionId, req.params.sessionId)
           });
+
+          if (existingLicense) {
+            return res.json({
+              success: true,
+              alreadyActivated: true,
+              license: {
+                id: existingLicense.id,
+                tier: existingLicense.tier,
+                status: existingLicense.status,
+                maxFacilities: existingLicense.maxFacilities,
+                maxSeats: existingLicense.maxSeats
+              },
+              nextRoute: '/onboarding'
+            });
+          }
+        } catch (fetchError) {
+          console.error('❌ LICENSE-ACTIVATION: Error fetching existing license', fetchError);
         }
+      }
+      
+      // Check for database connection errors (PostgreSQL specific)
+      if (error instanceof Error && (
+        error.message.includes('connection') ||
+        error.message.includes('ECONNREFUSED') ||
+        error.message.includes('timeout')
+      )) {
+        return res.status(503).json({ 
+          error: "Database connection error",
+          code: "DATABASE_ERROR",
+          message: "Unable to connect to database. Please try again later."
+        });
+      }
+      
+      // Check for schema/constraint errors
+      if (error instanceof Error && (
+        error.message.includes('column') ||
+        error.message.includes('constraint') ||
+        error.message.includes('null value')
+      )) {
+        return res.status(500).json({ 
+          error: "Database schema error",
+          code: "SCHEMA_ERROR",
+          message: "License activation failed due to database schema issue. Please contact support."
+        });
       }
       
       res.status(500).json({ 
         error: "Failed to activate license",
         code: "ACTIVATION_ERROR",
-        message: error instanceof Error ? error.message : "Unknown error"
+        message: error instanceof Error ? error.message : "Unknown error",
+        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
       });
     }
   }
