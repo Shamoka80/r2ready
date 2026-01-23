@@ -101,6 +101,14 @@ function App() {
               )}
             </Route>
 
+            {/* Public Pricing Page - Accessible without authentication */}
+            <Route path="/pricing" component={() => (
+              <>
+                <Pricing />
+                <Toaster />
+              </>
+            )} />
+
             {/* 2FA Routes */}
             <Route path="/setup-2fa" component={() => (
               <ProtectedRoute>
@@ -117,13 +125,6 @@ function App() {
             <Route path="/account-type-selection" component={() => (
               <ProtectedRoute>
                 <AccountTypeSelection />
-                <Toaster />
-              </ProtectedRoute>
-            )} />
-
-            <Route path="/pricing" component={() => (
-              <ProtectedRoute>
-                <Pricing />
                 <Toaster />
               </ProtectedRoute>
             )} />
