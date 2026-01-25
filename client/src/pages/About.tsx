@@ -301,19 +301,28 @@ export default function About() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {team.map((member, index) => (
-              <Card key={index} className="text-center">
+              <Card key={index} className="text-center glass-morphism border-glass-border">
                 <CardHeader>
-                  <div className="w-20 h-20 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
+                  <div className="w-20 h-20 bg-primary/20 rounded-lg flex items-center justify-center mx-auto mb-4 border border-primary/30">
                     <Users className="h-10 w-10 text-primary" />
                   </div>
-                  <CardTitle className="text-lg">{member.name}</CardTitle>
-                  <Badge variant="outline" className="mx-auto">{member.role}</Badge>
+                  <CardTitle className="text-lg text-glow-blue mb-2">{member.name}</CardTitle>
+                  <Badge 
+                    variant="outline" 
+                    className="mx-auto border-amber-500/50 text-amber-400 bg-amber-500/10 hover:bg-amber-500/20"
+                  >
+                    {member.role}
+                  </Badge>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">{member.bio}</p>
-                  <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{member.bio}</p>
+                  <div className="flex flex-wrap gap-2 justify-center">
                     {member.expertise.map((skill, idx) => (
-                      <Badge key={idx} variant="secondary" className="text-xs mr-1">
+                      <Badge 
+                        key={idx} 
+                        variant="outline" 
+                        className="text-xs border-white/30 text-foreground bg-background/50 hover:bg-background/70"
+                      >
                         {skill}
                       </Badge>
                     ))}

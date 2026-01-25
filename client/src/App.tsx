@@ -129,6 +129,30 @@ function App() {
               </ProtectedRoute>
             )} />
 
+            {/* Public Pricing Page - Accessible without authentication */}
+            <Route path="/pricing" component={() => (
+              <>
+                <Pricing />
+                <Toaster />
+              </>
+            )} />
+
+            {/* Public About Page - Accessible without authentication */}
+            <Route path="/about" component={() => (
+              <>
+                <About />
+                <Toaster />
+              </>
+            )} />
+
+            {/* Public Help Page - Accessible without authentication, redirects to Send a Note form */}
+            <Route path="/help" component={() => (
+              <>
+                <Help />
+                <Toaster />
+              </>
+            )} />
+
             {/* Protected Routes */}
             <Route path="/dashboard" component={() => (
               <ProtectedRoute>
@@ -309,16 +333,6 @@ function App() {
               </ProtectedRoute>
             )} />
 
-            <Route path="/help" component={() => (
-              <ProtectedRoute>
-                <SetupGate>
-                  <AppLayout>
-                    <Help />
-                    <Toaster />
-                  </AppLayout>
-                </SetupGate>
-              </ProtectedRoute>
-            )} />
 
             <Route path="/clients" component={() => (
               <ProtectedRoute>

@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useLocation } from "wouter";
 import { 
   HelpCircle,
   BookOpen,
@@ -28,6 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function Help() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [location] = useLocation();
   const [formData, setFormData] = useState({
     name: user ? `${user.firstName} ${user.lastName}` : '',
     email: user?.email || '',
@@ -37,6 +39,16 @@ export default function Help() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  // Scroll to contact form on page load (Help links should go directly to Send a Note)
+  useEffect(() => {
+    setTimeout(() => {
+      const contactSection = document.getElementById('contact-form');
+      if (contactSection) {
+        contactSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 300);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -267,10 +279,10 @@ export default function Help() {
       </section>
 
       {/* Contact Support */}
-      <section className="py-16">
+      <section id="contact-form" className="py-16 scroll-mt-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-4">Contact Our Support Team</h2>
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-4">Send a Note</h2>
             <p className="text-lg text-muted-foreground">Need personalized help? Our R2v3 experts are here to assist you</p>
           </div>
 
