@@ -576,7 +576,13 @@ export default function OnboardingV2Wizard() {
                           data-testid="input-facility-name"
                           placeholder="Headquarters" 
                           autoComplete="off"
-                          {...field}
+                          value={field.value || ''}
+                          onChange={(e) => {
+                            field.onChange(e.target.value);
+                          }}
+                          onBlur={field.onBlur}
+                          ref={field.ref}
+                          disabled={isSubmitting}
                         />
                       </FormControl>
                       <FormMessage />
