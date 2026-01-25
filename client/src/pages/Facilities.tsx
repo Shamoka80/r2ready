@@ -107,6 +107,7 @@ export default function Facilities() {
     }
   });
 
+
   // Create facility mutation
   const createFacility = useMutation({
     mutationFn: (data: FacilityForm) => apiPost('/api/facilities', data),
@@ -265,15 +266,34 @@ export default function Facilities() {
             setIsCreateDialogOpen(open);
             if (!open) {
               setEditingFacility(null);
-              form.reset();
+              // Reset form when dialog closes
+              setTimeout(() => {
+                form.reset({
+                  name: '',
+                  address: '',
+                  city: '',
+                  state: '',
+                  zipCode: '',
+                  country: 'US',
+                  operatingStatus: 'ACTIVE',
+                  isPrimary: false
+                });
+              }, 200);
             }
+            // Don't reset when opening - form already has default values
+            // This prevents clearing the field while user is typing
           }}
         >
           <DialogTrigger asChild>
             <Button
-              disabled={!entitlements?.canAddFacility}
+              disabled={entitlements !== undefined && !entitlements.canAddFacility}
               title={entitlements?.facilityLimitReason}
               data-testid="button-add-facility"
+              onClick={() => {
+                if (!editingFacility) {
+                  setIsCreateDialogOpen(true);
+                }
+              }}
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Facility
@@ -298,7 +318,13 @@ export default function Facilities() {
                       <FormItem className="md:col-span-2">
                         <FormLabel>Facility Name *</FormLabel>
                         <FormControl>
-                          <Input placeholder="Main Processing Center" {...field} data-testid="input-facility-name" />
+                          <Input 
+                            {...field}
+                            placeholder="Main Processing Center" 
+                            data-testid="input-facility-name"
+                            autoComplete="off"
+                            type="text"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
