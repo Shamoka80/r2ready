@@ -6,6 +6,7 @@
 /build
 # Build artifacts
 .cache/
+*.tsbuildinfo
 # Cache directories
 client/dist/
 /coverage
