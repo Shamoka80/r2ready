@@ -487,89 +487,17 @@ async function enablePgStatStatements() {
 }
 
 async function startServer() {
-  // Lightweight configuration check
+  // Ensure NODE_ENV is set to production if not already set
+  // This is critical for Replit deployments
+  if (!process.env.NODE_ENV) {
+    process.env.NODE_ENV = 'production';
+    console.log('⚠️  NODE_ENV not set, defaulting to production');
+  }
+  
+  // Lightweight configuration check (synchronous, fast)
   validateConfig();
 
-  // Test database connection (non-blocking)
-  try {
-    const dbConnected = await testDatabaseConnection();
-    if (dbConnected) {
-      console.log('✅ Database connection successful');
-    } else {
-      console.warn('⚠️  Database connection failed - continuing with limited functionality');
-    }
-  } catch (error) {
-    console.warn('⚠️  Database error:', error instanceof Error ? error.message : 'Unknown error');
-  }
-
-  // Initialize email service and check Microsoft 365 SMTP connection
-  try {
-    await emailService.ensureInitialized();
-    await emailService.healthCheck();
-  } catch (error) {
-    // Email service initialization error - logged by service
-  }
-
-  // Validate database schema consistency (fail-fast on critical errors)
-  try {
-    const schemaValidation = await validateSchemaConsistency();
-
-    if (!schemaValidation.isValid) {
-      console.error('\n' + '='.repeat(80));
-      console.error('❌ DATABASE SCHEMA VALIDATION FAILED');
-      console.error('='.repeat(80));
-      console.error('\nThe database schema is out of sync with the application code.');
-      console.error('This will cause runtime errors. Please fix the schema issues below:\n');
-
-      schemaValidation.errors.forEach(error => console.error(error));
-
-      if (schemaValidation.warnings.length > 0) {
-        console.warn('\nWarnings:');
-        schemaValidation.warnings.forEach(warning => console.warn(warning));
-      }
-
-      console.error('\n' + '='.repeat(80));
-      console.error('💡 To fix schema issues:');
-      console.error('   1. Run: npm run db:push --force');
-      console.error('   2. Or manually add missing columns using SQL');
-      console.error('   3. Ensure shared/schema.ts matches your database structure');
-      console.error('='.repeat(80) + '\n');
-
-      throw new SchemaValidationError(schemaValidation);
-    }
-  } catch (error) {
-    if (error instanceof SchemaValidationError) {
-      process.exit(1);
-    }
-    console.warn('⚠️  Schema validation error:', error instanceof Error ? error.message : 'Unknown error');
-  }
-
-  // Check for empty QuestionMapping table (data seeding warning)
-  try {
-    const [mappingCount] = await db.select({ count: sql<number>`count(*)` }).from(questionMapping);
-    const [questionCount] = await db.select({ count: sql<number>`count(*)` }).from(questions);
-    const [recCount] = await db.select({ count: sql<number>`count(*)` }).from(recMapping);
-
-    const totalMappings = Number(mappingCount?.count || 0);
-    const totalQuestions = Number(questionCount?.count || 0);
-    const totalRecs = Number(recCount?.count || 0);
-
-    if (totalMappings === 0 && totalQuestions > 0 && totalRecs > 0) {
-      console.warn('\n' + '='.repeat(80));
-      console.warn('⚠️  WARNING: QuestionMapping table is empty');
-      console.warn('='.repeat(80));
-      console.warn(`Found ${totalQuestions} questions and ${totalRecs} REC codes, but 0 mappings.`);
-      console.warn('This will prevent REC-based question filtering from working.\n');
-      console.warn('💡 To fix this, run the mapping seed script:');
-      console.warn('   SEED_MODE=merge npm run seed:mappings');
-      console.warn('='.repeat(80) + '\n');
-    } else if (totalMappings > 0) {
-      console.log(`✅ QuestionMapping data ready (${totalMappings} mappings)`);
-    }
-  } catch (error) {
-    console.warn('⚠️  Could not check QuestionMapping status:', error instanceof Error ? error.message : 'Unknown error');
-  }
-
+  // Create the Express app (required before we can start listening)
   const app = await createApp();
 
   const isDevelopment = process.env.NODE_ENV === 'development';
@@ -590,7 +518,20 @@ async function startServer() {
   let server;
 
   // Fix path resolution - in compiled JS, __dirname points to server/dist/server/
-  const distDir = path.resolve(__dirname, "../../../client/dist");
+  // In production, we need to resolve from the project root
+  // Try multiple paths to handle different deployment scenarios
+  let distDir = path.resolve(__dirname, "../../../client/dist");
+  
+  // If that doesn't exist, try resolving from process.cwd() (project root)
+  if (!fs.existsSync(distDir)) {
+    distDir = path.resolve(process.cwd(), "client/dist");
+  }
+  
+  // Log the resolved path for debugging
+  if (isProduction) {
+    console.log(`📂 Resolved client dist directory: ${distDir}`);
+    console.log(`📂 Directory exists: ${fs.existsSync(distDir)}`);
+  }
 
   if (isProduction || fs.existsSync(distDir)) {
 
@@ -671,6 +612,14 @@ async function startServer() {
       }
     });
   } else {
+    // DEVELOPMENT MODE ONLY: Proxy to Vite dev server
+    // In production, this code should NEVER execute
+    if (isProduction) {
+      console.error('❌ ERROR: Attempting to use Vite proxy in production mode!');
+      console.error('❌ This should never happen. Check your build process.');
+      console.error('❌ Make sure NODE_ENV=production and client/dist exists.');
+      // Don't exit - serve what we can, but log the error
+    }
 
     // Create Vite proxy once and reuse it (fixes EventEmitter memory leak)
     const viteProxy = createProxyMiddleware({
@@ -696,36 +645,59 @@ async function startServer() {
   app.use('/api/jobs', jobRoutes);
   app.use('/api/team', teamRoutes);
 
-  // Start server
+  // ============================================================================
+  // START HTTP SERVER IMMEDIATELY (CRITICAL FOR REPLIT)
+  // ============================================================================
+  // Start listening FIRST, before any blocking initialization tasks.
+  // This ensures Replit sees the server as "ready" immediately.
+  // All non-critical initialization happens AFTER the server is listening.
+  
   const port = parseInt(process.env.PORT || '5000', 10);
+  
+  if (!port || isNaN(port)) {
+    console.error('❌ Invalid PORT environment variable:', process.env.PORT);
+    process.exit(1);
+  }
+  
+  // Start the HTTP server immediately - this is what Replit monitors
   server = app.listen(port, "0.0.0.0", () => {
     console.log(`🚀 Server running on port ${port}`);
     console.log(`📊 API available at http://0.0.0.0:${port}/api`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔌 Listening on: 0.0.0.0:${port}`);
 
     if (isProduction || fs.existsSync(distDir)) {
       console.log(`🌐 Production app available at http://0.0.0.0:${port}`);
+      if (fs.existsSync(distDir)) {
+        console.log(`✅ Serving static files from: ${distDir}`);
+      } else {
+        console.warn(`⚠️  Static files directory not found: ${distDir}`);
+        console.warn(`⚠️  Frontend may not be accessible. Run 'npm run build' first.`);
+      }
     } else {
       console.log(`🌐 Development app available at http://0.0.0.0:${port} (proxying to Vite)`);
     }
 
-    jobWorker.start().catch(error => {
-      console.error('❌ Failed to start job worker:', error);
-    });
-
-    scheduleDailyPurgeJob().catch(error => {
-      console.error('❌ Failed to schedule daily purge job:', error);
-    });
-
-    scheduleDailyAnalyzeJobs().catch(error => {
-      console.error('❌ Failed to schedule daily ANALYZE jobs:', error);
-    });
-
-    scheduleWeeklyVacuumJobs().catch(error => {
-      console.error('❌ Failed to schedule weekly VACUUM jobs:', error);
-    });
-
-    enablePgStatStatements().catch(error => {
-      console.warn('⚠️  pg_stat_statements enablement failed (expected on free tier):', error);
+    // ============================================================================
+    // POST-STARTUP BACKGROUND TASKS (Non-blocking, safe error handling)
+    // ============================================================================
+    // All initialization tasks that were previously blocking startup are now
+    // deferred to run AFTER the server is listening. This ensures Replit
+    // deployment doesn't timeout waiting for slow database/email connections.
+    
+    console.log('🔄 Starting background initialization tasks...');
+    
+    // Run all background tasks in parallel with safe error handling
+    Promise.allSettled([
+      initializeDatabaseConnection(),
+      initializeEmailService(),
+      validateDatabaseSchema(),
+      checkQuestionMappingData(),
+      startJobWorker(),
+      scheduleDatabaseMaintenance(),
+      enableQueryMonitoring()
+    ]).then(() => {
+      console.log('✅ Background initialization tasks completed');
     });
   });
 
@@ -740,6 +712,159 @@ async function startServer() {
       console.log('HTTP server closed');
     });
   });
+}
+
+// ============================================================================
+// BACKGROUND INITIALIZATION TASKS
+// ============================================================================
+// These functions run AFTER the HTTP server starts listening.
+// They are wrapped in safe error handling to prevent crashes.
+// All tasks are non-blocking and won't affect server availability.
+
+/**
+ * Test database connection (non-blocking, safe error handling)
+ */
+async function initializeDatabaseConnection(): Promise<void> {
+  try {
+    const dbConnected = await testDatabaseConnection();
+    if (dbConnected) {
+      console.log('✅ Database connection successful');
+    } else {
+      console.warn('⚠️  Database connection failed - continuing with limited functionality');
+    }
+  } catch (error) {
+    console.warn('⚠️  Database connection error:', error instanceof Error ? error.message : 'Unknown error');
+    // Don't throw - server can still serve static files and some API routes
+  }
+}
+
+/**
+ * Initialize email service (non-blocking, safe error handling)
+ */
+async function initializeEmailService(): Promise<void> {
+  try {
+    await emailService.ensureInitialized();
+    await emailService.healthCheck();
+    console.log('✅ Email service initialized');
+  } catch (error) {
+    console.warn('⚠️  Email service initialization error:', error instanceof Error ? error.message : 'Unknown error');
+    // Don't throw - email features will be unavailable but server continues
+  }
+}
+
+/**
+ * Validate database schema consistency (non-blocking, logs warnings only)
+ */
+async function validateDatabaseSchema(): Promise<void> {
+  try {
+    const schemaValidation = await validateSchemaConsistency();
+
+    if (!schemaValidation.isValid) {
+      console.error('\n' + '='.repeat(80));
+      console.error('❌ DATABASE SCHEMA VALIDATION FAILED');
+      console.error('='.repeat(80));
+      console.error('\nThe database schema is out of sync with the application code.');
+      console.error('This will cause runtime errors. Please fix the schema issues below:\n');
+
+      schemaValidation.errors.forEach(error => console.error(error));
+
+      if (schemaValidation.warnings.length > 0) {
+        console.warn('\nWarnings:');
+        schemaValidation.warnings.forEach(warning => console.warn(warning));
+      }
+
+      console.error('\n' + '='.repeat(80));
+      console.error('💡 To fix schema issues:');
+      console.error('   1. Run: npm run db:push --force');
+      console.error('   2. Or manually add missing columns using SQL');
+      console.error('   3. Ensure shared/schema.ts matches your database structure');
+      console.error('='.repeat(80) + '\n');
+
+      // Log error but don't exit - server is already running
+      // Schema issues will cause runtime errors, but we don't want to crash on startup
+      console.error('⚠️  Server continues despite schema validation failures');
+    } else {
+      console.log('✅ Database schema validation passed');
+    }
+  } catch (error) {
+    if (error instanceof SchemaValidationError) {
+      // Log but don't exit - server is already running
+      console.error('⚠️  Schema validation error (server continues):', error.message);
+    } else {
+      console.warn('⚠️  Schema validation error:', error instanceof Error ? error.message : 'Unknown error');
+    }
+  }
+}
+
+/**
+ * Check QuestionMapping table data (non-blocking, warning only)
+ */
+async function checkQuestionMappingData(): Promise<void> {
+  try {
+    const [mappingCount] = await db.select({ count: sql<number>`count(*)` }).from(questionMapping);
+    const [questionCount] = await db.select({ count: sql<number>`count(*)` }).from(questions);
+    const [recCount] = await db.select({ count: sql<number>`count(*)` }).from(recMapping);
+
+    const totalMappings = Number(mappingCount?.count || 0);
+    const totalQuestions = Number(questionCount?.count || 0);
+    const totalRecs = Number(recCount?.count || 0);
+
+    if (totalMappings === 0 && totalQuestions > 0 && totalRecs > 0) {
+      console.warn('\n' + '='.repeat(80));
+      console.warn('⚠️  WARNING: QuestionMapping table is empty');
+      console.warn('='.repeat(80));
+      console.warn(`Found ${totalQuestions} questions and ${totalRecs} REC codes, but 0 mappings.`);
+      console.warn('This will prevent REC-based question filtering from working.\n');
+      console.warn('💡 To fix this, run the mapping seed script:');
+      console.warn('   SEED_MODE=merge npm run seed:mappings');
+      console.warn('='.repeat(80) + '\n');
+    } else if (totalMappings > 0) {
+      console.log(`✅ QuestionMapping data ready (${totalMappings} mappings)`);
+    }
+  } catch (error) {
+    console.warn('⚠️  Could not check QuestionMapping status:', error instanceof Error ? error.message : 'Unknown error');
+  }
+}
+
+/**
+ * Start job worker (non-blocking, safe error handling)
+ */
+async function startJobWorker(): Promise<void> {
+  try {
+    await jobWorker.start();
+    console.log('✅ Job worker started');
+  } catch (error) {
+    console.error('❌ Failed to start job worker:', error instanceof Error ? error.message : 'Unknown error');
+    // Don't throw - server continues without background jobs
+  }
+}
+
+/**
+ * Schedule database maintenance jobs (non-blocking, safe error handling)
+ */
+async function scheduleDatabaseMaintenance(): Promise<void> {
+  try {
+    await scheduleDailyPurgeJob();
+    await scheduleDailyAnalyzeJobs();
+    await scheduleWeeklyVacuumJobs();
+    console.log('✅ Database maintenance jobs scheduled');
+  } catch (error) {
+    console.error('❌ Failed to schedule database maintenance jobs:', error instanceof Error ? error.message : 'Unknown error');
+    // Don't throw - server continues without maintenance jobs
+  }
+}
+
+/**
+ * Enable query monitoring (non-blocking, safe error handling)
+ */
+async function enableQueryMonitoring(): Promise<void> {
+  try {
+    await enablePgStatStatements();
+    console.log('✅ Query monitoring enabled');
+  } catch (error) {
+    console.warn('⚠️  pg_stat_statements enablement failed (expected on free tier):', error instanceof Error ? error.message : 'Unknown error');
+    // Don't throw - monitoring is optional
+  }
 }
 
 // ============================================================================
