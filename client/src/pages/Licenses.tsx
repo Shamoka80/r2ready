@@ -139,15 +139,23 @@ export default function Licenses() {
   // Purchase mutation
   const purchaseMutation = useMutation({
     mutationFn: async ({ licenseId, quantity = 1 }: { licenseId: string; quantity?: number }) => {
-      const response = await apiPost<{ sessionId: string }>('/api/stripe/create-checkout-session', {
+      const response = await apiPost<{ sessionId: string; url?: string }>('/api/stripe/create-checkout-session', {
         licenseId,
         quantity,
       });
       
-      // Get Stripe instance with proper key from backend
+      // Use the checkout URL directly if available (more reliable than redirectToCheckout)
+      if (response.url) {
+        console.log('✅ Redirecting to Stripe checkout URL:', response.url.substring(0, 50) + '...');
+        window.location.href = response.url;
+        return;
+      }
+      
+      // Fallback to redirectToCheckout if URL is not provided
       const stripe = await getStripeInstance();
       if (!stripe) throw new Error('Stripe failed to load');
       
+      console.log('⚠️ Using redirectToCheckout fallback for session:', response.sessionId);
       const { error } = await stripe.redirectToCheckout({
         sessionId: response.sessionId,
       });

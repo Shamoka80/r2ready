@@ -182,6 +182,9 @@ export const rateLimitMiddleware = {
 
   // General API rate limit
   general: createRateLimit('api', 'general', { identifierType: 'ip' }),
+  
+  // Stripe checkout rate limit (more lenient for payment flows)
+  stripeCheckout: createRateLimit('stripe', 'checkout', { identifierType: 'ip' }),
 };
 
 /**
