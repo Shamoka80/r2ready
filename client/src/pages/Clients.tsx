@@ -72,9 +72,15 @@ export default function Clients() {
   const [clientToArchive, setClientToArchive] = useState<ClientOrganization | null>(null);
   const { toast } = useToast();
 
-  const { data: clients = [], isLoading } = useQuery<ClientOrganization[]>({
+  const { data: clientsResponse, isLoading } = useQuery<{ data: ClientOrganization[]; pagination: any } | ClientOrganization[]>({
     queryKey: ['/api/client-organizations'],
   });
+
+  // Extract the data array from the paginated response
+  // Handle both paginated response { data: [...] } and direct array response
+  const clients: ClientOrganization[] = Array.isArray(clientsResponse) 
+    ? clientsResponse 
+    : (clientsResponse?.data || []);
 
   const { data: statsMap = {} } = useQuery<Record<string, ClientStats>>({
     queryKey: ['/api/client-organizations/stats'],

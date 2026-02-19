@@ -21,6 +21,7 @@ import {
   Award,
   CheckCircle, // Added CheckCircle for Completed This Month metric
 } from 'lucide-react';
+import AddClientModal from '@/components/AddClientModal';
 
 interface Client {
   id: string;
@@ -60,7 +61,6 @@ export default function ConsultantDashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [showAddClient, setShowAddClient] = useState(false); // State for controlling the add client modal/form
-  const navigate = useLocation()[1]; // Assuming navigate is needed for routing
 
   useEffect(() => {
     fetchDashboardData();
@@ -78,24 +78,31 @@ export default function ConsultantDashboard() {
       });
 
       if (clientsResponse.ok) {
-        const clientsData = await clientsResponse.json();
-        setClients(clientsData);
+        const responseData = await clientsResponse.json();
+        // Handle different response formats: could be array directly, or { data: [...] }, or { clients: [...] }
+        const clientsData = Array.isArray(responseData) 
+          ? responseData 
+          : (responseData?.data || responseData?.clients || []);
+        
+        // Ensure clientsData is always an array
+        const safeClientsData = Array.isArray(clientsData) ? clientsData : [];
+        setClients(safeClientsData);
 
         // Calculate metrics
         setMetrics({
-          totalClients: clientsData.length,
-          activeFacilities: clientsData.reduce((sum: number, client: any) => sum + (client.facilitiesCount || 0), 0),
-          certifiedClients: clientsData.filter((client: any) => client.status === 'certified').length,
-          inProgress: clientsData.filter((client: any) => client.status === 'in_progress').length,
-          upcomingDeadlines: clientsData.filter((client: any) => {
+          totalClients: safeClientsData.length,
+          activeFacilities: safeClientsData.reduce((sum: number, client: any) => sum + (client.facilitiesCount || 0), 0),
+          certifiedClients: safeClientsData.filter((client: any) => client.status === 'certified').length,
+          inProgress: safeClientsData.filter((client: any) => client.status === 'in_progress').length,
+          upcomingDeadlines: safeClientsData.filter((client: any) => {
             if (!client.targetCertificationDate) return false;
             const deadline = new Date(client.targetCertificationDate);
             const now = new Date();
             const daysUntil = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
             return daysUntil <= 30 && daysUntil > 0;
           }).length,
-          completionRate: clientsData.length > 0 ? 
-            (clientsData.filter((client: any) => client.status === 'certified').length / clientsData.length) * 100 : 0
+          completionRate: safeClientsData.length > 0 ? 
+            (safeClientsData.filter((client: any) => client.status === 'certified').length / safeClientsData.length) * 100 : 0
         });
       }
     } catch (error) {
@@ -148,7 +155,7 @@ export default function ConsultantDashboard() {
           </p>
         </div>
         <div className="flex items-center space-x-3">
-          <Button variant="outline" onClick={() => navigate('/service-directory')}>
+          <Button variant="outline" onClick={() => setLocation('/service-directory')}>
             <Building2 className="w-4 h-4 mr-2" />
             Service Directory
           </Button>
@@ -180,7 +187,7 @@ export default function ConsultantDashboard() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-muted-foreground">Active Assessments</p>
                 <p className="text-2xl font-bold">
-                  {clients?.reduce((acc, client) => acc + (client.activeAssessments || 0), 0) || 0}
+                  {Array.isArray(clients) ? clients.reduce((acc, client) => acc + (client.activeAssessments || 0), 0) : 0}
                 </p>
               </div>
             </div>
@@ -194,7 +201,7 @@ export default function ConsultantDashboard() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-muted-foreground">Completed This Month</p>
                 <p className="text-2xl font-bold">
-                  {clients?.reduce((acc, client) => acc + (client.completedThisMonth || 0), 0) || 0}
+                  {Array.isArray(clients) ? clients.reduce((acc, client) => acc + (client.completedThisMonth || 0), 0) : 0}
                 </p>
               </div>
             </div>
@@ -208,7 +215,7 @@ export default function ConsultantDashboard() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-muted-foreground">Pending Reviews</p>
                 <p className="text-2xl font-bold">
-                  {clients?.reduce((acc, client) => acc + (client.pendingReviews || 0), 0) || 0}
+                  {Array.isArray(clients) ? clients.reduce((acc, client) => acc + (client.pendingReviews || 0), 0) : 0}
                 </p>
               </div>
             </div>
@@ -339,6 +346,16 @@ export default function ConsultantDashboard() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Add Client Modal */}
+      <AddClientModal 
+        open={showAddClient} 
+        onOpenChange={setShowAddClient}
+        onSuccess={() => {
+          setShowAddClient(false);
+          fetchDashboardData(); // Refresh the dashboard data
+        }}
+      />
     </div>
   );
 }

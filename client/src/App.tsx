@@ -55,6 +55,7 @@ import RBACAdmin from './pages/RBACAdmin';
 import TeamManagement from './pages/TeamManagement';
 import Reports from './pages/Reports';
 import BrandSettings from './pages/BrandSettings';
+import ServiceDirectory from './pages/ServiceDirectory';
 
 // Lazy load password reset pages
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
@@ -420,6 +421,17 @@ function App() {
                 <SetupGate>
                   <AppLayout>
                     <RBACAdmin />
+                    <Toaster />
+                  </AppLayout>
+                </SetupGate>
+              </ProtectedRoute>
+            )} />
+
+            <Route path="/service-directory" component={() => (
+              <ProtectedRoute>
+                <SetupGate>
+                  <AppLayout>
+                    <ServiceDirectory />
                     <Toaster />
                   </AppLayout>
                 </SetupGate>

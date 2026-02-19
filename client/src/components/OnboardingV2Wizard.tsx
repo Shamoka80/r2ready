@@ -226,6 +226,7 @@ export default function OnboardingV2Wizard() {
 
   const consultantForm = useForm({
     resolver: zodResolver(consultantClientSchema),
+    mode: "onChange",
     defaultValues: {
       clientCompanyName: "",
       clientIndustry: "",
@@ -345,6 +346,10 @@ export default function OnboardingV2Wizard() {
 
       await apiRequest('POST', '/api/onboarding/client-organization', {
         legalName: data.clientCompanyName,
+        primaryContactName: user?.firstName && user?.lastName 
+          ? `${user.firstName} ${user.lastName}` 
+          : undefined,
+        primaryContactEmail: user?.email || undefined,
         industry: data.clientIndustry,
         serviceType: data.serviceType,
         projectTimeline: data.projectTimeline,
@@ -571,20 +576,26 @@ export default function OnboardingV2Wizard() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Facility Name *</FormLabel>
-                      <FormControl>
-                        <Input 
-                          data-testid="input-facility-name"
-                          placeholder="Headquarters" 
-                          autoComplete="off"
-                          value={field.value || ''}
-                          onChange={(e) => {
-                            field.onChange(e.target.value);
-                          }}
-                          onBlur={field.onBlur}
-                          ref={field.ref}
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
+                      <input
+                        type="text"
+                        data-testid="input-facility-name"
+                        placeholder="Headquarters" 
+                        autoComplete="off"
+                        className="input-glass flex h-10 w-full rounded-md px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-foreground font-medium relative z-20"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(25, 25, 25, 0.95) 0%, rgba(20, 20, 20, 0.98) 100%)',
+                          backgroundColor: 'rgba(25, 25, 25, 0.95)'
+                        }}
+                        value={field.value || ''}
+                        onChange={(e) => {
+                          const newValue = e.target.value;
+                          facilityForm.setValue('name', newValue, { shouldValidate: true, shouldDirty: true });
+                        }}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                        disabled={isSubmitting}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -596,14 +607,26 @@ export default function OnboardingV2Wizard() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Address *</FormLabel>
-                      <FormControl>
-                        <Input 
-                          data-testid="input-facility-address"
-                          placeholder="123 Main Street" 
-                          autoComplete="off"
-                          {...field}
-                        />
-                      </FormControl>
+                      <input
+                        type="text"
+                        data-testid="input-facility-address"
+                        placeholder="123 Main Street" 
+                        autoComplete="off"
+                        className="input-glass flex h-10 w-full rounded-md px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-foreground font-medium relative z-20"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(25, 25, 25, 0.95) 0%, rgba(20, 20, 20, 0.98) 100%)',
+                          backgroundColor: 'rgba(25, 25, 25, 0.95)'
+                        }}
+                        value={field.value || ''}
+                        onChange={(e) => {
+                          const newValue = e.target.value;
+                          facilityForm.setValue('address', newValue, { shouldValidate: true, shouldDirty: true });
+                        }}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                        disabled={isSubmitting}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -616,14 +639,26 @@ export default function OnboardingV2Wizard() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>City *</FormLabel>
-                        <FormControl>
-                          <Input 
-                            data-testid="input-facility-city"
-                            placeholder="San Francisco" 
-                            autoComplete="off"
-                            {...field}
-                          />
-                        </FormControl>
+                        <input
+                          type="text"
+                          data-testid="input-facility-city"
+                          placeholder="San Francisco" 
+                          autoComplete="off"
+                          className="input-glass flex h-10 w-full rounded-md px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-foreground font-medium relative z-20"
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(25, 25, 25, 0.95) 0%, rgba(20, 20, 20, 0.98) 100%)',
+                            backgroundColor: 'rgba(25, 25, 25, 0.95)'
+                          }}
+                          value={field.value || ''}
+                          onChange={(e) => {
+                            const newValue = e.target.value;
+                            facilityForm.setValue('city', newValue, { shouldValidate: true, shouldDirty: true });
+                          }}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          disabled={isSubmitting}
+                        />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -635,14 +670,26 @@ export default function OnboardingV2Wizard() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>State *</FormLabel>
-                        <FormControl>
-                          <Input 
-                            data-testid="input-facility-state"
-                            placeholder="CA" 
-                            autoComplete="off"
-                            {...field}
-                          />
-                        </FormControl>
+                        <input
+                          type="text"
+                          data-testid="input-facility-state"
+                          placeholder="CA" 
+                          autoComplete="off"
+                          className="input-glass flex h-10 w-full rounded-md px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-foreground font-medium relative z-20"
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(25, 25, 25, 0.95) 0%, rgba(20, 20, 20, 0.98) 100%)',
+                            backgroundColor: 'rgba(25, 25, 25, 0.95)'
+                          }}
+                          value={field.value || ''}
+                          onChange={(e) => {
+                            const newValue = e.target.value;
+                            facilityForm.setValue('state', newValue, { shouldValidate: true, shouldDirty: true });
+                          }}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          disabled={isSubmitting}
+                        />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -654,14 +701,26 @@ export default function OnboardingV2Wizard() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>ZIP Code *</FormLabel>
-                        <FormControl>
-                          <Input 
-                            data-testid="input-facility-zipcode"
-                            placeholder="94105" 
-                            autoComplete="off"
-                            {...field}
-                          />
-                        </FormControl>
+                        <input
+                          type="text"
+                          data-testid="input-facility-zipcode"
+                          placeholder="94105" 
+                          autoComplete="off"
+                          className="input-glass flex h-10 w-full rounded-md px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-foreground font-medium relative z-20"
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(25, 25, 25, 0.95) 0%, rgba(20, 20, 20, 0.98) 100%)',
+                            backgroundColor: 'rgba(25, 25, 25, 0.95)'
+                          }}
+                          value={field.value || ''}
+                          onChange={(e) => {
+                            const newValue = e.target.value;
+                            facilityForm.setValue('zipCode', newValue, { shouldValidate: true, shouldDirty: true });
+                          }}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          disabled={isSubmitting}
+                        />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -789,13 +848,26 @@ export default function OnboardingV2Wizard() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Client Company Name *</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="Client Corp Inc." 
-                          autoComplete="off"
-                          {...field}
-                        />
-                      </FormControl>
+                      <input
+                        type="text"
+                        placeholder="Client Corp Inc." 
+                        autoComplete="off"
+                        className="input-glass flex h-10 w-full rounded-md px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-foreground font-medium relative z-20"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(25, 25, 25, 0.95) 0%, rgba(20, 20, 20, 0.98) 100%)',
+                          backgroundColor: 'rgba(25, 25, 25, 0.95)'
+                        }}
+                        value={field.value || ""}
+                        onChange={(e) => {
+                          const newValue = e.target.value;
+                          console.log('Setting clientCompanyName to:', newValue);
+                          consultantForm.setValue('clientCompanyName', newValue, { shouldValidate: true, shouldDirty: true });
+                        }}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                        disabled={isSubmitting}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -808,13 +880,26 @@ export default function OnboardingV2Wizard() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Client Industry *</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="Technology, Manufacturing, etc." 
-                            autoComplete="off"
-                            {...field}
-                          />
-                        </FormControl>
+                        <input
+                          type="text"
+                          placeholder="Technology, Manufacturing, etc." 
+                          autoComplete="off"
+                          className="input-glass flex h-10 w-full rounded-md px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-foreground font-medium relative z-20"
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(25, 25, 25, 0.95) 0%, rgba(20, 20, 20, 0.98) 100%)',
+                            backgroundColor: 'rgba(25, 25, 25, 0.95)'
+                          }}
+                          value={field.value || ""}
+                          onChange={(e) => {
+                            const newValue = e.target.value;
+                            console.log('Setting clientIndustry to:', newValue);
+                            consultantForm.setValue('clientIndustry', newValue, { shouldValidate: true, shouldDirty: true });
+                          }}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                          disabled={isSubmitting}
+                        />
                         <FormMessage />
                       </FormItem>
                     )}
@@ -826,12 +911,17 @@ export default function OnboardingV2Wizard() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Client Organization Size *</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select size" />
-                            </SelectTrigger>
-                          </FormControl>
+                        <Select 
+                          onValueChange={(value) => {
+                            console.log('Setting clientSize to:', value);
+                            consultantForm.setValue('clientSize', value, { shouldValidate: true, shouldDirty: true });
+                          }} 
+                          value={field.value} 
+                          disabled={isSubmitting}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select size" />
+                          </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="startup">Startup (1-20)</SelectItem>
                             <SelectItem value="small">Small (21-100)</SelectItem>
@@ -853,12 +943,17 @@ export default function OnboardingV2Wizard() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Service Type *</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select service" />
-                            </SelectTrigger>
-                          </FormControl>
+                        <Select 
+                          onValueChange={(value) => {
+                            console.log('Setting serviceType to:', value);
+                            consultantForm.setValue('serviceType', value, { shouldValidate: true, shouldDirty: true });
+                          }} 
+                          value={field.value} 
+                          disabled={isSubmitting}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select service" />
+                          </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="r2_certification">R2 Certification</SelectItem>
                             <SelectItem value="compliance_audit">Compliance Audit</SelectItem>
@@ -878,12 +973,17 @@ export default function OnboardingV2Wizard() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Project Timeline *</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select timeline" />
-                            </SelectTrigger>
-                          </FormControl>
+                        <Select 
+                          onValueChange={(value) => {
+                            console.log('Setting projectTimeline to:', value);
+                            consultantForm.setValue('projectTimeline', value, { shouldValidate: true, shouldDirty: true });
+                          }} 
+                          value={field.value} 
+                          disabled={isSubmitting}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select timeline" />
+                          </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="immediate">Immediate (Starting now)</SelectItem>
                             <SelectItem value="1-3_months">1-3 months</SelectItem>
@@ -907,7 +1007,13 @@ export default function OnboardingV2Wizard() {
                       <FormControl>
                         <Textarea 
                           placeholder="Any specific compliance standards, security requirements, or other considerations..."
-                          {...field} 
+                          value={field.value || ""}
+                          onChange={(e) => {
+                            field.onChange(e.target.value);
+                          }}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
                         />
                       </FormControl>
                       <FormMessage />

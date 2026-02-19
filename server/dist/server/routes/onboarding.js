@@ -74,21 +74,26 @@ const scopeApplicabilitySchema = z.object({
     applicableAppG: z.boolean().default(false)
 });
 // Client organization schema for consultants
+// Matches the frontend form fields - only basic organization info is collected during onboarding
+// Address and contact fields are optional since consultants may not have full client details yet
 const clientOrganizationSchema = z.object({
     legalName: z.string().min(1, "Client company name is required"),
-    primaryContactName: z.string().min(1, "Client contact name is required"),
-    primaryContactEmail: z.string().email("Valid client contact email is required"),
-    hqAddress: z.string().min(1, "Client address is required"),
-    hqCity: z.string().min(1, "Client city is required"),
-    hqState: z.string().min(1, "Client state is required"),
-    hqZipCode: z.string().min(1, "Client ZIP code is required"),
+    dbaName: z.string().optional(), // Optional DBA name
+    primaryContactName: z.string().optional(), // Optional - can use consultant's info as default
+    primaryContactEmail: z.string().email("Valid client contact email is required").optional().nullable(), // Optional but must be valid email if provided
+    primaryContactPhone: z.string().optional(), // Optional phone number
+    hqAddress: z.string().optional(), // Optional - consultant may not have full address yet
+    hqCity: z.string().optional(), // Optional
+    hqState: z.string().optional(), // Optional
+    hqZipCode: z.string().optional(), // Optional
     hqCountry: z.string().default("US"),
-    entityType: z.enum(["CORPORATION", "LLC", "PARTNERSHIP", "SOLE_PROPRIETORSHIP", "NON_PROFIT", "OTHER"]).default("CORPORATION"),
+    // Optional fields that can be added later - not required during onboarding
+    entityType: z.enum(["CORPORATION", "LLC", "PARTNERSHIP", "SOLE_PROPRIETORSHIP", "NON_PROFIT", "OTHER"]).optional(),
     taxId: z.string().optional(),
-    industry: z.string().min(1, "Client industry is required"),
-    serviceType: z.enum(["r2_certification", "compliance_audit", "gap_analysis", "ongoing_consulting", "other"]).default("r2_certification"),
-    projectTimeline: z.enum(["immediate", "1-3_months", "3-6_months", "6-12_months", "ongoing"]).default("3-6_months"),
-    organizationSize: z.enum(["startup", "small", "medium", "large", "enterprise"]).default("medium"),
+    industry: z.string().optional(), // Made optional to match frontend form
+    serviceType: z.enum(["r2_certification", "compliance_audit", "gap_analysis", "ongoing_consulting", "other"]).optional(),
+    projectTimeline: z.enum(["immediate", "1-3_months", "3-6_months", "6-12_months", "ongoing"]).optional(),
+    organizationSize: z.enum(["startup", "small", "medium", "large", "enterprise"]).optional(),
     specialRequirements: z.string().optional()
 });
 // Client facility schema for consultants
@@ -100,9 +105,9 @@ const clientFacilitySchema = z.object({
     zipCode: z.string().min(1, "Client facility ZIP code is required"),
     country: z.string().default("US"),
     operatingStatus: z.string().default("ACTIVE"),
-    isPrimary: z.boolean().default(true),
+    isPrimary: z.coerce.boolean().default(true),
     facilitiesPlanned: z.coerce.number().min(1).max(50).default(1),
-    multiSiteOperations: z.boolean().default(false),
+    multiSiteOperations: z.coerce.boolean().default(false),
     clientOrganizationId: z.string().min(1, "Client organization ID is required")
 });
 // POST /api/onboarding/organization - Create organization (simplified endpoint name)
@@ -242,22 +247,47 @@ router.post('/facility-baseline', async (req, res) => {
 router.post('/client-organization', async (req, res) => {
     try {
         const consultantTenantId = req.user.tenantId;
+        // Log the incoming request body for debugging
+        console.log('Client organization request body:', JSON.stringify(req.body, null, 2));
         const validatedData = clientOrganizationSchema.parse(req.body);
-        // Create new client organization
-        const [newClientOrg] = await db.insert(clientOrganizations)
-            .values({
+        // Provide default values for required database fields that are optional in the schema
+        // This allows consultants to create client orgs without full address/contact details
+        const insertData = {
             tenantId: consultantTenantId,
             consultantTenantId,
-            ...validatedData
-        })
+            legalName: validatedData.legalName,
+            hqAddress: validatedData.hqAddress || 'Address to be provided',
+            hqCity: validatedData.hqCity || 'City to be provided',
+            hqState: validatedData.hqState || 'State to be provided',
+            hqZipCode: validatedData.hqZipCode || '00000',
+            hqCountry: validatedData.hqCountry || 'US',
+            primaryContactName: validatedData.primaryContactName || 'Contact name to be provided',
+            primaryContactEmail: validatedData.primaryContactEmail || req.user.email || 'contact@example.com',
+            ...(validatedData.dbaName && { dbaName: validatedData.dbaName }),
+            ...(validatedData.entityType && { entityType: validatedData.entityType }),
+            ...(validatedData.taxId && { taxId: validatedData.taxId }),
+            ...(validatedData.primaryContactPhone && { primaryContactPhone: validatedData.primaryContactPhone }),
+            // Store optional onboarding fields in a way that doesn't violate schema
+            // These can be stored as JSON or in a separate table, but for now we'll use available fields
+        };
+        // Create new client organization
+        const [newClientOrg] = await db.insert(clientOrganizations)
+            .values(insertData)
             .returning();
         console.log('Created client organization for consultant tenant:', consultantTenantId);
+        console.log('Inserted data:', JSON.stringify(insertData, null, 2));
         res.status(201).json(newClientOrg);
     }
     catch (error) {
         console.error('Error saving client organization:', error);
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ error: 'Validation failed', details: error.errors });
+            // Enhanced error logging
+            console.error('Validation errors:', JSON.stringify(error.errors, null, 2));
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: error.errors,
+                message: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+            });
         }
         res.status(500).json({ error: 'Failed to save client organization' });
     }
@@ -265,12 +295,18 @@ router.post('/client-organization', async (req, res) => {
 // POST /api/onboarding/client-facility - Create client facility for consultants
 router.post('/client-facility', async (req, res) => {
     try {
+        // Log the incoming request body for debugging
+        console.log('Client facility request body:', JSON.stringify(req.body, null, 2));
         const validatedData = clientFacilitySchema.parse(req.body);
         // Verify the client organization exists and belongs to this consultant
         const clientOrg = await db.query.clientOrganizations.findFirst({
             where: and(eq(clientOrganizations.id, validatedData.clientOrganizationId), eq(clientOrganizations.consultantTenantId, req.user.tenantId))
         });
         if (!clientOrg) {
+            console.error('Client organization not found:', {
+                clientOrganizationId: validatedData.clientOrganizationId,
+                consultantTenantId: req.user.tenantId
+            });
             return res.status(400).json({ error: 'Client organization not found or does not belong to this consultant' });
         }
         // Create new client facility
@@ -295,7 +331,13 @@ router.post('/client-facility', async (req, res) => {
     catch (error) {
         console.error('Error saving client facility:', error);
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ error: 'Validation failed', details: error.errors });
+            // Enhanced error logging
+            console.error('Validation errors:', JSON.stringify(error.errors, null, 2));
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: error.errors,
+                message: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+            });
         }
         res.status(500).json({ error: 'Failed to save client facility' });
     }
