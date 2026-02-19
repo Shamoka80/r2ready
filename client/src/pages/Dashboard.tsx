@@ -144,11 +144,18 @@ function Dashboard() {
   const dashboardData = dashboardResponse?.success ? dashboardResponse.dashboard : undefined;
   const dashboardType = dashboardResponse?.dashboardType || 'business';
 
-  // Redirect to consultant dashboard if this is a consultant user
-  if (dashboardType === 'consultant') {
+  // Only redirect to consultant dashboard if:
+  // 1. User is a consultant
+  // 2. They're explicitly on /dashboard route (not /assessments)
+  // This allows consultants to access assessments while still redirecting from /dashboard
+  if (dashboardType === 'consultant' && location === '/dashboard') {
     window.location.href = '/consultant-dashboard';
     return <div>Redirecting to consultant dashboard...</div>;
   }
+
+  // Check if dashboard data has business structure (kpis) or consultant structure (clientSummary)
+  const isBusinessDashboard = dashboardData && 'kpis' in dashboardData;
+  const isConsultantDashboard = dashboardData && 'clientSummary' in dashboardData;
 
   // Fetch assessments for the table
   const { data: assessmentsData, isLoading: assessmentsLoading } = useQuery<Assessment[]>({
@@ -304,63 +311,78 @@ function Dashboard() {
           </CardHeader>
         </Card>
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KPICard
-            title="Total Assessments"
-            value={dashboardData?.kpis.totalAssessments || 0}
-            icon={<FileText className="h-4 w-4" />}
-            isLoading={dashboardLoading}
-          />
-          <KPICard
-            title="In Progress"
-            value={dashboardData?.kpis.inProgress || 0}
-            description="Active assessments"
-            icon={<FileText className="h-4 w-4" />}
-            isLoading={dashboardLoading}
-          />
-          <KPICard
-            title="Average Readiness"
-            value={`${dashboardData?.kpis.averageReadiness || 0}%`}
-            icon={<FileText className="h-4 w-4" />}
-            isLoading={dashboardLoading}
-          />
-          <KPICard
-            title="Facilities"
-            value={dashboardData?.kpis.facilities || 0}
-            icon={<Building2 className="h-4 w-4" />}
-            isLoading={dashboardLoading}
-          />
-        </div>
-
-        {/* Main Dashboard Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Left Column - Readiness & Gaps */}
-          <div className="space-y-4 sm:space-y-6">
-            <ReadinessGauge
-              score={dashboardData?.readiness.overallScore || 0}
-              level={dashboardData?.readiness.readinessLevel || 'Not Ready'}
+        {/* KPI Cards - Only show for business dashboard */}
+        {isBusinessDashboard && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <KPICard
+              title="Total Assessments"
+              value={dashboardData?.kpis?.totalAssessments || 0}
+              icon={<FileText className="h-4 w-4" />}
               isLoading={dashboardLoading}
             />
-            <GapAnalysisWidget
-              critical={dashboardData?.readiness.gapBreakdown.critical || 0}
-              important={dashboardData?.readiness.gapBreakdown.important || 0}
-              minor={dashboardData?.readiness.gapBreakdown.minor || 0}
+            <KPICard
+              title="In Progress"
+              value={dashboardData?.kpis?.inProgress || 0}
+              description="Active assessments"
+              icon={<FileText className="h-4 w-4" />}
+              isLoading={dashboardLoading}
+            />
+            <KPICard
+              title="Average Readiness"
+              value={`${dashboardData?.kpis?.averageReadiness || 0}%`}
+              icon={<FileText className="h-4 w-4" />}
+              isLoading={dashboardLoading}
+            />
+            <KPICard
+              title="Facilities"
+              value={dashboardData?.kpis?.facilities || 0}
+              icon={<Building2 className="h-4 w-4" />}
               isLoading={dashboardLoading}
             />
           </div>
+        )}
 
-          {/* Middle Column - Core Requirements */}
-          <div className="lg:col-span-2">
-            <CoreRequirementsChart
-              scores={dashboardData?.readiness.coreRequirements || {
-                cr1: 0, cr2: 0, cr3: 0, cr4: 0, cr5: 0,
-                cr6: 0, cr7: 0, cr8: 0, cr9: 0, cr10: 0,
-              }}
-              isLoading={dashboardLoading}
-            />
+        {/* Show message for consultant users on assessments page */}
+        {isConsultantDashboard && location === '/assessments' && (
+          <Card className="mb-4">
+            <CardContent className="p-4">
+              <p className="text-sm text-muted-foreground">
+                You're viewing assessments. For your full consultant dashboard, visit <Link href="/consultant-dashboard" className="text-primary underline">Consultant Dashboard</Link>.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Main Dashboard Grid - Only show for business dashboard */}
+        {isBusinessDashboard && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+            {/* Left Column - Readiness & Gaps */}
+            <div className="space-y-4 sm:space-y-6">
+              <ReadinessGauge
+                score={dashboardData?.readiness?.overallScore || 0}
+                level={dashboardData?.readiness?.readinessLevel || 'Not Ready'}
+                isLoading={dashboardLoading}
+              />
+              <GapAnalysisWidget
+                critical={dashboardData?.readiness?.gapBreakdown?.critical || 0}
+                important={dashboardData?.readiness?.gapBreakdown?.important || 0}
+                minor={dashboardData?.readiness?.gapBreakdown?.minor || 0}
+                isLoading={dashboardLoading}
+              />
+            </div>
+
+            {/* Middle Column - Core Requirements */}
+            <div className="lg:col-span-2">
+              <CoreRequirementsChart
+                scores={dashboardData?.readiness?.coreRequirements || {
+                  cr1: 0, cr2: 0, cr3: 0, cr4: 0, cr5: 0,
+                  cr6: 0, cr7: 0, cr8: 0, cr9: 0, cr10: 0,
+                }}
+                isLoading={dashboardLoading}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Saved Assessments Table */}
         <div ref={createAssessmentSectionRef}>
@@ -480,17 +502,19 @@ function Dashboard() {
         </Card>
         </div>
 
-        {/* Activity & Deadlines */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          <ActivityFeed
-            activities={dashboardData?.activities || []}
-            isLoading={dashboardLoading}
-          />
-          <DeadlineList
-            deadlines={dashboardData?.deadlines || []}
-            isLoading={dashboardLoading}
-          />
-        </div>
+        {/* Activity & Deadlines - Only show for business dashboard */}
+        {isBusinessDashboard && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            <ActivityFeed
+              activities={dashboardData?.activities || []}
+              isLoading={dashboardLoading}
+            />
+            <DeadlineList
+              deadlines={dashboardData?.deadlines || []}
+              isLoading={dashboardLoading}
+            />
+          </div>
+        )}
 
         {/* Quick Actions */}
         <Card data-testid="quick-actions-card">

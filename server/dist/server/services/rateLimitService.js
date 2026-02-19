@@ -9,6 +9,7 @@ export class RateLimitService {
     // Default rate limit configurations
     static defaultLimits = {
         'auth:login': { maxRequests: 5, windowSeconds: 300 }, // 5 attempts per 5 minutes
+        'auth:register': { maxRequests: 10, windowSeconds: 900 }, // 10 attempts per 15 minutes (more lenient for registration)
         'auth:2fa_verify': { maxRequests: 10, windowSeconds: 300 }, // 10 attempts per 5 minutes
         'auth:password_reset': { maxRequests: 3, windowSeconds: 3600 }, // 3 attempts per hour
         'exports:pdf': { maxRequests: 10, windowSeconds: 60 }, // 10 exports per minute

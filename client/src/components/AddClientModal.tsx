@@ -52,10 +52,14 @@ type ClientFormData = z.infer<typeof clientSchema>;
 interface AddClientModalProps {
   trigger?: React.ReactNode;
   onSuccess?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export default function AddClientModal({ trigger, onSuccess }: AddClientModalProps) {
-  const [open, setOpen] = useState(false);
+export default function AddClientModal({ trigger, onSuccess, open: controlledOpen, onOpenChange }: AddClientModalProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
   const { toast } = useToast();
 
   const form = useForm<ClientFormData>({

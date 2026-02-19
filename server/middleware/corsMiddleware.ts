@@ -115,10 +115,15 @@ export const securityHeadersMiddleware = (req: Request, res: Response, next: Nex
       ? "'self' ws: wss: ws://localhost:* wss://localhost:* https: https://api.stripe.com https://m.stripe.com"
       : "'self' https: wss: https://api.stripe.com https://m.stripe.com wss://*.replit.dev wss://*.repl.co";
     
-    // Removed 'unsafe-eval' for better security (kept 'unsafe-inline' for Stripe compatibility)
+    // Allow 'unsafe-eval' in development for React Hook Form and other libraries
+    // In production, this should be removed for better security
+    const scriptSrc = isDevelopment
+      ? "'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com"
+      : "'self' 'unsafe-inline' https://js.stripe.com";
+    
     res.header('Content-Security-Policy', 
       "default-src 'self'; " +
-      "script-src 'self' 'unsafe-inline' https://js.stripe.com; " +
+      `script-src ${scriptSrc}; ` +
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
       "img-src 'self' data: https:; " +
       "font-src 'self' data: https://fonts.gstatic.com; " +

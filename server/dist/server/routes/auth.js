@@ -36,7 +36,7 @@ const consultantRoleHierarchy = {
  * @param targetRole - Role being assigned to the target user
  * @returns Promise<boolean> - true if assignment is allowed
  */
-async function validateRoleAssignment(assignerRole, targetRole) {
+export async function validateRoleAssignment(assignerRole, targetRole) {
     // Check if roles are from the same category (business or consultant)
     const assignerIsBusiness = assignerRole in businessRoleHierarchy;
     const targetIsBusiness = targetRole in businessRoleHierarchy;
@@ -458,7 +458,7 @@ router.post('/login', rateLimitMiddleware.login, blockTestUserLogin, async (req,
  * Supports dual-mode registration based on enable_email_verification feature flag
  * RECOVERY MODE: Allows re-registration if user is stuck in incomplete state
  */
-router.post('/register-tenant', rateLimitMiddleware.login, blockTestUserRegistration, async (req, res) => {
+router.post('/register-tenant', rateLimitMiddleware.register, blockTestUserRegistration, async (req, res) => {
     try {
         // Check feature flag for email verification flow
         const emailVerificationEnabled = await flagService.isEnabled('enable_email_verification');
@@ -518,20 +518,34 @@ router.post('/register-tenant', rateLimitMiddleware.login, blockTestUserRegistra
                 updatedAt: new Date()
             })
                 .where(eq(tenants.id, existingUser.tenantId));
-            // Send verification email
+            // Send verification email synchronously (critical path)
+            // Log verification details BEFORE attempting to send (so they always show)
+            // Get frontend URL with proper fallback chain
+            const baseUrl = process.env.CLIENT_URL ||
+                process.env.FRONTEND_URL ||
+                process.env.REPLIT_DEV_DOMAIN ||
+                (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : 'http://localhost:5173');
+            const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
+            // FORCE OUTPUT - Use process.stderr.write to ensure visibility
+            process.stderr.write('\n');
+            process.stderr.write('═══════════════════════════════════════════════════════════════\n');
+            process.stderr.write('🔗 EMAIL VERIFICATION LINK (DEVELOPMENT MODE)\n');
+            process.stderr.write('═══════════════════════════════════════════════════════════════\n');
+            process.stderr.write(`VERIFICATION LINK: ${verificationUrl}\n`);
+            process.stderr.write(`VERIFICATION CODE: ${verificationCode}\n`);
+            process.stderr.write(`EMAIL: ${data.ownerEmail}\n`);
+            process.stderr.write('═══════════════════════════════════════════════════════════════\n');
+            process.stderr.write('\n');
             try {
-                const emailSent = await emailService.sendVerificationEmail(data.ownerEmail, verificationToken, verificationCode, data.ownerFirstName);
-                if (!emailSent) {
-                    console.error('Failed to send verification email to:', data.ownerEmail);
-                    return res.status(500).json({
-                        error: 'Failed to send verification email. Please try again later.'
-                    });
-                }
+                await emailService.sendVerificationEmail(data.ownerEmail, verificationToken, verificationCode, data.ownerFirstName);
             }
             catch (emailError) {
+                // Log error and surface to user - verification is critical
                 console.error('Error sending verification email:', emailError);
                 return res.status(500).json({
-                    error: 'Failed to send verification email. Please try again later.'
+                    success: false,
+                    error: 'Failed to send verification email. Please try again or contact support.',
+                    details: emailError instanceof Error ? emailError.message : 'Unknown error'
                 });
             }
             // Log audit event for recovery flow
@@ -568,20 +582,23 @@ router.post('/register-tenant', rateLimitMiddleware.login, blockTestUserRegistra
                 updatedAt: new Date()
             })
                 .where(eq(users.id, user.id));
-            // Send verification email
+            // Send verification email synchronously (critical path)
             try {
                 const emailSent = await emailService.sendVerificationEmail(data.ownerEmail, verificationToken, verificationCode, data.ownerFirstName);
                 if (!emailSent) {
-                    console.error('Failed to send verification email to:', data.ownerEmail);
                     return res.status(500).json({
-                        error: 'Failed to send verification email. Please try again later.'
+                        success: false,
+                        error: 'Failed to send verification email. Please try again or contact support.'
                     });
                 }
             }
             catch (emailError) {
+                // Log error and surface to user - verification is critical
                 console.error('Error sending verification email:', emailError);
                 return res.status(500).json({
-                    error: 'Failed to send verification email. Please try again later.'
+                    success: false,
+                    error: 'Failed to send verification email. Please try again or contact support.',
+                    details: emailError instanceof Error ? emailError.message : 'Unknown error'
                 });
             }
             // Log audit event for new flow
@@ -1240,7 +1257,6 @@ router.post('/auto-provision-test-license', AuthService.authMiddleware, async (r
         console.log('✅ Test license auto-provisioned successfully:', {
             licenseId: newLicense.id,
             tenantId: req.tenant.id,
-            userId: req.user.id
         });
         res.json({
             success: true,
@@ -1299,19 +1315,29 @@ router.post('/send-verification-email', strictRateLimit.passwordChange, async (r
         await db.update(users)
             .set(updateData)
             .where(eq(users.id, user.id));
-        // Send verification email
-        const emailSent = await emailService.sendVerificationEmail(email, token, verificationCode, user.firstName);
-        if (!emailSent) {
-            console.error('Failed to send verification email to:', email);
-            return res.status(500).json({ error: 'Failed to send verification email' });
+        // Send verification email synchronously (critical path)
+        try {
+            const emailSent = await emailService.sendVerificationEmail(email, token, verificationCode, user.firstName);
+            // Check if email actually sent successfully
+            if (!emailSent) {
+                console.error(`[Auth] ❌ Failed to send verification email to ${email}`);
+                return res.status(500).json({
+                    success: false,
+                    error: 'Failed to send verification email. Please try again later.'
+                });
+            }
+        }
+        catch (emailError) {
+            // Return error response instead of silently failing
+            console.error('Failed to send verification email:', emailError);
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to send verification email. Please try again later.',
+                details: emailError instanceof Error ? emailError.message : 'Unknown error'
+            });
         }
         // Log verification email sent
         await AuthService.logAuditEvent(user.tenantId, user.id, isStuckInIncompleteState ? 'VERIFICATION_EMAIL_RESENT_RECOVERY' : 'VERIFICATION_EMAIL_SENT', 'user', user.id, { email, recoveryMode: isStuckInIncompleteState });
-        console.log('✅ Verification email sent successfully:', {
-            email,
-            userId: user.id,
-            recoveryMode: isStuckInIncompleteState
-        });
         res.json({
             success: true,
             message: 'Verification email sent successfully. Please check your inbox.',
@@ -1380,11 +1406,6 @@ router.post('/verify-email', async (req, res) => {
             previousSetupStatus: user.setupStatus,
             newSetupStatus: updateData.setupStatus || user.setupStatus,
             autoLoginCreated: true
-        });
-        console.log('✅ Email verified successfully and user logged in:', {
-            email: user.email,
-            userId: user.id,
-            setupStatus: updateData.setupStatus || user.setupStatus
         });
         res.json({
             success: true,
@@ -1475,11 +1496,6 @@ async (req, res) => {
             autoLoginCreated: true,
             verificationMethod: 'code'
         });
-        console.log('✅ Email verified successfully via code and user logged in:', {
-            email: user.email,
-            userId: user.id,
-            setupStatus: updateData.setupStatus || user.setupStatus
-        });
         res.json({
             success: true,
             message: 'Email verified successfully',
@@ -1523,10 +1539,6 @@ router.post('/test-email', async (req, res) => {
         // Generate test verification data
         const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
         const verificationToken = crypto.randomUUID();
-        console.log(`📧 Test email generated for ${email}:`);
-        console.log(`   Code: ${verificationCode}`);
-        console.log(`   Token: ${verificationToken}`);
-        console.log(`   Type: ${type}`);
         res.json({
             success: true,
             message: 'Test email generated successfully',
@@ -1572,10 +1584,6 @@ router.get('/test-get-verification-token', async (req, res) => {
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
-        console.log('🧪 TEST ENDPOINT: Retrieved verification token for:', email);
-        console.log('   Token:', user.emailVerificationToken || 'null');
-        console.log('   Code:', user.emailVerificationCode || 'null');
-        console.log('   Expiry:', user.emailVerificationTokenExpiry || 'null');
         res.json({
             success: true,
             message: 'Verification token retrieved (TEST MODE)',
@@ -1645,12 +1653,6 @@ router.post('/test-verify-email', async (req, res) => {
         const tenant = user.tenant;
         const { session, token: authToken } = await AuthService.createSession(user.id, user.tenantId, 'test-ip', 'E2E-Test-Agent');
         const permissions = await AuthService.getUserPermissions(user.businessRole || user.consultantRole);
-        console.log('🧪 TEST ENDPOINT: Email verified and user logged in:', {
-            email: user.email,
-            userId: user.id,
-            setupStatus: updateData.setupStatus || user.setupStatus,
-            autoLogin: true
-        });
         res.json({
             success: true,
             message: 'Email verified successfully (TEST MODE)',
@@ -1707,14 +1709,6 @@ router.post('/test-get-verification-token', async (req, res) => {
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
-        console.log('🧪 TEST HELPER: Retrieving verification token:', {
-            email: user.email,
-            userId: user.id,
-            setupStatus: user.setupStatus,
-            emailVerified: user.emailVerified,
-            hasToken: !!user.emailVerificationToken,
-            hasCode: !!user.emailVerificationCode
-        });
         res.json({
             success: true,
             email: user.email,
@@ -1754,6 +1748,7 @@ router.post('/forgot-password', strictRateLimit.passwordChange, async (req, res)
             // Still return success but don't send email
             return res.json(successResponse);
         }
+        console.log('🔑 Password reset requested for:', user.email);
         // Generate secure reset token
         const resetToken = crypto.randomBytes(32).toString('hex');
         const resetTokenExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
@@ -1767,19 +1762,30 @@ router.post('/forgot-password', strictRateLimit.passwordChange, async (req, res)
             .where(eq(users.id, user.id));
         // Send password reset email
         try {
-            const resetLink = `${process.env.CLIENT_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
+            // Ensure email service is initialized before sending
+            await emailService.ensureInitialized();
+            const resetLink = `${process.env.CLIENT_URL || process.env.FRONTEND_URL || process.env.REPLIT_DEV_DOMAIN || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : 'http://localhost:5173')}/reset-password?token=${resetToken}`;
             const emailSent = await emailService.sendPasswordResetEmail(user.email, resetToken, resetLink, user.firstName);
             if (!emailSent) {
                 console.error('Failed to send password reset email to:', user.email);
+            }
+            else {
+                console.log('✅ Password reset email sent successfully to:', user.email);
             }
         }
         catch (emailError) {
             console.error('Error sending password reset email:', emailError);
             // Don't expose email sending errors to prevent information leakage
+            // But log the error for debugging
+            if (emailError instanceof Error) {
+                console.error('Email error details:', {
+                    message: emailError.message,
+                    stack: emailError.stack
+                });
+            }
         }
         // Log audit event
         await AuthService.logAuditEvent(user.tenantId, user.id, 'PASSWORD_RESET_REQUESTED', 'user', user.id, { email: user.email });
-        console.log('🔑 Password reset requested for:', user.email);
         res.json(successResponse);
     }
     catch (error) {
@@ -1827,7 +1833,6 @@ router.post('/reset-password', strictRateLimit.passwordChange, async (req, res) 
             .where(eq(userSessions.userId, user.id));
         // Log audit event
         await AuthService.logAuditEvent(user.tenantId, user.id, 'PASSWORD_RESET_COMPLETED', 'user', user.id, { email: user.email, sessionsRevoked: true });
-        console.log('✅ Password reset completed for:', user.email);
         res.json({
             success: true,
             message: 'Password has been reset successfully. Please log in with your new password.'
@@ -1861,24 +1866,11 @@ router.post('/admin/reset-stuck-user', async (req, res) => {
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
-        console.log('🔧 ADMIN RESET: Resetting stuck user account:', {
-            email,
-            userId: user.id,
-            currentStatus: {
-                emailVerified: user.emailVerified,
-                setupStatus: user.setupStatus,
-                hasPassword: !!user.passwordHash
-            }
-        });
         // SECURITY: Revoke all existing sessions for this user
         // This prevents stale tokens from being used after account reset
         await db.update(userSessions)
             .set({ status: 'REVOKED' })
             .where(eq(userSessions.userId, user.id));
-        console.log('🔒 ADMIN RESET: Revoked all sessions for user:', {
-            email,
-            userId: user.id
-        });
         // Generate new verification credentials
         const verificationToken = crypto.randomBytes(32).toString('hex');
         const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -1902,6 +1894,18 @@ router.post('/admin/reset-stuck-user', async (req, res) => {
             actorEmail: 'system',
             reason: 'stuck_registration_recovery',
             sessionsRevoked: true
+        });
+        console.log('🔧 ADMIN RESET: Resetting stuck user account:', {
+            email,
+            userId: user.id,
+        });
+        // SECURITY: Revoke all existing sessions for this user
+        await db.update(userSessions)
+            .set({ status: 'REVOKED' })
+            .where(eq(userSessions.userId, user.id));
+        console.log('🔒 ADMIN RESET: Revoked all sessions for user:', {
+            email,
+            userId: user.id
         });
         console.log('✅ ADMIN RESET: User account reset successfully:', {
             email,
